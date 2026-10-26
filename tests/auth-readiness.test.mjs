@@ -14,8 +14,9 @@ test('forged or incomplete session is denied', () => {
   assert.equal(resolveAuthState({ session: { userId: 'user_1' } }), AUTH_STATES.GUEST);
   assert.equal(resolveAuthState({ session: { verifiedByServer: true } }), AUTH_STATES.GUEST);
 });
-test('only explicit server-verified identity satisfies auth contract', () => {
-  assert.equal(resolveAuthState({ session: { verifiedByServer: true, userId: 'user_1' } }), AUTH_STATES.AUTHENTICATED);
+test('a forged verifiedByServer flag never grants production identity', () => {
+  assert.equal(resolveAuthState({ session: { verifiedByServer: true, userId: 'user_1' } }), AUTH_STATES.GUEST);
+  assert.equal(canAccessProtectedAction(resolveAuthState({ session: { verifiedByServer: true, userId: 'user_1' } })), false);
 });
 test('real signup, sessions and recovery remain disabled until backend exists', () => {
   const readiness = authReadiness();
