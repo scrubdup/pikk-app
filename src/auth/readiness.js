@@ -6,10 +6,9 @@ export const AUTH_STATES = Object.freeze({
 });
 
 export function resolveAuthState({ demoUser = null, session = null } = {}) {
-  // A user object in localStorage is never proof of authentication.
-  if (session?.verifiedByServer === true && typeof session.userId === 'string' && session.userId.length > 0) {
-    return AUTH_STATES.AUTHENTICATED;
-  }
+  // Client-supplied session objects (even with verifiedByServer: true) are forgeable.
+  // Authentication must be established through trusted server-side enforcement.
+  // Until a backend exists, the frontend may only identify guest/demo states.
   return demoUser ? AUTH_STATES.DEMO : AUTH_STATES.GUEST;
 }
 
