@@ -762,6 +762,7 @@ function bindUi() {
     interrupts.clear();
     nextTrack();
   });
+  bindProgressAndVolume();
   document.getElementById('spOpen')?.addEventListener('click', (e) => {
     // let default navigate; toast honesty
     toast('Opening external music service (playback depends on provider)');
@@ -1152,4 +1153,45 @@ export function destroyPageYtPlayer(hostElOrId) {
 /** Test helper — how many page embeds currently report PLAYING. */
 export function getPageYtPlayingCount() {
   return pagePlayingCount;
+}
+
+
+/* Mockup player card: progress/time and volume wired to the real YouTube player.
+   Shows --:-- until the YT player reports a real duration (no fabricated time). */
+export function fmtTime(sec) {
+  if (!Number.isFinite(sec) || sec <= 0) return '--:--';
+  const s = Math.floor(sec);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+let seeking = false;
+function bindProgressAndVolume() {
+  const seek = document.getElementById('spSeek');
+  const cur = document.getElementById('spTimeCur');
+  const dur = document.getElementById('spTimeDur');
+  const vol = document.getElementById('spVol');
+  if (!seek || !cur || !dur) return;
+  seek.addEventListener('input', () => { seeking = true; });
+  seek.addEventListener('change', () => {
+    const d = ytPlayer?.getDuration?.() || 0;
+    if (d > 0) ytPlayer.seekTo?.((Number(seek.value) / 1000) * d, true);
+    seeking = false;
+  });
+  vol?.addEventListener('input', () => ytPlayer?.setVolume?.(Number(vol.value)));
+  document.getElementById('spCast')?.addEventListener('click', () => toast('Cast is not available yet'));
+  setInterval(() => {
+    const d = ytPlayer?.getDuration?.() || 0;
+    const t = ytPlayer?.getCurrentTime?.() || 0;
+    if (d > 0) {
+      seek.disabled = false;
+      if (!seeking) seek.value = String(Math.round((t / d) * 1000));
+      cur.textContent = t > 0 ? fmtTime(t) : '0:00';
+      dur.textContent = fmtTime(d);
+      seek.setAttribute('aria-valuetext', `${fmtTime(t)} of ${fmtTime(d)}`);
+      seek.style.setProperty('--sp-pct', `${(t / d) * 100}%`);
+    } else {
+      seek.disabled = true;
+      cur.textContent = '--:--';
+      dur.textContent = '--:--';
+    }
+  }, 500);
 }

@@ -1,4 +1,4 @@
-import { VIDEOS, COMING_SOON, HOME_SECTIONS, YOUTUBE_MIXES } from '../data.js';
+import { VIDEOS, COMING_SOON, HOME_SECTIONS, YOUTUBE_MIXES, STREAMING_RELEASES } from '../data.js';
 import { notifyVideoPlaying, notifyVideoIdle, bindPageYoutubeEmbeds, bindYoutubeInterrupt, destroyPageYtPlayer } from '../player.js';
 import { listCatalog, getState, listHotLives, listRisingStreamers, getHotPosts, getMostPlayedSongToday, getAppDailyGoal, donateToGoal } from '../store.js';
 import { esc, shellPage, ytEmbedSrc, toast } from '../ui.js';
@@ -579,10 +579,19 @@ export function renderHome() {
        <span class="pikk-home-media-title">${esc(v.title)}</span>
      </a>`;
   }).join('');
-  const realCoverCircles = COMING_SOON.slice(0, 4).map((c) => `
-    <a class="pikk-home-circle" href="#/music" aria-label="Explore music: ${esc(c.title)}">
-      <span class="pikk-home-circle-ring"><img src="${esc(c.cover)}" alt="" loading="lazy" decoding="async"/></span>
-      <span>${esc(c.title)}</span>
+  // Mockup story rail — only existing real artwork (official release covers, then Coming Soon covers).
+  const storyArt = [...STREAMING_RELEASES.map((r) => r.cover), ...COMING_SOON.slice(0, 4).map((c) => c.cover)].filter(Boolean);
+  const STORY_RAIL = [
+    { label: 'For You', href: '#/explore' },
+    { label: 'Following', href: '#/posts' },
+    { label: 'Music', href: '#/music' },
+    { label: 'Nearby', href: '#/connect' },
+    { label: 'Live', href: '#/live' },
+  ];
+  const realCoverCircles = STORY_RAIL.map((c, i) => `
+    <a class="pikk-home-circle" href="${c.href}" aria-label="Open ${esc(c.label)}">
+      <span class="pikk-home-circle-ring">${storyArt[i] ? `<img src="${esc(storyArt[i])}" alt="" loading="lazy" decoding="async"/>` : '<span aria-hidden="true">●</span>'}</span>
+      <span>${esc(c.label)}</span>
     </a>`).join('');
   const visualFeed = `
     <section class="pikk-home-visual" id="pikkHomeVisual" aria-labelledby="pikkHomeVisualTitle">
@@ -592,12 +601,9 @@ export function renderHome() {
       </div>
       <nav class="pikk-home-circle-strip" aria-label="Browse PIKK features">
         <a class="pikk-home-circle" href="#/posts?compose=1" aria-label="Create a post on PIKK">
-          <span class="pikk-home-circle-ring pikk-home-circle-symbol" aria-hidden="true">＋</span><span>Create</span>
+          <span class="pikk-home-circle-ring pikk-home-circle-symbol pikk-home-circle-create" aria-hidden="true">＋</span><span>Create</span>
         </a>
         ${realCoverCircles}
-        <a class="pikk-home-circle" href="#/live" aria-label="Explore Live">
-          <span class="pikk-home-circle-ring pikk-home-circle-symbol" aria-hidden="true">●</span><span>Live</span>
-        </a>
       </nav>
       <nav class="pikk-home-filterbar" aria-label="Discover categories">
         <a class="is-current" href="#/explore">All</a>
@@ -618,6 +624,7 @@ export function renderHome() {
     </section>`;
 
   const body = `
+    ${visualFeed}
     <section class="pikk-home-discover" aria-label="PIKK quick discovery">
       <div class="pikk-home-discover-heading">
         <div><p class="kicker">Your world on PIKK</p><h2>Discover what’s happening</h2></div>
@@ -633,7 +640,6 @@ export function renderHome() {
       </nav>
     </section>
 
-    ${visualFeed}
 
     ${stageBlock}
 
