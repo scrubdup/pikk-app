@@ -4,12 +4,12 @@
   position:relative;overflow:hidden;isolation:isolate;margin:0 0 16px;padding:27px 30px;
   border:1px solid #494762;border-radius:22px;
   background:radial-gradient(circle at 92% 5%,rgba(43,105,236,.32),transparent 43%),
-    radial-gradient(circle at 8% 100%,rgba(231,43,88,.22),transparent 52%),
+    radial-gradient(circle at 8% 100%,rgba(231, 43, 49,.22),transparent 52%),
     linear-gradient(125deg,#1c1624,#101829 78%);
   box-shadow:0 16px 40px #0006;
 }
-.pikk-msg-flow-hero:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#f04c71,#9d6ad7,#3c83ff)}
-.pikk-msg-flow-kicker{display:block;color:#ffb2d2;font-size:10px;font-weight:850;letter-spacing:.15em}
+.pikk-msg-flow-hero:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#f04c51,#9d6ad7,#3c83ff)}
+.pikk-msg-flow-kicker{display:block;color:#ffb2b4;font-size:10px;font-weight:850;letter-spacing:.15em}
 .pikk-msg-flow-hero h2{font-size:clamp(25px,4vw,37px);line-height:1.12;letter-spacing:-.035em;color:#fff;margin:10px 0}
 .pikk-msg-flow-hero h2 em{font-style:normal;color:#b4bdff}
 .pikk-msg-flow-hero p{max-width:620px;color:#d4d2e4;line-height:1.6;font-size:13px;margin:0 0 13px}
@@ -25,7 +25,7 @@
 .pikk-msg-contact-card .msg-contact-head strong{font-size:15px;color:#fff;overflow-wrap:anywhere}
 .pikk-msg-contact-card p{font-size:12px;line-height:1.5;flex:1}
 .pikk-msg-contact-card .btn{min-height:39px}
-.pikk-msg-contact-avatar{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;border-radius:14px;border:1px solid #ba6cb8;background:linear-gradient(145deg,#943965,#2c4c9e);font-weight:900;font-size:18px;color:white}
+.pikk-msg-contact-avatar{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;border-radius:14px;border:1px solid #ba6c6e;background:linear-gradient(145deg,#94393c,#2c4c9e);font-weight:900;font-size:18px;color:white}
 .pikk-msg-flow-panel.msg-thread-head{margin-bottom:10px}
 .pikk-msg-flow-panel.msg-thread-head .msg-privacy-btns{align-self:flex-start}
 .pikk-msg-flow-panel.msg-thread-card{padding:16px}

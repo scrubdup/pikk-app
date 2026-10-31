@@ -2,11 +2,11 @@
 #app:has(.pikk-notif-studio){max-width:1080px}
 .pikk-notif-studio{display:grid;gap:16px;min-width:0}
 .pikk-notif-hero{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(180px,.65fr);align-items:center;gap:22px;min-height:245px;padding:29px 32px;border:1px solid #4a4868;border-radius:24px;background:radial-gradient(circle at 88% 20%,#2675d048,transparent 43%),radial-gradient(circle at 8% 94%,#cc34583b,transparent 51%),linear-gradient(120deg,#191421,#121a2c 76%,#101320);box-shadow:0 18px 48px #0006}
-.pikk-notif-hero::before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#ee5279,#ad71e8,#389aff)}
+.pikk-notif-hero::before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#ee5257,#ad71e8,#389aff)}
 .pikk-notif-hero-copy{position:relative;z-index:1;min-width:0}
-.pikk-notif-eyebrow,.pikk-notif-kicker{font-size:11px;font-weight:850;letter-spacing:.13em;color:#ffb1d1}
+.pikk-notif-eyebrow,.pikk-notif-kicker{font-size:11px;font-weight:850;letter-spacing:.13em;color:#ffb1b3}
 .pikk-notif-hero h2{margin:12px 0;font-size:clamp(29px,4vw,43px);line-height:1.1;letter-spacing:-.035em;color:#fff}
-.pikk-notif-hero h2 em{font-style:normal;background:linear-gradient(100deg,#ff789e,#92b5ff);background-clip:text;color:transparent}
+.pikk-notif-hero h2 em{font-style:normal;background:linear-gradient(100deg,#ff787c,#92b5ff);background-clip:text;color:transparent}
 .pikk-notif-hero p{max-width:520px;margin:0;color:#d8d7e8;font-size:14px;line-height:1.6}
 .pikk-notif-hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
 .pikk-notif-hero-actions a{min-height:42px;display:inline-flex;align-items:center;justify-content:center}
@@ -21,7 +21,7 @@
 .pikk-notif-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .pikk-notif-panel{min-width:0;overflow:hidden;padding:20px;border:1px solid #48445f;border-radius:20px;background:linear-gradient(155deg,#242135,#171923 85%);box-shadow:0 10px 27px #0003}
 .pikk-notif-panel-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-.pikk-notif-panel-icon{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:14px;border:1px solid #8b65a5;background:linear-gradient(145deg,#663053,#273b76);color:#fff;font-size:25px}
+.pikk-notif-panel-icon{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:14px;border:1px solid #8b65a5;background:linear-gradient(145deg,#663032,#273b76);color:#fff;font-size:25px}
 .pikk-notif-panel h3{font-size:20px;margin:4px 0 0;color:#fff}
 .pikk-notif-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;min-height:91px;padding:15px 0;border-top:1px solid #ffffff1b;cursor:pointer}
 .pikk-notif-row-copy{display:grid;gap:5px;min-width:0}
@@ -29,13 +29,13 @@
 .pikk-notif-row small{color:#c1c0d0;font-size:12px;line-height:1.45}
 .pikk-notif-row input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;position:relative;width:51px;height:29px;margin:0;border:1px solid #6a6883;border-radius:999px;background:#39384f;cursor:pointer;transition:background .2s,border-color .2s}
 .pikk-notif-row input[type=checkbox]::before{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#e8e8f3;box-shadow:0 2px 4px #0007;transition:transform .2s}
-.pikk-notif-row input[type=checkbox]:checked{background:linear-gradient(100deg,#a83872,#4e85ea);border-color:#d18ac4}
+.pikk-notif-row input[type=checkbox]:checked{background:linear-gradient(100deg,#a8383b,#4e85ea);border-color:#d18a8c}
 .pikk-notif-row input[type=checkbox]:checked::before{transform:translateX(21px);background:#fff}
-.pikk-notif-row input[type=checkbox]:focus-visible,.pikk-notif-studio a:focus-visible{outline:3px solid #ffb3dc;outline-offset:4px}
+.pikk-notif-row input[type=checkbox]:focus-visible,.pikk-notif-studio a:focus-visible{outline:3px solid #ffb3b5;outline-offset:4px}
 .pikk-notif-tools{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid #454b6a;border-radius:14px;padding:12px 15px;background:linear-gradient(100deg,#191c2e,#171622);color:#d9daeb;font-size:13px}
 .pikk-notif-tools button{min-height:42px;white-space:nowrap}
 .pikk-notif-tool-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;flex:1 1 340px}
-.pikk-notif-studio button:focus-visible{outline:3px solid #ffb3dc;outline-offset:4px}
+.pikk-notif-studio button:focus-visible{outline:3px solid #ffb3b5;outline-offset:4px}
 .pikk-notif-save-status{margin:0;padding:10px 14px;border-left:3px solid #6d8fe0;color:#d0cddd;font-size:12px;line-height:1.5}
 .pikk-notif-roadmap{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:19px 21px;border:1px solid #494259;border-radius:18px;background:linear-gradient(115deg,#261e33,#171d2c)}
 .pikk-notif-roadmap h3{margin:6px 0 8px;color:#fff;font-size:18px}

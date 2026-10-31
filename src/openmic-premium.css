@@ -2,12 +2,12 @@
 #app:has(.openmic-studio){max-width:1000px}
 .openmic-studio{display:grid;gap:16px;min-width:0}
 .openmic-studio>*{min-width:0}
-.openmic-hero{position:relative;isolation:isolate;overflow:hidden;padding:clamp(22px,4vw,40px);border:1px solid rgba(107,145,230,.4);border-radius:23px;background:radial-gradient(ellipse at 92% 7%,rgba(29,103,230,.31),transparent 52%),radial-gradient(ellipse at 0 100%,rgba(207,29,72,.26),transparent 56%),linear-gradient(135deg,#1c1b30,#0b1220 78%);box-shadow:0 16px 45px #0005}
-.openmic-hero:before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#f15a81,#8a68f0,#428dff)}
+.openmic-hero{position:relative;isolation:isolate;overflow:hidden;padding:clamp(22px,4vw,40px);border:1px solid rgba(107,145,230,.4);border-radius:23px;background:radial-gradient(ellipse at 92% 7%,rgba(29,103,230,.31),transparent 52%),radial-gradient(ellipse at 0 100%,rgba(207, 29, 34,.26),transparent 56%),linear-gradient(135deg,#1c1b30,#0b1220 78%);box-shadow:0 16px 45px #0005}
+.openmic-hero:before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#f15a5f,#8a68f0,#428dff)}
 .openmic-eyebrow{font-size:11px;font-weight:850;letter-spacing:.15em;color:#a9caff;margin:0}
-.openmic-eyebrow span{color:#ff7097;margin:0 7px}
+.openmic-eyebrow span{color:#ff7074;margin:0 7px}
 .openmic-hero h2{font-size:clamp(28px,4.2vw,44px);line-height:1.12;letter-spacing:-.035em;color:#fff;max-width:680px;margin:14px 0 10px}
-.openmic-hero h2 span{background:linear-gradient(100deg,#ff8baa,#8dbbff);color:transparent;background-clip:text}
+.openmic-hero h2 span{background:linear-gradient(100deg,#ff8b8e,#8dbbff);color:transparent;background-clip:text}
 .openmic-hero>p:not(.openmic-eyebrow):not(.openmic-hero-note){max-width:610px;color:#d4dded;font-size:14px;line-height:1.65;margin:0}
 .openmic-hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
 .openmic-hero-note{font-size:11px;color:#bdc9e1;margin:19px 0 0;line-height:1.5}
