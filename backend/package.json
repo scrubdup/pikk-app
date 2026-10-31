@@ -1,0 +1,16 @@
+{
+  "name": "pikk-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "dev": "wrangler dev",
+    "migrate:local": "wrangler d1 migrations apply pikk-db --local"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.4.11",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.124.0"
+  }
+}
