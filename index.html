@@ -16,8 +16,8 @@
   <meta property="og:title" content="PIKK" />
   <meta property="og:description" content="PIKK — videos, music, live, dating, shopping, games, and creators." />
   <meta property="og:image" content="https://scrubdup.github.io/pikk-app/og-image.png" />
-  <script type="module" crossorigin src="/pikk-app/assets/index-byyGs_J5.js"></script>
-  <link rel="stylesheet" crossorigin href="/pikk-app/assets/index-DobwJl-u.css">
+  <script type="module" crossorigin src="/pikk-app/assets/index-B1PfvNmm.js"></script>
+  <link rel="stylesheet" crossorigin href="/pikk-app/assets/index-CMcK7aKQ.css">
 </head>
 <body>
   <!-- §19 Splash t178u: official logo 3s + tuning-fork chime (legacy PNG kept under /loading/) -->
@@ -68,6 +68,10 @@
       <div class="sp-meta">
         <div class="sp-title" id="spTitle">PIKK Music</div>
         <div class="sp-sub" id="spSub">Tap Play · YouTube embed · Stream Everywhere</div>
+        <div class="sp-progress" id="spProgress">
+          <input type="range" id="spSeek" class="sp-seek" min="0" max="1000" value="0" step="1" aria-label="Seek" aria-valuetext="Not playing" disabled />
+          <div class="sp-times"><span id="spTimeCur">--:--</span><span id="spTimeDur">--:--</span></div>
+        </div>
       </div>
       <div class="sp-controls">
         <button type="button" class="sp-btn" id="spPrev" aria-label="Previous track">‹</button>
@@ -78,8 +82,10 @@
         <span class="sp-pn-label">Play next</span>
         <span class="sp-pn-sub" id="spPlayNextSub">Most played today</span>
       </button>
+      <label class="sp-vol"><span class="sp-vol-ico" aria-hidden="true">🔊</span><input type="range" id="spVol" min="0" max="100" value="80" aria-label="Volume" /></label>
       <button type="button" class="sp-btn sp-queue" id="spQueueBtn" aria-label="Music queue" title="Music queue">☰</button>
       <a class="sp-btn sp-open" id="spOpen" href="https://music.apple.com/us/artist/datboiskeet/1270542870" target="_blank" rel="noopener" title="Open on official platform" aria-label="Open on official platform (opens in a new tab)"><span aria-hidden="true">↗</span></a>
+      <button type="button" class="sp-btn sp-cast" id="spCast" aria-label="Cast — not available yet" title="Cast — not available yet" aria-disabled="true"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 18a3 3 0 0 1 3 3M3 14a7 7 0 0 1 7 7M3 10a11 11 0 0 1 11 11M3 7V5a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
       <span class="sp-badge" id="spBadge">TEST · YT EMBED</span>
       <span class="sp-source" id="spSource">YouTube</span>
     </div>
