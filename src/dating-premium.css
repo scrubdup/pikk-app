@@ -13,7 +13,7 @@
   border-color:#8695b8;
   background:radial-gradient(circle at 35% 25%,#b1bfd166,#273d6a 56%,#121729);
   box-shadow:0 0 0 8px #315bba30,0 0 33px #315bba55;
-  text-shadow:0 0 16px #ff3d65;
+  text-shadow:0 0 16px #ff3d43;
 }
 .pikk-dating-tabs button{
   flex:1 0 auto;min-height:42px;border-radius:999px;padding:10px 16px;
@@ -24,7 +24,7 @@
 .pikk-dating-tabs button.is-active,
 .pikk-dating-tabs button:hover{
   color:#fff;border-color:#8b9fcd;
-  background:linear-gradient(110deg,#b72a49,#394f87 58%,#2255c6);
+  background:linear-gradient(110deg,#b72a2e,#394f87 58%,#2255c6);
   box-shadow:inset 0 1px 0 #ffffff24,0 4px 18px #172c6c55;
 }
 .pikk-dating-tabs button:focus-visible,
@@ -37,7 +37,7 @@
 }
 .pikk-dating-experience:hover{border-color:#8b9dcb;transform:translateY(-2px)}
 .pikk-dating-experience>span{
-  background:linear-gradient(145deg,#9b2d50,#335bbb);
+  background:linear-gradient(145deg,#9b2d30,#335bbb);
   border-color:#7e90c1;
 }
 .pikk-dating-panel{
@@ -52,9 +52,9 @@
   display:inline-block;margin-bottom:3px;font-size:10px;font-weight:850;letter-spacing:.12em;
   color:#a7c1ff;text-transform:uppercase;
 }
-.pikk-dating-match{border-top:2px solid #bd365b}
+.pikk-dating-match{border-top:2px solid #bd363a}
 .pikk-dating-choices{border-top:2px solid #527be8}
-.pikk-dating-live{border-top:2px solid #9f4a8f}
+.pikk-dating-live{border-top:2px solid #9f4a4d}
 .pikk-dating-safety{border-top:2px solid #7594ca}
 #dating-discover,#dating-experiences,#dating-live,#dating-safety{scroll-margin-top:105px}
 #dating-discover:focus,#dating-experiences:focus,#dating-live:focus,#dating-safety:focus{outline:none}
