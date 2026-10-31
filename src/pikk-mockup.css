@@ -89,4 +89,44 @@ html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary > span:last
 @media (max-width: 560px) { .pikk-home-circle { flex-basis: 82px; } .pikk-home-circle-ring { width: 76px; height: 76px; } }
 /* Approved Create icon: play triangle (white on red) with silver/chrome cursor arrow */
 html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary .tab-ico svg path:first-child { fill: var(--pikk-red); filter: drop-shadow(0 0 4px var(--pikk-red-glow)); }
-html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary .tab-ico svg path:last-child { stroke: var(--pikk-chrome); }
+html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary .tab-ico svg path:last-child { stroke: #0a0a0a; }
+
+/* ===== Home top v2 (owner 01_home_layout.jpeg) ===== */
+/* (1) Big centered logo, reflection cropped via object-fit (asset unchanged) */
+.top#topBar .logo { flex: 1 1 auto; width: auto; flex-basis: auto; height: auto; justify-content: center; }
+.top#topBar .logo-img { width: min(46vw, 340px); height: calc(min(46vw, 340px) * 0.2185); object-fit: cover; object-position: top center; mix-blend-mode: screen; filter: none; }
+:root { --top-h: 64px; }
+@media (max-width: 560px) { :root { --top-h: 60px; } }
+/* (2) Header: search left · bell + messages right as round buttons; Profile lives in the drawer */
+.top#topBar #headerProfile { display: none; }
+.top .pill, .top .icon-btn { width: 42px; height: 42px; background: #141419; border: 1px solid #2c2d36; }
+.top #menuBtn { width: 30px; height: 30px; background: transparent; border: 0; opacity: .75; }
+@media (max-width: 560px) { .top .pill { width: 38px; height: 38px; } .top #menuBtn { width: 26px; } }
+/* (3) Home: no extra chip rail, no boxed Discover wrapper */
+body:has(#pikkHomeVisual) .pikk-explore-rail { display: none; }
+.pikk-home-visual { background: none; border: 0; box-shadow: none; padding: 4px 0 0; border-radius: 0; }
+.pikk-home-visual-top { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.page:has(#pikkHomeVisual) { padding-top: 0; }
+#pikkHomeVisual { margin-top: 0; }
+/* (4) Create story: avatar circle + small red + badge */
+.pikk-home-circle-me { position: relative; }
+.pikk-home-circle-me .pikk-home-circle-ring { background: linear-gradient(135deg, var(--pikk-red), var(--pikk-blue)); }
+.pikk-home-circle-avatar { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; background: #23242c; color: #8b8f9c; border: 3px solid #0a0913; }
+.pikk-home-circle-plus { position: absolute; right: 4px; top: 52px; width: 26px; height: 26px; border-radius: 50%; background: var(--pikk-red); color: #fff; font-weight: 900; font-size: 18px; line-height: 24px; text-align: center; border: 2px solid #0a0a0a; box-shadow: 0 0 8px var(--pikk-red-glow); }
+@media (max-width: 560px) { .pikk-home-circle-plus { top: 48px; right: 0; } }
+/* (5) Player at 390: shrink, don't hide — volume, queue, cast visible; title can wrap */
+@media (max-width: 760px) {
+  .sticky-player .sp-row { gap: 5px; padding: 0 8px; }
+  .sp-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 12px; line-height: 1.15; }
+  .sp-sub { display: none; }
+  .sp-art { width: 44px; height: 44px; flex-basis: 44px; }
+  .sp-btn.sp-play { width: 38px; height: 38px; font-size: 14px; }
+  .sp-controls .sp-btn:not(.sp-play) { width: 20px; font-size: 18px; }
+  .sp-vol, .sp-cast { display: flex !important; }
+  .sp-vol-ico { display: none; }
+  .sp-vol input { width: 44px; }
+  .sp-btn.sp-queue, .sp-btn.sp-cast { width: 26px; height: 26px; background: transparent; border: 0; }
+  .sp-btn.sp-open, .sp-play-next { display: none !important; }
+}
+/* (6) Create tab: red play triangle + silver cursor */
+html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary .tab-ico svg path.pikk-create-cursor { fill: #d7dbe3; stroke: #0a0a0a; filter: none; }

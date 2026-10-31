@@ -9,7 +9,9 @@ const data = readFileSync(new URL('../src/data.js', import.meta.url), 'utf8');
 test('center Create button keeps approved play triangle plus arrow icon (owner master requirements)', () => {
   assert.match(main, /t\.href === '#\/create' \? '<svg/);
   assert.match(main, /<path d="M9 5 L25 16 L9 27 Z" fill="currentColor"\/>/);
-  assert.match(main, /<path d="M24 5v11m0 0-4-4m4 4 4-4"/);
+  // Owner 2026-10-31: silver mouse-cursor (not a down arrow) over the red play triangle.
+  assert.match(main, /class="pikk-create-cursor" d="M15 12 L15 27/);
+  assert.doesNotMatch(main, /M24 5v11m0 0-4-4m4 4 4-4/);
   assert.doesNotMatch(main, /M16 7v18M7 16h18/);
 });
 
