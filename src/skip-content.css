@@ -1,0 +1,27 @@
+/* Accessible keyboard shortcut, styled to match PIKK's dark/red/electric-blue chrome.
+   Hidden off-canvas until keyboard focus; never covers the normal header. */
+.pikk-skip-content {
+  position: fixed;
+  top: -120px;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  z-index: 190;
+  max-width: calc(100vw - 24px);
+  padding: 12px 16px;
+  border: 2px solid #8caaff;
+  border-radius: 12px;
+  background: #15151e;
+  color: #fff;
+  box-shadow: 0 6px 24px #000a, 0 0 0 2px #ff2b2b;
+  font-weight: 800;
+  cursor: pointer;
+  transform: translateY(0);
+}
+.pikk-skip-content:focus-visible {
+  top: max(12px, env(safe-area-inset-top, 0px));
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+#app:focus-visible { outline: 2px solid #8caaff; outline-offset: -2px; }
+@media (prefers-reduced-motion: reduce) {
+  .pikk-skip-content { transition: none; }
+}

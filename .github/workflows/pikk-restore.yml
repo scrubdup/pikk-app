@@ -1,0 +1,40 @@
+name: Restore latest PIKK app to preview
+on:
+  push:
+    branches: [pikk-restoration-from-main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: pikk-pages-deploy
+  cancel-in-progress: false
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Guard advanced app features before publishing
+        run: npm test
+      - name: Guard against missing developed features
+        run: npm test
+      - name: Build complete app from main-derived branch
+        run: npm run build
+      - name: Verify build output and correct project base
+        run: |
+          test -s dist/index.html
+          grep -q 'PIKK' dist/index.html
+          grep -q '/pikk-app/' dist/index.html
+          test -d dist/assets
+      - name: Publish verified full app to Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          keep_files: false

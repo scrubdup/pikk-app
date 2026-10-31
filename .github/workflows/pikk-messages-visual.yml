@@ -1,0 +1,42 @@
+name: PIKK Messages Visual Review
+on:
+  pull_request:
+    paths:
+      - 'src/pages/messages.js'
+      - 'src/styles.css'
+      - 'tests/pikk-premium-messages.test.mjs'
+      - 'scripts/visual-review-messages.mjs'
+      - '.github/workflows/pikk-messages-visual.yml'
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install app and screenshot browser
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Start Vite preview
+        run: |
+          npm run dev -- --host 127.0.0.1 > /tmp/pikk-messages-vite.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/pikk-messages-vite.log
+          exit 1
+      - name: Test real signed-in inbox, search, responsive layout and screenshots
+        run: node scripts/visual-review-messages.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pikk-messages-visual-review
+          path: visual-review/messages-*.png
+          if-no-files-found: warn

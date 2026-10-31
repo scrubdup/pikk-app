@@ -1,0 +1,31 @@
+/* PIKK Missions Studio: visual-only, scoped to the existing demo campaign route. */
+#app:has(.pikk-missions-studio){max-width:1120px}
+.pikk-missions-studio{display:grid;gap:16px;min-width:0}
+.pikk-missions-studio>*{min-width:0;margin:0}
+.pikk-missions-hero{position:relative;overflow:hidden;isolation:isolate;padding:31px 34px;border-radius:24px;border:1px solid #585069;background:radial-gradient(circle at 91% 9%,#2d6fdc58,transparent 43%),radial-gradient(circle at 9% 100%,#b9345b52,transparent 49%),linear-gradient(120deg,#231b2c,#111e31 84%);box-shadow:0 18px 48px #0006}
+.pikk-missions-hero:before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#f14b78,#9264e7,#338fff)}
+.pikk-missions-kicker{margin:0;color:#ffb7ce;font-size:11px;font-weight:900;letter-spacing:.14em}
+.pikk-missions-hero h2{margin:12px 0 10px;max-width:680px;font-size:clamp(29px,4vw,44px);line-height:1.1;letter-spacing:-.035em;color:#fff}
+.pikk-missions-hero h2 span{background:linear-gradient(105deg,#ff85aa,#92c3ff);background-clip:text;color:transparent}
+.pikk-missions-hero>p:not(.pikk-missions-kicker){max-width:700px;color:#ddd8e8;font-size:14px;line-height:1.6;margin:0}
+.pikk-missions-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:21px;max-width:750px}
+.pikk-missions-stat{min-width:0;padding:14px 17px;border:1px solid #6e63848a;border-radius:15px;background:#0c1526a8;display:grid;gap:4px}
+.pikk-missions-stat strong{font-size:30px;line-height:1;color:#fff}
+.pikk-missions-stat span{font-size:12px;color:#c8cce3;overflow-wrap:anywhere}
+.pikk-missions-mode{display:inline-flex;margin-top:15px;padding:7px 11px;border-radius:100px;background:#33243c;border:1px solid #9b6280;color:#ffe0ec;font-size:10px;font-weight:800;letter-spacing:.06em}
+.pikk-missions-studio .card{min-width:0}
+.pikk-missions-intro,.pikk-missions-create,.pikk-mission-card,.pikk-missions-archive>.card{border:1px solid #49465d;border-radius:20px;background:linear-gradient(155deg,#252034,#171c2b 91%);box-shadow:0 12px 30px #0003;padding:20px}
+.pikk-missions-list{display:grid;gap:14px;min-width:0}
+.pikk-mission-card{overflow:hidden}
+.pikk-mission-card h3{font-size:20px;line-height:1.3;letter-spacing:-.01em;color:#fff}
+.pikk-mission-card .chip{white-space:normal;max-width:100%;overflow-wrap:anywhere}
+.pikk-mission-card .row{gap:8px}
+.pikk-mission-card table{min-width:290px}
+.pikk-missions-create h3{font-size:21px;margin-top:0}
+.pikk-missions-create .field input,.pikk-missions-create .field select{max-width:100%;min-width:0}
+.pikk-missions-studio .btn{min-height:40px;white-space:normal}
+.pikk-missions-studio :is(button,input,select,a):focus-visible{outline:3px solid #ff9bc8;outline-offset:3px}
+.pikk-missions-archive>.card{display:grid;gap:14px}
+.pikk-missions-archive>.card>h3{margin:0}
+@media(max-width:640px){.pikk-missions-studio{gap:12px}.pikk-missions-hero{padding:23px 18px;border-radius:18px}.pikk-missions-hero h2{font-size:31px}.pikk-missions-stats{gap:7px}.pikk-missions-stat{padding:11px 9px;border-radius:11px}.pikk-missions-stat strong{font-size:25px}.pikk-missions-stat span{font-size:11px}.pikk-missions-intro,.pikk-missions-create,.pikk-mission-card,.pikk-missions-archive>.card{padding:15px;border-radius:16px}.pikk-mission-card .row.wrap{gap:6px}.pikk-missions-create .grid-2{grid-template-columns:1fr}}
+@media(max-width:355px){.pikk-missions-stats{grid-template-columns:1fr}.pikk-missions-stat{display:flex;align-items:center;gap:12px}}

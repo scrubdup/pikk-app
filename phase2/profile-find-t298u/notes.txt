@@ -1,0 +1,21 @@
+t298u A — Profile discoverability
+Date: 2026-10-25
+Owner: Design
+
+## What changed
+- index.html: `#headerProfile` Profile pill next to `#headerMsg` Messages in `.top-actions` → `#/profile`. Sign in NOT restored in header.
+- src/data.js: DRAWER_GROUPS pin `{ id: 'profile', label: 'Profile / Sign in', href: '#/profile' }` as top-level direct link right after Home.
+- src/styles.css: `.header-profile` pill styles (matches Messages weight); narrow ≤360px icon-only for both pills.
+- Tabbar unchanged: Home · Post · Music · Go Live · Videos · Chat · Game (7).
+
+## DOM verify (390px)
+- headerProfile: true · href #/profile · Messages still present · no #tierPill
+- topActionsText: "Profile Messages"
+- tabCount: 7 · order Home, Post, Music, Go Live, Videos, Chat, Game
+- Drawer topDirect: Home → Profile / Sign in → Messages
+
+## Shots
+- 01-header-profile-messages.png
+- 02-drawer-profile-top.png
+- 03-full-390-home.png
+- dom-facts.json / drawer-facts.json

@@ -1,0 +1,43 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Loyalty seed</title></head>
+<body>
+<script>
+const KEY = 'dbs_v1';
+const now = Date.now();
+const user = {
+  id: 'u_loyal_ev', username: 'LoyalFan', bio: 'Loyalty evidence',
+  avatar: '', followers: [], following: ['dbs'],
+  membership: null,
+  memberships: { skeetPlus: false, backstage: false, innerCircle: false },
+  purchasedTracks: [], role: 'fan', createdAt: now,
+};
+const seed = {
+  user,
+  profiles: {
+    dbs: { id: 'dbs', username: 'DatBoiSkeet', bio: 'Official', avatar: '/brand/logo-dbs-v3@2x.webp', followers: ['u_loyal_ev'], following: [], verified: true },
+    u_loyal_ev: { ...user, verified: false },
+  },
+  posts: [], comments: {}, likes: {},
+  loyalty: {
+    points: 29,
+    badges: ['day_one', 'listener', 'live_attendee', 'helper'],
+    publicVisible: true,
+    lastActionAt: { listen: now - 60000, live: now - 120000, help: now - 180000 },
+    dayCounts: {},
+    history: [
+      { id: 'loy1', at: now - 60000, kind: 'listen', points: 5, note: 'Authorized listening tick' },
+      { id: 'loy2', at: now - 120000, kind: 'live', points: 8, note: 'Attended live (stub)' },
+      { id: 'loy3', at: now - 180000, kind: 'help', points: 6, note: 'Shared community helper tip' },
+      { id: 'loy4', at: now - 240000, kind: 'club', points: 10, note: 'Joined DatBoiSkeet Official' },
+    ],
+  },
+  fanClubs: { seeded: true, clubs: [{ id: 'fc_official_dbs', name: 'DatBoiSkeet Official', privacy: 'public', official: true, members: ['dbs','u_loyal_ev'], followers: [], mods: ['dbs'], hostId: 'dbs', hostName: 'DatBoiSkeet', graphic: '/brand/logo-dbs-v3@2x.webp', description: 'Official', memberCount: 2, createdAt: now }], posts: {} },
+  notifications: { releases: true, lives: true, messages: true, quietHours: false },
+  wallet: { balance: 0, history: [] },
+  splashSeenAt: now,
+};
+localStorage.setItem(KEY, JSON.stringify(seed));
+location.replace(new URLSearchParams(location.search).get('next') || '/#/loyalty');
+</script>
+Seeding Loyalty…
+</body></html>

@@ -1,0 +1,13 @@
+<!doctype html><meta charset="utf-8"/>
+<title>Shop evidence · frames filter</title>
+<script>
+try {
+  const raw = localStorage.getItem('dbs_v1');
+  const s = raw ? JSON.parse(raw) : {};
+  s.profileShop = s.profileShop || { owned: [], equipped: {}, reduceMotion: false };
+  localStorage.setItem('dbs_v1', JSON.stringify(s));
+  sessionStorage.setItem('dbs_shop_cat', 'frames');
+  sessionStorage.setItem('dbs_shop_preview', 'frame-chrome-crown');
+} catch (e) {}
+location.replace('/#/shop');
+</script>

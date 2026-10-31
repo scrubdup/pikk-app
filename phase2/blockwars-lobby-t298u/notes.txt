@@ -1,0 +1,18 @@
+t298u B — Block Wars lobby / fighter select
+Date: 2026-10-25
+Owner: Design
+
+## What changed
+- src/pages/blockwars.js: lobby with NY · LA · Chicago city cards (preview-*-still.jpg), tap → focus still + fighter blurb, Enter arena · Coming Soon toast (honest — no match engine), keep preview video + Coming Soon badge.
+- src/styles.css: `.bw-city-grid` / `.bw-city-card` / `.bw-focus` / `.bw-arena-cta` (black/red/blue).
+- Not WebGL / not playable / full gameplay still paused.
+
+## DOM verify
+- 3 city cards · badge Coming Soon · video present · arena CTA
+- Tap LA → Sunset Striker · Tap CHI → Windy City Wall
+- Toast: "Block Wars arena is Coming Soon — lobby demo only. No match engine yet."
+
+## Shots
+- 01-lobby-cities.png · 02-focus-la.png · 03-focus-chi.png
+- 04-arena-toast.png · 05-preview-video.png · 06-lobby-full-390.png
+- dom-facts.json / focus-*.json / toast.json

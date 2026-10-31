@@ -1,0 +1,33 @@
+/* PIKK Creator Earnings premium studio: scoped to the existing test-mode ledger. */
+#app:has(.pikk-earnings-hero){max-width:1100px}
+.pikk-earnings-hero{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(210px,.75fr);align-items:center;gap:18px;min-height:250px;margin:0 0 18px;padding:30px 32px;border:1px solid #4b4567;border-radius:23px;background:radial-gradient(circle at 87% 28%,rgba(38,105,235,.3),transparent 38%),radial-gradient(circle at 8% 90%,rgba(218,34,77,.22),transparent 46%),linear-gradient(125deg,#181421,#101628 70%,#10131e);box-shadow:0 18px 50px #0005}
+.pikk-earnings-hero::before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#d84364,#9a72dc,#388cf2);opacity:.9}
+.pikk-earnings-hero-copy{position:relative;z-index:1;min-width:0}
+.pikk-earnings-eyebrow{display:inline-block;font-size:11px;font-weight:850;letter-spacing:.13em;color:#ffc3d7}
+.pikk-earnings-hero h2{font-size:clamp(28px,3.8vw,43px);line-height:1.08;letter-spacing:-.035em;color:#fff;margin:12px 0}
+.pikk-earnings-hero h2 em{font-style:normal;background:linear-gradient(100deg,#ff719e,#8ea9ff);color:transparent;background-clip:text}
+.pikk-earnings-hero p{max-width:560px;color:#d9d8e8;font-size:14px;line-height:1.65;margin:0}
+.pikk-earnings-hero-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}
+.pikk-earnings-hero-actions a{min-height:41px;display:inline-flex;align-items:center;justify-content:center}
+.pikk-earnings-hero-art{position:relative;min-height:190px;display:grid;place-content:center;justify-items:center;gap:8px;overflow:hidden;border:1px solid #575071;border-radius:20px;background:radial-gradient(circle at 50% 35%,#2a2e5d 0%,#181a33 55%,#12111f 100%)}
+.pikk-earnings-hero-orbit{position:absolute;width:172px;height:172px;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-25deg);border:1px solid #7b87d37a;border-radius:50%;box-shadow:0 0 0 22px #8d59c315,0 0 0 44px #507cbb10}
+.pikk-earnings-hero-symbol{position:relative;font-size:clamp(42px,6vw,70px);line-height:1;font-weight:950;letter-spacing:-.08em;color:#e9eaf6;text-shadow:0 3px 0 #6079af,0 9px 22px #000b}
+.pikk-earnings-hero-mini{position:relative;color:#c6c9e4;font-size:10px;letter-spacing:.2em;font-weight:800}
+.pikk-earnings-dashboard{display:grid;gap:14px;min-width:0}
+.pikk-earnings-dashboard>.card{margin:0;min-width:0;border:1px solid #413f5b;border-radius:18px;background:linear-gradient(150deg,#1a1a2c,#151622 75%);box-shadow:0 8px 25px #0002}
+.pikk-earnings-dashboard>.card h3{font-size:18px;letter-spacing:-.01em;color:#fff;margin:0 0 12px}
+.pikk-earnings-intro{border-left:3px solid #cb537a!important}
+.pikk-earnings-summary>.grid-2{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.pikk-earnings-summary>.grid-2>div{min-width:0;padding:17px 12px;border:1px solid #4c4967;border-radius:14px;background:linear-gradient(145deg,#242238,#191c30)}
+.pikk-earnings-summary>.grid-2>div:first-child{border-color:#7a5275;background:linear-gradient(145deg,#35243e,#1b2035)}
+.pikk-earnings-summary>.grid-2>div>div{overflow-wrap:anywhere;font-variant-numeric:tabular-nums;letter-spacing:-.025em;color:#fff}
+.pikk-earnings-dashboard .earn-filter{display:inline-flex;align-items:center;min-height:36px;padding:7px 12px;border:1px solid #504c6b;background:#222236;color:#e4e0f1;text-decoration:none}
+.pikk-earnings-dashboard .earn-filter.active{background:#352b4c;border-color:#b47bd8;color:#fff}
+.pikk-earnings-dashboard table{min-width:490px}
+.pikk-earnings-dashboard th{color:#c6c3d6;font-weight:700}
+.pikk-earnings-dashboard td{color:#f1eef7}
+.pikk-earnings-dashboard input,.pikk-earnings-dashboard select{max-width:100%}
+.pikk-earnings-dashboard a:focus-visible,.pikk-earnings-dashboard button:focus-visible,.pikk-earnings-hero a:focus-visible{outline:3px solid #f5b5e5;outline-offset:3px}
+@media(max-width:850px){.pikk-earnings-summary>.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.pikk-earnings-hero{grid-template-columns:minmax(0,1fr) 180px;padding:24px}.pikk-earnings-hero-art{min-height:160px}}
+@media(max-width:560px){.pikk-earnings-hero{grid-template-columns:1fr;gap:14px;padding:20px;border-radius:18px}.pikk-earnings-hero-art{min-height:92px;display:flex;align-items:center;justify-content:center;gap:15px}.pikk-earnings-hero-orbit{width:115px;height:115px}.pikk-earnings-hero-symbol{font-size:40px}.pikk-earnings-hero-mini{font-size:9px}.pikk-earnings-summary>.grid-2{gap:7px}.pikk-earnings-summary>.grid-2>div{padding:12px 9px}.pikk-earnings-summary>.grid-2>div>div{font-size:21px!important}.pikk-earnings-dashboard>.card{padding:15px}.pikk-earnings-hero h2{font-size:31px}}
+@media(prefers-reduced-motion:reduce){.pikk-earnings-hero,.pikk-earnings-dashboard *{scroll-behavior:auto}}

@@ -1,0 +1,49 @@
+name: PIKK Stories and Featured Ads Visual Review
+
+on:
+  pull_request:
+    paths:
+      - 'src/featured-promos.js'
+      - 'src/featured-promos.css'
+      - 'src/pages/home.js'
+      - 'src/pages/shells.js'
+      - 'src/main.js'
+      - 'scripts/visual-review-stories-promos.mjs'
+      - 'tests/pikk-stories-featured-promos.test.mjs'
+      - '.github/workflows/pikk-stories-promos-visual.yml'
+
+jobs:
+  visual:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install app dependencies
+        run: npm ci
+      - name: Install screenshot runner and Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Build production bundle
+        run: npm run build
+      - name: Start Vite
+        run: |
+          npm run dev -- --host 127.0.0.1 > /tmp/pikk-stories-vite.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/pikk-stories-vite.log
+          exit 1
+      - name: Verify Home and Videos on mobile and desktop
+        run: node scripts/visual-review-stories-promos.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pikk-stories-six-ads-screenshots
+          path: visual-review/pikk-*.png
+          if-no-files-found: warn

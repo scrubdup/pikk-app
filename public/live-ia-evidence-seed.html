@@ -1,0 +1,35 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Live IA seed</title></head>
+<body>
+<p>Seeding Live IA demo state…</p>
+<script>
+const KEY = 'dbs_v1';
+const now = Date.now();
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (_) { state = {}; }
+state.user = {
+  id: 'u_live_ia', username: 'LiveIADemo', bio: 'Live IA evidence',
+  avatar: '', followers: [], following: ['dbs'],
+  membership: null,
+  memberships: { skeetPlus: false, backstage: false, innerCircle: false },
+  purchasedTracks: [], role: 'fan', createdAt: now,
+};
+state.live = {
+  id: 'live_ia_' + now.toString(36),
+  hostId: 'u_live_ia',
+  hostName: 'LiveIADemo',
+  title: 'DBS Live · LiveIADemo',
+  startedAt: now - 120000,
+  endedAt: null,
+  viewers: 1284,
+  tipsTotal: 3,
+  giftsTotal: 8,
+  chat: [
+    { id: 'c1', username: 'DBS', text: 'Welcome · TEST MODE', at: now - 60000, support: false },
+  ],
+};
+localStorage.setItem(KEY, JSON.stringify(state));
+const go = new URLSearchParams(location.search).get('go') || '#/live';
+location.replace('/' + go);
+</script>
+</body></html>

@@ -1,0 +1,28 @@
+/* Open Mic premium stage, scoped to this route. Preserves global player, logo and navigation. */
+#app:has(.openmic-studio){max-width:1000px}
+.openmic-studio{display:grid;gap:16px;min-width:0}
+.openmic-studio>*{min-width:0}
+.openmic-hero{position:relative;isolation:isolate;overflow:hidden;padding:clamp(22px,4vw,40px);border:1px solid rgba(107,145,230,.4);border-radius:23px;background:radial-gradient(ellipse at 92% 7%,rgba(29,103,230,.31),transparent 52%),radial-gradient(ellipse at 0 100%,rgba(207,29,72,.26),transparent 56%),linear-gradient(135deg,#1c1b30,#0b1220 78%);box-shadow:0 16px 45px #0005}
+.openmic-hero:before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#f15a81,#8a68f0,#428dff)}
+.openmic-eyebrow{font-size:11px;font-weight:850;letter-spacing:.15em;color:#a9caff;margin:0}
+.openmic-eyebrow span{color:#ff7097;margin:0 7px}
+.openmic-hero h2{font-size:clamp(28px,4.2vw,44px);line-height:1.12;letter-spacing:-.035em;color:#fff;max-width:680px;margin:14px 0 10px}
+.openmic-hero h2 span{background:linear-gradient(100deg,#ff8baa,#8dbbff);color:transparent;background-clip:text}
+.openmic-hero>p:not(.openmic-eyebrow):not(.openmic-hero-note){max-width:610px;color:#d4dded;font-size:14px;line-height:1.65;margin:0}
+.openmic-hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.openmic-hero-note{font-size:11px;color:#bdc9e1;margin:19px 0 0;line-height:1.5}
+.openmic-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.openmic-stats>div{min-width:0;display:grid;gap:7px;padding:17px;border:1px solid rgba(109,146,219,.31);border-radius:16px;background:linear-gradient(145deg,rgba(42,56,87,.8),rgba(15,20,34,.95))}
+.openmic-stats span{font-size:12px;color:#c6d7f6}
+.openmic-stats strong{font-size:clamp(26px,4vw,38px);font-variant-numeric:tabular-nums;color:#fff;line-height:1}
+.openmic-stats small{font-size:11px;color:#aebdd6}
+.openmic-studio .openmic-panel,.openmic-studio .sp-house{border:1px solid rgba(96,138,220,.31);border-radius:19px;min-width:0}
+.openmic-studio .sp-house{background:linear-gradient(150deg,rgba(34,37,62,.95),rgba(15,22,37,.97))}
+.openmic-studio .openmic-panel input,.openmic-studio .openmic-panel select,.openmic-studio .openmic-panel textarea{box-sizing:border-box;max-width:100%}
+.openmic-studio .openmic-panel h3{color:#f4f7ff}
+.openmic-studio .btn{min-height:40px;white-space:normal}
+.openmic-studio :is(button,a,input,select,textarea):focus-visible{outline:3px solid #94bdff;outline-offset:3px}
+.openmic-studio #omApplyCard,.openmic-studio #omShowcaseCard{scroll-margin-top:110px}
+@media(max-width:640px){.openmic-studio{gap:12px}.openmic-hero{padding:23px 18px;border-radius:18px}.openmic-hero h2{font-size:31px}.openmic-stats{gap:7px}.openmic-stats>div{padding:12px 9px;border-radius:12px}.openmic-stats span{font-size:10px}.openmic-stats strong{font-size:26px}.openmic-stats small{font-size:9px}.openmic-hero-actions .btn{flex:1;min-width:0}.openmic-studio .openmic-panel,.openmic-studio .sp-house{border-radius:16px}}
+@media(max-width:355px){.openmic-stats{grid-template-columns:1fr}.openmic-stats>div{display:flex;align-items:center;gap:12px}}
+@media(prefers-reduced-motion:reduce){.openmic-studio *{scroll-behavior:auto}}

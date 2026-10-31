@@ -1,0 +1,53 @@
+name: PIKK Approved Arcade Visual Review (no deploy)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'public/games/approved/**'
+      - 'src/games/arcade-catalog.js'
+      - 'src/pages/games.js'
+      - 'src/pages/home.js'
+      - 'scripts/capture-arcade-visuals.mjs'
+      - '.github/workflows/pikk-approved-art-visual-review.yml'
+permissions:
+  contents: read
+jobs:
+  screenshots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Verify all PIKK features and approved artwork hashes
+        run: npm test
+      - name: Build GitHub Pages preview without deploying
+        run: npm run build
+        env:
+          VITE_BASE: /pikk-app/
+      - name: Install browser tools for screenshot review
+        run: |
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Start preview
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/pikk-preview.log 2>&1 &
+          for i in $(seq 1 45); do
+            curl -fsS http://127.0.0.1:4173/pikk-app/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/pikk-preview.log
+          exit 1
+      - name: Capture and verify mobile/desktop Arcade and Home
+        run: node scripts/capture-arcade-visuals.mjs
+      - name: Save screenshot evidence (not a deployment)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pikk-approved-arcade-screenshots
+          path: visual-evidence/*.png
+          retention-days: 7
+          if-no-files-found: warn

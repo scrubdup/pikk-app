@@ -1,0 +1,72 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Hot Feed seed</title></head>
+<body>
+<script>
+const KEY = 'dbs_v1';
+const now = Date.now();
+const user = {
+  id: 'u_admin_hf', username: 'DBSAdmin', bio: 'Hot feed evidence admin',
+  avatar: '', followers: [], following: ['dbs','maya','fanjay'],
+  membership: null,
+  memberships: { skeetPlus: false, backstage: false, innerCircle: false },
+  purchasedTracks: [], role: 'admin', createdAt: now,
+};
+const posts = [
+  { id: 'p1', userId: 'dbs', username: 'DatBoiSkeet', text: 'Long Story Short — cover is up.', image: '/music/01_Long_Story_Short_Coming_Soon.jpg', at: now - 86400000 * 2, house: true },
+  { id: 'p2', userId: 'dbs', username: 'DatBoiSkeet', text: 'Foreign X-Change merch.', image: '/merch/01_black_orange_716_hat.jpeg', at: now - 86400000, house: true },
+  { id: 'hp_maya_1', userId: 'maya', username: 'MayaBeats', text: 'Studio loop dropping later — who wants the stem pack? 🔥', image: '/music/01_Long_Story_Short_Coming_Soon.jpg', mediaType: 'image', at: now - 3600000 * 5, house: false },
+  { id: 'hp_jay_1', userId: 'fanjay', username: 'FanJay', text: 'Foreign X-Change fit check from the community.', image: '/merch/03_blue_buffalo_jacket.jpeg', mediaType: 'image', at: now - 3600000 * 8, house: false },
+  { id: 'hp_clip_1', userId: 'clipqueen', username: 'ClipQueen', text: 'New clip cut from last Live — tag @DatBoiSkeet 🎬', image: '/merch/06_black_ptsd_tee.jpeg', mediaType: 'video', at: now - 3600000 * 12, house: false },
+  { id: 'hp_dbs_boost', userId: 'dbs', username: 'DatBoiSkeet', text: 'Community shoutout — Maya + Jay keeping the feed hot.', image: '/music/02_Ladies_Only_Coming_Soon.jpg', mediaType: 'image', at: now - 3600000 * 3, house: true },
+];
+const likes = {
+  p1: ['maya','fanjay','u_seed_a'],
+  p2: ['maya','fanjay'],
+  hp_maya_1: ['dbs','fanjay','u_seed_a','u_seed_b'],
+  hp_jay_1: ['maya','dbs','u_seed_a','u_seed_c','u_seed_d'],
+  hp_clip_1: ['dbs','maya','fanjay'],
+  hp_dbs_boost: ['maya','fanjay','u_seed_a','u_seed_b','u_seed_c','u_seed_d'],
+};
+const comments = {
+  p1: [
+    { id: 'hc_p1a', userId: 'maya', username: 'MayaBeats', text: 'Cover art goes crazy', at: now - 80000000 },
+    { id: 'hc_p1b', userId: 'fanjay', username: 'FanJay', text: 'Been waiting on this', at: now - 70000000 },
+  ],
+  hp_maya_1: [
+    { id: 'hc_m1', userId: 'fanjay', username: 'FanJay', text: 'Send it', at: now - 100000 },
+    { id: 'hc_m2', userId: 'dbs', username: 'DatBoiSkeet', text: 'Pull up on Spotlight', at: now - 90000 },
+  ],
+  hp_jay_1: [{ id: 'hc_j1', userId: 'maya', username: 'MayaBeats', text: 'Jacket hits', at: now - 80000 }],
+  hp_clip_1: [
+    { id: 'hc_c1', userId: 'dbs', username: 'DatBoiSkeet', text: 'Clean edit', at: now - 70000 },
+    { id: 'hc_c2', userId: 'maya', username: 'MayaBeats', text: 'Clipping goals', at: now - 60000 },
+    { id: 'hc_c3', userId: 'fanjay', username: 'FanJay', text: 'Saved', at: now - 50000 },
+  ],
+  hp_dbs_boost: [
+    { id: 'hc_d1', userId: 'maya', username: 'MayaBeats', text: 'Grateful', at: now - 40000 },
+    { id: 'hc_d2', userId: 'fanjay', username: 'FanJay', text: 'Lets go', at: now - 30000 },
+  ],
+};
+const postShares = { p1: 2, p2: 1, hp_maya_1: 2, hp_jay_1: 3, hp_clip_1: 1, hp_dbs_boost: 4 };
+const seed = {
+  user,
+  profiles: {
+    dbs: { id: 'dbs', username: 'DatBoiSkeet', bio: 'Official', avatar: '/brand/logo-dbs-v3@2x.webp', followers: ['u_admin_hf'], following: [], verified: true },
+    maya: { id: 'maya', username: 'MayaBeats', bio: 'Creator · beats', avatar: '', followers: [], following: ['dbs'], verified: false },
+    fanjay: { id: 'fanjay', username: 'FanJay', bio: 'Day-one fan', avatar: '', followers: [], following: ['dbs'], verified: false },
+    clipqueen: { id: 'clipqueen', username: 'ClipQueen', bio: 'Clipper', avatar: '', followers: [], following: ['dbs'], verified: false },
+    u_admin_hf: { ...user, verified: false },
+  },
+  posts, likes, comments, postShares,
+  hotFeed: { lives: [], posts: [], seededLives: false, seededPosts: false },
+  engagementAlerts: [],
+  notifications: { releases: true, lives: true, messages: true, quietHours: false },
+  wallet: { balance: 0, history: [] },
+  splashSeenAt: now,
+};
+localStorage.setItem(KEY, JSON.stringify(seed));
+const next = new URLSearchParams(location.search).get('next') || '/#/posts';
+location.replace(next);
+</script>
+Seeding Hot Feed…
+</body></html>

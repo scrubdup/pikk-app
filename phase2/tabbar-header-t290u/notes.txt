@@ -1,0 +1,33 @@
+t290u / t291u — Header Messages always + 7-tab bar
+Date: 2026-10-25
+Owner: Design
+Alias: t291u = header half (Messages replaces Sign in)
+
+## What changed
+- index.html: removed `#tierPill` Sign in from `.top-actions`; `#headerMsg` Messages pill always visible (not hidden).
+- src/main.js: removed user-gated swap in `updateChrome`; Messages always shown; badge from getUnreadMessageCount / ensureDemoUnreadMessages.
+- src/data.js: TABBAR exactly 7 — Home · Post · Music · Go Live · Videos · Chat · Game (Go Live 4th/center). Messages + Profile removed from tabbar.
+- src/main.js buildTabbar: `tabbar-fit7` (no `tabbar-scroll`); no messages badge on tabs.
+- src/styles.css: `.tabbar-fit7` equal flex, overflow-x hidden — all 7 visible ~390px, no swipe.
+
+## Behavior
+- Signed-out: header shows Messages (no Sign in). Tap → #/messages (Sign in prompt on that page). Sign in only on #/profile.
+- Signed-in: same Messages pill; red unread count when > 0 (demo seeds 2); hide badge at 0.
+- Tabbar: Home·Post·Music·Go Live·Videos·Chat·Game — Go Live flat center. Profile via drawer.
+
+## Evidence shots
+- 01-signed-out-header-messages.png — Messages in Sign-in slot, no Sign in
+- 02-tabbar-7-at-390.png — all 7 tabs visible at 390px
+- 03-signed-out-full-390.png — full phone frame signed-out
+- 04-signed-in-messages-badge.png — Messages + red "2"
+- 05-signed-in-full-390.png — full phone signed-in
+- dom-facts.json / signed-in-facts.json
+
+## DOM verify (390px)
+- tabCount: 7 · needsScroll: false · overflowX: hidden · tierExists: false · headerMsg always
+- Order: Home, Post, Music, Go Live, Videos, Chat, Game
+
+## Build
+VITE_BASE=/dbs-app/
+observe: index-tM6mWAjU.js / index-CX-L09lP.css
+forever: https://scrubdup.github.io/dbs-app/

@@ -1,0 +1,138 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Admin follow-ups seed</title></head>
+<body>
+<script>
+const KEY = 'dbs_v1';
+const now = Date.now();
+const day = 86400000;
+let raw = {};
+try { raw = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+const user = {
+  id: 'u_admin_fu',
+  username: 'AdminFollowUp',
+  bio: 'Admin follow-ups evidence',
+  avatar: '',
+  followers: [],
+  following: ['dbs'],
+  memberships: {},
+  purchasedTracks: [],
+  verified: false,
+  role: 'admin',
+};
+const next = {
+  ...raw,
+  user,
+  profiles: {
+    ...(raw.profiles || {}),
+    dbs: raw.profiles?.dbs || {
+      id: 'dbs', username: 'DatBoiSkeet', bio: 'Official', avatar: '/brand/logo-dbs-v3@2x.webp',
+      followers: [], following: [], verified: true,
+    },
+    [user.id]: { id: user.id, username: user.username, bio: user.bio, avatar: '', followers: [], following: ['dbs'], verified: false },
+  },
+  openMic: {
+    seeded: true,
+    applications: [
+      {
+        id: 'om_fu_pending',
+        userId: 'u_dez',
+        username: 'DezOnMic',
+        talent: 'rapper',
+        trackTitle: 'Porch Light Freestyle (admin queue)',
+        profileNote: 'Pending for admin follow-ups evidence',
+        rightsCertified: true,
+        status: 'pending',
+        at: now - 2 * day,
+      },
+      {
+        id: 'om_fu_approved',
+        userId: 'u_ria',
+        username: 'RiaLoops',
+        talent: 'producer',
+        trackTitle: 'Midnight Pads',
+        profileNote: 'Already approved',
+        rightsCertified: true,
+        status: 'approved',
+        at: now - 10 * day,
+        reviewedAt: now - 9 * day,
+      },
+    ],
+  },
+  fanClubs: raw.fanClubs?.seeded
+    ? raw.fanClubs
+    : {
+        seeded: true,
+        posts: {},
+        clubs: [
+          {
+            id: 'fc_official_dbs',
+            name: 'DatBoiSkeet Official',
+            description: 'Official club',
+            graphic: '/brand/logo-dbs-v3@2x.webp',
+            hostId: 'dbs',
+            hostName: 'DatBoiSkeet',
+            privacy: 'public',
+            official: true,
+            members: ['dbs'],
+            followers: ['dbs'],
+            mods: ['dbs'],
+            memberCount: 12,
+            createdAt: now - 14 * day,
+          },
+          {
+            id: 'fc_lss_crew',
+            name: 'Long Story Short Crew',
+            description: 'LSS',
+            graphic: '/music/01_Long_Story_Short_Coming_Soon.jpg',
+            hostId: 'dbs',
+            hostName: 'DatBoiSkeet',
+            privacy: 'members',
+            official: false,
+            members: ['dbs'],
+            followers: ['dbs'],
+            mods: ['dbs'],
+            memberCount: 5,
+            createdAt: now - 7 * day,
+          },
+        ],
+      },
+  loyalty: {
+    points: 58,
+    history: [
+      { id: 'loy_fu1', at: now - day, kind: 'listen', points: 5, note: 'Listen' },
+      { id: 'loy_fu2', at: now - day + 1000, kind: 'live', points: 8, note: 'Live' },
+      { id: 'loy_fu3', at: now - day + 2000, kind: 'club', points: 10, note: 'Fan Club' },
+      { id: 'loy_fu4', at: now - day + 3000, kind: 'help', points: 6, note: 'Helper' },
+    ],
+    badges: ['day_one', 'listener', 'live_attendee', 'club_member', 'helper', 'top_fan'],
+    publicVisible: true,
+    lastActionAt: {},
+    dayCounts: {},
+  },
+  creatorWallet: {
+    available: 120.5,
+    holds: 25,
+    threshold: 50,
+    verification: 'demo_verified',
+    earnings: [
+      { id: 'earn_fu_1', category: 'tips', label: 'Tips', gross: 100, fees: 5, net: 95, creatorShare: 76, dbsShare: 19, creatorPct: 80, dbsPct: 20, at: now - 3 * day, payoutId: null, note: 'Demo tips' },
+      { id: 'earn_fu_2', category: 'gifts', label: 'Gifts', gross: 80, fees: 4, net: 76, creatorShare: 60.8, dbsShare: 15.2, creatorPct: 80, dbsPct: 20, at: now - 2 * day, payoutId: null, note: 'Demo gifts' },
+    ],
+    payouts: [],
+  },
+  wallet: { balance: 42, history: [{ at: now - day, amount: 42, note: 'Demo fan credit' }] },
+  catalog: Array.isArray(raw.catalog) ? raw.catalog : [],
+};
+localStorage.setItem(KEY, JSON.stringify(next));
+document.body.innerHTML = '<p>Admin follow-ups seed written. <a href="/#/admin">Open #/admin</a></p><pre id="dump"></pre>';
+document.getElementById('dump').textContent = JSON.stringify({
+  user: next.user.username,
+  role: next.user.role,
+  openMicPending: next.openMic.applications.filter(a => a.status === 'pending').length,
+  fanClubs: next.fanClubs.clubs.length,
+  loyaltyPoints: next.loyalty.points,
+  creatorAvailable: next.creatorWallet.available,
+  fanWallet: next.wallet.balance,
+}, null, 2);
+</script>
+</body></html>

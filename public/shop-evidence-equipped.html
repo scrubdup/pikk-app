@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"/>
+<title>Shop evidence · equipped</title>
+<script>
+try {
+  const raw = localStorage.getItem('dbs_v1');
+  const s = raw ? JSON.parse(raw) : {};
+  s.user = s.user || { id: 'u_demo', username: 'DemoFan', bio: '', avatar: '', followers: [], following: [], memberships: {} };
+  s.profileShop = {
+    owned: ['frame-rodeo-gold','fx-snowfall','ban-skyline','name-neon','badge-dayone','frame-chrome-crown','fx-holo-glitch'],
+    equipped: { frame: 'frame-chrome-crown', effect: 'fx-holo-glitch', banner: 'ban-skyline', nameStyle: 'name-neon', badge: 'badge-dayone' },
+    reduceMotion: false
+  };
+  localStorage.setItem('dbs_v1', JSON.stringify(s));
+} catch (e) {}
+location.replace('/#/shop');
+</script>

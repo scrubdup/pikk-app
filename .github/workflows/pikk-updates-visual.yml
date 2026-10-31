@@ -1,0 +1,47 @@
+name: PIKK Update Center Visual Review
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/pages/updates.js'
+      - 'src/updates.css'
+      - 'src/main.js'
+      - 'index.html'
+      - 'scripts/visual-review-updates.mjs'
+      - '.github/workflows/pikk-updates-visual.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install and launch browser
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Start local PIKK
+        run: |
+          npm run dev -- --host 127.0.0.1 > /tmp/pikk-updates-vite.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/pikk-updates-vite.log
+          exit 1
+      - name: Review update center on phone and desktop
+        run: node scripts/visual-review-updates.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pikk-updates-visual-review
+          path: visual-review/updates-*.png
+          if-no-files-found: warn

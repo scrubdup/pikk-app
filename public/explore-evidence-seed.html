@@ -1,0 +1,61 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Explore seed</title></head>
+<body>
+<script>
+const KEY = 'dbs_v1';
+const now = Date.now();
+const seed = {
+  user: {
+    id: 'u_evidence',
+    username: 'EvidenceFan',
+    bio: 'Demo fan for Explore evidence',
+    avatar: '',
+    followers: [],
+    following: ['dbs'],
+    memberships: {},
+    purchasedTracks: [],
+    verified: false,
+    role: 'admin',
+  },
+  profiles: {
+    dbs: {
+      id: 'dbs',
+      username: 'DatBoiSkeet',
+      bio: 'Official DatBoiSkeet · music, Vault, Foreign X-Change',
+      avatar: '/brand/logo-dbs-v3@2x.webp',
+      followers: ['u_evidence'],
+      following: [],
+      verified: true,
+    },
+  },
+  posts: [
+    { id: 'p1', userId: 'dbs', username: 'DatBoiSkeet', text: 'Long Story Short — Coming Soon. Stay ready.', image: '/music/01_Long_Story_Short_Coming_Soon.jpg', at: now - 86400000 * 2 },
+    { id: 'p2', userId: 'dbs', username: 'DatBoiSkeet', text: 'Foreign X-Change drop live. Shop hats, tees & jackets.', image: '/merch/01_black_orange_716_hat.jpeg', at: now - 86400000 },
+  ],
+  likes: { p1: ['u_evidence', 'u2', 'u3'], p2: ['u_evidence'] },
+  comments: {},
+  catalog: [
+    { id: 'cat_song1', type: 'song', title: 'Evidence Anthem', artist: 'DatBoiSkeet', coverRef: '/music/01_Long_Story_Short_Coming_Soon.jpg', mediaRef: '', youtube: '', embed: '', published: true, createdAt: now, updatedAt: now },
+    { id: 'cat_vid1', type: 'video', title: 'Evidence Studio Clip', artist: 'DatBoiSkeet', coverRef: '', mediaRef: '/brand/logo-dbs-v3@2x.webp', youtube: '', embed: '', published: true, createdAt: now, updatedAt: now },
+    { id: 'cat_pic1', type: 'picture', title: 'Evidence Cover Pic', artist: 'DatBoiSkeet', coverRef: '/music/02_Ladies_Only_Coming_Soon.jpg', mediaRef: '', youtube: '', embed: '', published: true, createdAt: now, updatedAt: now },
+  ],
+  listings: [
+    { id: 'list_ev1', title: 'Evidence Brand Drop', brand: 'FX Demo', blurb: 'Sponsored marketplace listing for search', url: 'https://example.com', disclosure: 'Paid partnership · TEST MODE', active: true, at: now },
+  ],
+  live: { id: 'live_ev', hostId: 'dbs', hostName: 'DatBoiSkeet', title: 'Evidence Live Session', startedAt: now - 60000, chat: [], viewers: 42, giftsTotal: 0, tipsTotal: 0 },
+  liveHistory: [
+    { id: 'live_old', hostId: 'dbs', hostName: 'DatBoiSkeet', title: 'Yesterday freestyle', startedAt: now - 86400000, endedAt: now - 86000000, viewers: 10, giftsTotal: 2, tipsTotal: 1 },
+  ],
+  clipperApps: [], brandApps: [], threads: {},
+  notifications: { releases: true, lives: true, messages: true, quietHours: false },
+  wallet: { balance: 10, history: [] },
+  splashSeenAt: now,
+  exploreDiscoverable: true,
+  exploreTab: 'trending',
+};
+localStorage.setItem(KEY, JSON.stringify(seed));
+const next = new URLSearchParams(location.search).get('next') || '/#/explore';
+location.replace(next);
+</script>
+Seeding…
+</body></html>

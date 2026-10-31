@@ -1,0 +1,11 @@
+<!doctype html><meta charset="utf-8"/>
+<title>Shop evidence · catalog</title>
+<script>
+try {
+  const raw = localStorage.getItem('dbs_v1');
+  const s = raw ? JSON.parse(raw) : {};
+  s.profileShop = { owned: [], equipped: {}, reduceMotion: false };
+  localStorage.setItem('dbs_v1', JSON.stringify(s));
+} catch (e) {}
+location.replace('/#/shop');
+</script>

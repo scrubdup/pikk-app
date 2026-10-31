@@ -1,0 +1,50 @@
+{
+  "tabs": [
+    {
+      "label": "Home",
+      "href": "#/home",
+      "path": "/home"
+    },
+    {
+      "label": "Post",
+      "href": "#/posts?compose=1",
+      "path": "/posts"
+    },
+    {
+      "label": "Music",
+      "href": "#/music",
+      "path": "/music"
+    },
+    {
+      "label": "Go Live",
+      "href": "#/live?go=1",
+      "path": "/live"
+    },
+    {
+      "label": "Videos",
+      "href": "#/videos",
+      "path": "/videos"
+    },
+    {
+      "label": "Chat",
+      "href": "#/community",
+      "path": "/community"
+    },
+    {
+      "label": "Game",
+      "href": "#/blockwars",
+      "path": "/blockwars"
+    }
+  ],
+  "tabCount": 7,
+  "tabbarClasses": "tabbar tabbar-reshaped tabbar-fit7",
+  "headerMsgHidden": false,
+  "headerHref": "#/messages",
+  "tierExists": false,
+  "signInInHeader": false,
+  "topActionsText": "Messages",
+  "scrollWidth": 390,
+  "clientWidth": 390,
+  "overflowX": "hidden",
+  "needsScroll": false
+}

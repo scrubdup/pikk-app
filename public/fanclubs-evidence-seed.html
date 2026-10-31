@@ -1,0 +1,76 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Fan Clubs seed</title></head>
+<body>
+<script>
+const KEY = 'dbs_v1';
+const now = Date.now();
+const day = 86400000;
+const user = {
+  id: 'u_evidence_fc',
+  username: 'ClubFan',
+  bio: 'Demo fan for Fan Clubs evidence',
+  avatar: '',
+  followers: [],
+  following: ['dbs'],
+  membership: null,
+  memberships: { skeetPlus: false, backstage: false, innerCircle: false },
+  purchasedTracks: [],
+  role: 'fan',
+  createdAt: now,
+};
+const seed = {
+  user,
+  profiles: {
+    dbs: {
+      id: 'dbs', username: 'DatBoiSkeet',
+      bio: 'Official DatBoiSkeet',
+      avatar: '/brand/logo-dbs-v3@2x.webp',
+      followers: ['u_evidence_fc'], following: [], verified: true,
+    },
+    u_evidence_fc: { ...user, verified: false },
+  },
+  posts: [], comments: {}, likes: {},
+  fanClubs: {
+    seeded: true,
+    clubs: [
+      {
+        id: 'fc_official_dbs', name: 'DatBoiSkeet Official',
+        description: 'Official DatBoiSkeet fan club inside DBS Lounge.',
+        graphic: '/brand/logo-dbs-v3@2x.webp', hostId: 'dbs', hostName: 'DatBoiSkeet',
+        privacy: 'public', official: true, members: ['dbs'], followers: ['dbs'], mods: ['dbs'],
+        memberCount: 1, createdAt: now - 14 * day,
+      },
+      {
+        id: 'fc_lss_crew', name: 'Long Story Short Crew',
+        description: 'Creator club for LSS listeners.',
+        graphic: '/music/01_Long_Story_Short_Coming_Soon.jpg', hostId: 'dbs', hostName: 'DatBoiSkeet',
+        privacy: 'members', official: false, members: ['dbs'], followers: ['dbs'], mods: ['dbs'],
+        memberCount: 1, createdAt: now - 7 * day,
+      },
+      {
+        id: 'fc_ladies_only', name: 'Ladies Only Circle',
+        description: 'Paid / Skeet+ gated room demo.',
+        graphic: '/music/02_Ladies_Only_Coming_Soon.jpg', hostId: 'dbs', hostName: 'DatBoiSkeet',
+        privacy: 'paid', official: false, members: ['dbs'], followers: [], mods: ['dbs'],
+        memberCount: 1, createdAt: now - 3 * day,
+      },
+    ],
+    posts: {
+      fc_official_dbs: [
+        { id: 'fcp_welcome', userId: 'dbs', username: 'DatBoiSkeet', text: 'Welcome to the official club.', at: now - 2 * day, pinned: true, removed: false },
+      ],
+      fc_lss_crew: [],
+      fc_ladies_only: [
+        { id: 'fcp_lo1', userId: 'dbs', username: 'DatBoiSkeet', text: 'Skeet+ members-only preview.', at: now - day, pinned: true, removed: false },
+      ],
+    },
+  },
+  notifications: { releases: true, lives: true, messages: true, quietHours: false },
+  wallet: { balance: 0, history: [] },
+  splashSeenAt: now,
+};
+localStorage.setItem(KEY, JSON.stringify(seed));
+location.replace(new URLSearchParams(location.search).get('next') || '/#/fanclubs');
+</script>
+Seeding Fan Clubs…
+</body></html>

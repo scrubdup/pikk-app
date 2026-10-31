@@ -1,0 +1,33 @@
+name: PIKK Connect Reduced Motion Visual Review
+on:
+  pull_request:
+    paths:
+      - 'src/pages/connect.js'
+      - 'tests/pikk-connect-deeplink.test.mjs'
+      - 'scripts/visual-review-connect-motion.mjs'
+      - '.github/workflows/pikk-connect-motion-visual.yml'
+jobs:
+  screenshots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install app and screenshot browser
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Build app
+        run: npm run build
+      - name: Verify mobile/desktop Connect routes and reduced motion
+        run: node scripts/visual-review-connect-motion.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pikk-connect-motion-visual-review
+          path: visual-review/connect-reduced-motion-*.png
+          if-no-files-found: warn

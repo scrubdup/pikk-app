@@ -1,0 +1,17 @@
+{
+  "headerProfile": true,
+  "headerProfileHref": "#/profile",
+  "headerMsg": true,
+  "tierPill": false,
+  "tabLabels": [
+    "Home",
+    "Post",
+    "Music",
+    "Go Live",
+    "Videos",
+    "Chat",
+    "Game"
+  ],
+  "tabCount": 7,
+  "topActionsText": "Profile Messages"
+}

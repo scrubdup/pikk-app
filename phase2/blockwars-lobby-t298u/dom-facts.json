@@ -1,0 +1,28 @@
+{
+  "badge": "Coming Soon",
+  "cardCount": 3,
+  "cards": [
+    {
+      "city": "ny",
+      "pressed": "true",
+      "active": true,
+      "label": "NY East coast"
+    },
+    {
+      "city": "la",
+      "pressed": "false",
+      "active": false,
+      "label": "LA West coast"
+    },
+    {
+      "city": "chi",
+      "pressed": "false",
+      "active": false,
+      "label": "CHICAGO Midwest"
+    }
+  ],
+  "focusName": "Brooklyn Brawler",
+  "focusCity": "NY · East coast",
+  "arenaCta": "Enter arena · Coming Soon",
+  "video": true
+}

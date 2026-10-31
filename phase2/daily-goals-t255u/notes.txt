@@ -1,0 +1,5 @@
+t255u Live half shipped PENDING AUDIT
+- donateToGoal(goalId, amountCoins) HARD LOCK coins; USD raised += coins/50
+- Design stubs removed; Home card uses real getAppDailyGoal/donateToGoal
+- Live go-live optional goal + active room bar + 50/100/250 donate
+- Commerce: local coin debit OK; no block

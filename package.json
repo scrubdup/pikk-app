@@ -1,13 +1,14 @@
 {
-  "name": "dbs-app",
+  "name": "pikk-app",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "DatBoiSkeet (DBS) network — music, social, live, merch",
+  "description": "PIKK — music, social, live, dating, shopping, games, and creators",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.mjs"
   },
   "devDependencies": {
     "vite": "^5.4.11"

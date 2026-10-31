@@ -1,0 +1,37 @@
+name: PIKK Shield Rights Intake Visual Review
+on:
+  pull_request:
+    paths:
+      - 'src/pikk-shield.js'
+      - 'src/pages/shield.js'
+      - 'src/shield.css'
+      - 'src/pages/music.js'
+      - 'src/main.js'
+      - 'tests/pikk-shield-intake.test.mjs'
+      - 'scripts/visual-review-shield.mjs'
+      - '.github/workflows/pikk-shield-visual.yml'
+jobs:
+  screenshots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies and Chromium
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Build PIKK
+        run: npm run build
+      - name: Verify PIKK Shield mobile and desktop
+        run: node scripts/visual-review-shield.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pikk-shield-visual-review
+          path: visual-review/shield-*.png
+          if-no-files-found: warn

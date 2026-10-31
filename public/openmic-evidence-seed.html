@@ -1,0 +1,36 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Open Mic seed</title></head>
+<body>
+<script>
+const KEY = 'dbs_v1';
+const now = Date.now();
+const day = 86400000;
+const user = {
+  id: 'u_om_admin', username: 'DemoAdmin', bio: 'Open Mic evidence admin',
+  avatar: '', followers: [], following: ['dbs'],
+  membership: null, memberships: {}, purchasedTracks: [], role: 'admin', createdAt: now,
+};
+const seed = {
+  user,
+  profiles: {
+    dbs: { id: 'dbs', username: 'DatBoiSkeet', bio: 'Official', avatar: '/brand/logo-dbs-v3@2x.webp', followers: [], following: [], verified: true },
+    u_om_admin: { ...user, verified: false },
+  },
+  posts: [], comments: {}, likes: {},
+  openMic: {
+    seeded: true,
+    applications: [
+      { id: 'om_demo_approved', userId: 'u_ria', username: 'RiaLoops', talent: 'producer', trackTitle: 'Midnight Pads (demo)', profileNote: 'Beatmaker · looking to collab', rightsCertified: true, status: 'approved', at: now - 10 * day, reviewedAt: now - 9 * day },
+      { id: 'om_demo_pending', userId: 'u_dez', username: 'DezOnMic', talent: 'rapper', trackTitle: 'Porch Light Freestyle', profileNote: 'Opt-in showcase · not pay-to-win', rightsCertified: true, status: 'pending', at: now - 2 * day },
+      { id: 'om_demo_rejected', userId: 'u_spam', username: 'SpamBeats', talent: 'dj', trackTitle: 'Untitled drop', profileNote: 'No rights', rightsCertified: false, status: 'rejected', at: now - 5 * day, reviewedAt: now - 4 * day, reviewNote: 'Rights certification required' },
+    ],
+  },
+  notifications: { releases: true, lives: true, messages: true, quietHours: false },
+  wallet: { balance: 0, history: [] },
+  splashSeenAt: now,
+};
+localStorage.setItem(KEY, JSON.stringify(seed));
+location.replace(new URLSearchParams(location.search).get('next') || '/#/openmic');
+</script>
+Seeding Open Mic…
+</body></html>

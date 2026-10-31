@@ -1,0 +1,28 @@
+t269u · Live discovery tabs — Clips early, no horizontal swipe
+Date: 2026-10-25
+Owner: Live Social
+
+Problem
+- Owner phone (~390px): Following · Live channels · Categories · Clips
+  Clips cut off on the right; horizontal scroll (hidden scrollbar) required.
+
+Fix
+- Order: Following | Clips | Channels | Categories
+  (Clips right after Following → always on first paint)
+- Label: "Live channels" → "Channels"
+- Clips still href="#/shorts" (Watch / Shorts section; not a live?tab= panel)
+- CSS .live-disc-tabs: flex-wrap:wrap; overflow-x:visible; no scrollbar hide hack
+- Chips tighter: min-height 36px, padding 6×12, font 12px, white-space:nowrap
+- Approx chip row width ~351px < 390px content — all four readable without swipe
+
+Evidence
+- live-tabs-390.png — 390px viewport fixture matching production CSS/order
+
+Ship
+- Piggyback Design t269u Post Text Pages redeploy (VITE_BASE=/dbs-app/)
+- Live Social does NOT solo push gh-pages
+- CSS wrap already on main via 2cef28b (landed in Design styles commit)
+- Tab order/labels: main b62b343bb5b8bfdd70a1b86c77856cd7a958b314 (live.js)
+- Current Pages adf7780 built from main 2cef28b — has CSS wrap but NOT Clips-early order yet
+- Observe asset: pending Design rebuild that includes b62b343+
+- STATUS: PENDING AUDIT (Checker owns PASS)

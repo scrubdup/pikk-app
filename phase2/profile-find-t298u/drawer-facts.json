@@ -1,0 +1,61 @@
+{
+  "topDirect": [
+    {
+      "href": "#/home",
+      "label": "Home",
+      "cls": "drawer-direct on"
+    },
+    {
+      "href": "#/profile",
+      "label": "Profile / Sign in",
+      "cls": "drawer-direct"
+    },
+    {
+      "href": "#/messages",
+      "label": "Messages",
+      "cls": "drawer-direct"
+    }
+  ],
+  "firstEight": [
+    {
+      "href": "#/home",
+      "label": "Home",
+      "cls": "drawer-direct on"
+    },
+    {
+      "href": "#/profile",
+      "label": "Profile / Sign in",
+      "cls": "drawer-direct"
+    },
+    {
+      "href": "#/videos",
+      "label": "Videos",
+      "cls": "drawer-link"
+    },
+    {
+      "href": "#/live",
+      "label": "Live",
+      "cls": "drawer-link"
+    },
+    {
+      "href": "#/openmic",
+      "label": "Open Mic / Talent Discovery (24/7)",
+      "cls": "drawer-link"
+    },
+    {
+      "href": "#/spotlight",
+      "label": "Spotlight (24/7)",
+      "cls": "drawer-link"
+    },
+    {
+      "href": "#/multiguest",
+      "label": "Multi-Guest Live",
+      "cls": "drawer-link"
+    },
+    {
+      "href": "#/music",
+      "label": "Music & Vault",
+      "cls": "drawer-link"
+    }
+  ]
+}
