@@ -1,11 +1,11 @@
 /* Release transparency: scoped to #/updates so existing pages and the player remain unchanged. */
-.pikk-updates-hero{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:20px;align-items:center;margin-bottom:18px;padding:24px;border:1px solid #5b496d;border-radius:22px;background:radial-gradient(ellipse at 90% 10%,#9e3aa65c,transparent 58%),radial-gradient(ellipse at 5% 100%,#2563eb59,transparent 60%),#181522;box-shadow:0 16px 40px #0007}
-.pikk-updates-hero .kicker{color:#ffa1a4;font-size:11px;font-weight:850;letter-spacing:.14em}
+.pikk-updates-hero{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:20px;align-items:center;margin-bottom:18px;padding:24px;border:1px solid #5b496d;border-radius:22px;background:radial-gradient(ellipse at 90% 10%,#a63a3d5c,transparent 58%),radial-gradient(ellipse at 5% 100%,#2563eb59,transparent 60%),#181522;box-shadow:0 16px 40px #0007}
+.pikk-updates-hero .kicker{color:#ff3339;font-size:11px;font-weight:850;letter-spacing:.14em}
 .pikk-updates-hero h2{font-size:clamp(24px,5vw,38px);line-height:1.13;letter-spacing:-.04em;margin:6px 0 12px}
-.pikk-updates-hero h2 span{color:#f69b9e}
+.pikk-updates-hero h2 span{color:#ee4449}
 .pikk-updates-hero p:not(.kicker){max-width:570px;font-size:13px;color:#d2cedd;line-height:1.6}
-.pikk-updates-hero-mark{height:140px;display:grid;place-items:center;border-radius:24px;border:1px solid #b95053;background:linear-gradient(135deg,#471d62,#1e2b60 65%,#7a2326);box-shadow:0 0 38px #a84dd144;font-weight:950;font-size:31px;letter-spacing:-.07em;color:white}
-.pikk-updates-hero-mark span{font-size:23px;color:#ff8084}
+.pikk-updates-hero-mark{height:140px;display:grid;place-items:center;border-radius:24px;border:1px solid #b95053;background:linear-gradient(135deg,#1d3262,#1e2b60 65%,#7a2326);box-shadow:0 0 38px #d14d5144;font-weight:950;font-size:31px;letter-spacing:-.07em;color:white}
+.pikk-updates-hero-mark span{font-size:23px;color:#ff3339}
 .pikk-updates-build{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:15px 0;color:#d6d3df;font-size:12px}
 .pikk-updates-build strong{font:800 12px ui-monospace,SFMono-Regular,Consolas,monospace;color:#9fe8ff;border:1px solid #3c7390;background:#0b2032;padding:6px 10px;border-radius:999px}
 .pikk-updates-actions,.pikk-update-links{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
@@ -15,7 +15,7 @@
 .pikk-update-card-copy{min-width:0;flex:1}
 .pikk-update-card h3{font-size:16px;margin:0 0 5px}
 .pikk-update-card p{font-size:12px;line-height:1.55;color:#c9c7d5;margin:0 0 12px}
-.pikk-update-source{font-size:12px;color:#a8c7ff;text-decoration:underline;text-underline-offset:3px}
+.pikk-update-source{font-size:12px;color:#3d79ff;text-decoration:underline;text-underline-offset:3px}
 .pikk-updates-note{font-size:12px;line-height:1.6;color:#a9a6b9}
 @media(max-width:580px){.pikk-updates-hero{grid-template-columns:1fr;padding:17px}.pikk-updates-hero-mark{height:65px;font-size:23px}.pikk-update-card{gap:10px;padding:12px}.pikk-update-number{flex-basis:35px;width:35px;height:35px;font-size:12px}}
 @media(prefers-reduced-motion:reduce){.pikk-updates-hero,.pikk-update-card{scroll-behavior:auto}}
@@ -29,13 +29,13 @@
 }
 
 /* Oct 29: approved chrome, red and electric-blue treatment, scoped to Updates only. */
-.pikk-updates-hero{border-color:#4c5069;background:radial-gradient(ellipse at 94% 8%,#db2e5747,transparent 56%),radial-gradient(ellipse at 0 100%,#0875ff4d,transparent 58%),#10121c}
-.pikk-updates-hero .kicker{color:#ff778b}
+.pikk-updates-hero{border-color:#4c5069;background:radial-gradient(ellipse at 94% 8%,#db2e3347,transparent 56%),radial-gradient(ellipse at 0 100%,#0875ff4d,transparent 58%),#10121c}
+.pikk-updates-hero .kicker{color:#ff3339}
 .pikk-updates-hero h2 span{color:#7ecaff}
-.pikk-updates-hero-mark{overflow:hidden;background:#08090d;border:1px solid #45516b;box-shadow:0 0 30px #0875ff28,0 0 26px #f3304a23}
+.pikk-updates-hero-mark{overflow:hidden;background:#08090d;border:1px solid #45516b;box-shadow:0 0 30px #0875ff28,0 0 26px #f3303623}
 .pikk-updates-hero-mark img{width:100%;height:100%;object-fit:contain;display:block}
 .pikk-update-card{border-color:#303c58;background:linear-gradient(130deg,#1a2133,#11131c)}
-.pikk-update-number{background:linear-gradient(145deg,#d92e48,#146ee7)}
+.pikk-update-number{background:linear-gradient(145deg,#d92e33,#146ee7)}
 .pikk-update-kind{display:inline-flex;max-width:100%;padding:3px 8px;margin-bottom:8px;border:1px solid #426286;border-radius:999px;background:#0c2337;color:#b6dcff;font-size:10px;font-weight:800;letter-spacing:.06em}
 .pikk-update-card:focus-within{outline:2px solid #68baff;outline-offset:2px}
 @media(max-width:580px){.pikk-updates-hero-mark{height:76px}.pikk-updates-hero-mark img{max-width:260px;margin:auto}.pikk-update-card h3{font-size:15px}}

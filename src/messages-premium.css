@@ -8,12 +8,12 @@
     linear-gradient(125deg,#1c1624,#101829 78%);
   box-shadow:0 16px 40px #0006;
 }
-.pikk-msg-flow-hero:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#f04c51,#9d6ad7,#3c83ff)}
-.pikk-msg-flow-kicker{display:block;color:#ffb2b4;font-size:10px;font-weight:850;letter-spacing:.15em}
+.pikk-msg-flow-hero:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#f04c51,#6689d6,#3c83ff)}
+.pikk-msg-flow-kicker{display:block;color:#ff3339;font-size:10px;font-weight:850;letter-spacing:.15em}
 .pikk-msg-flow-hero h2{font-size:clamp(25px,4vw,37px);line-height:1.12;letter-spacing:-.035em;color:#fff;margin:10px 0}
-.pikk-msg-flow-hero h2 em{font-style:normal;color:#b4bdff}
+.pikk-msg-flow-hero h2 em{font-style:normal;color:#3d79ff}
 .pikk-msg-flow-hero p{max-width:620px;color:#d4d2e4;line-height:1.6;font-size:13px;margin:0 0 13px}
-.pikk-msg-flow-hero .chip{background:#27263c;border-color:#62567c;color:#e8dff4}
+.pikk-msg-flow-hero .chip{background:#27263c;border-color:#62567c;color:#6f8ccd}
 .pikk-msg-flow-hero-thread{padding-block:20px}
 .pikk-msg-flow-hero-thread h2{overflow-wrap:anywhere}
 .pikk-msg-flow-panel{border:1px solid #41405a;border-radius:17px;background:linear-gradient(145deg,#1d1b2c,#151822);box-shadow:0 8px 22px #0003}
@@ -36,7 +36,7 @@
 .pikk-msg-flow-panel .msg-composer{align-items:stretch}
 .pikk-msg-flow-panel .msg-composer input{min-width:0;flex:1 1 220px;border:1px solid #555273;background:#141927;border-radius:12px;padding:10px 12px}
 .pikk-msg-flow-panel .msg-composer .btn{flex-shrink:0}
-.pikk-msg-flow-panel :is(a,button,input):focus-visible,.pikk-msg-contact-card button:focus-visible{outline:3px solid #b8a5ff;outline-offset:3px}
+.pikk-msg-flow-panel :is(a,button,input):focus-visible,.pikk-msg-contact-card button:focus-visible{outline:3px solid #3d79ff;outline-offset:3px}
 @media(max-width:650px){
   .pikk-msg-flow-hero{padding:19px;border-radius:17px}
   .pikk-msg-contact-grid{grid-template-columns:1fr;gap:9px}

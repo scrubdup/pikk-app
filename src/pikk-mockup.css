@@ -58,7 +58,7 @@
 }
 /* Story rail + pills */
 .pikk-home-circle-ring { width: 88px; height: 88px; padding: 3px; background: linear-gradient(135deg, var(--pikk-red), var(--pikk-blue)); border-color: transparent; box-shadow: 0 0 0 2px #0a0a0a, -3px 0 12px var(--pikk-red-glow), 3px 0 12px var(--pikk-blue-glow); }
-.pikk-home-circle-create { background: radial-gradient(circle at 40% 35%, #ff5560, var(--pikk-red) 55%, #a50010); }
+.pikk-home-circle-create { background: radial-gradient(circle at 40% 35%, #ff3339, var(--pikk-red) 55%, #a50005); }
 .pikk-home-filterbar a.is-current { background: var(--pikk-red); border: 1.5px solid var(--pikk-chrome); color: #fff; box-shadow: 0 0 14px var(--pikk-red-glow), inset 0 1px 0 rgba(255,255,255,.35); }
 @media (max-width: 560px) { .pikk-home-circle-ring { width: 80px; height: 80px; } }
 /* Remove old HOME/LIVE banner above stories (kept for screen readers) */
@@ -83,7 +83,7 @@ html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary > span:last
 .top .logo-img { filter: none; }
 /* Home accents in owner palette */
 .pikk-home-visual .kicker { color: var(--pikk-chrome); }
-.pikk-home-visual-more { color: #8fb3ff; }
+.pikk-home-visual-more { color: #3d79ff; }
 .pikk-home-media-badge { background: var(--pikk-red); box-shadow: 0 0 0 1px var(--pikk-chrome); }
 .pikk-home-circle { flex-basis: 92px; }
 @media (max-width: 560px) { .pikk-home-circle { flex-basis: 82px; } .pikk-home-circle-ring { width: 76px; height: 76px; } }
@@ -130,3 +130,8 @@ body:has(#pikkHomeVisual) .pikk-explore-rail { display: none; }
 }
 /* (6) Create tab: red play triangle + silver cursor */
 html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary .tab-ico svg path.pikk-create-cursor { fill: #d7dbe3; stroke: #0a0a0a; filter: none; }
+/* Create label clear of the raised circle */
+html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary > span:last-child { position: relative; z-index: 1; margin-top: 6px; }
+/* Focus: strong ring on player buttons, visible ring on Play next */
+.sp-btn:focus-visible, .sp-btn.sp-play:focus-visible { outline: 3px solid var(--pikk-blue); outline-offset: 3px; box-shadow: 0 0 0 2px var(--pikk-chrome), 0 0 16px var(--pikk-blue-glow); }
+.sp-play-next:focus-visible { outline: 2px solid var(--pikk-blue) !important; outline-offset: 2px; }

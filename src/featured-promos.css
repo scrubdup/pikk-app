@@ -3,11 +3,11 @@
 .pikk-stories-strip,.pikk-featured-inventory{min-width:0;padding:18px;border:1px solid rgba(121,145,206,.26);border-radius:22px;background:linear-gradient(145deg,rgba(22,27,47,.96),rgba(8,11,22,.98));box-shadow:0 14px 40px rgba(0,0,0,.23)}
 .pikk-featured-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .pikk-featured-heading .kicker{font-size:10px;letter-spacing:.17em;color:#9eb3dc;margin:0 0 5px;text-transform:uppercase}
-.pikk-featured-heading h2{font-size:clamp(18px,2.4vw,25px);letter-spacing:-.025em;margin:0;color:#f4f6ff}
-.pikk-featured-state,.pikk-featured-sponsored{border:1px solid rgba(155,176,225,.4);border-radius:999px;padding:5px 10px;color:#b8c8e7;font-size:10px;letter-spacing:.06em}
-.pikk-featured-sponsored{border-color:rgba(234, 84, 89,.5);color:#ffabae;background:rgba(196, 37, 42,.08)}
+.pikk-featured-heading h2{font-size:clamp(18px,2.4vw,25px);letter-spacing:-.025em;margin:0;color:#3d79ff}
+.pikk-featured-state,.pikk-featured-sponsored{border:1px solid rgba(106, 138, 210,.4);border-radius:999px;padding:5px 10px;color:#b8c8e7;font-size:10px;letter-spacing:.06em}
+.pikk-featured-sponsored{border-color:rgba(234, 84, 89,.5);color:#ff3339;background:rgba(196, 37, 42,.08)}
 .pikk-stories-preview{display:flex;align-items:center;gap:17px}
-.pikk-story-preview{display:grid;justify-items:center;gap:7px;flex:0 0 78px;text-align:center;font-size:11px;color:#e7ecff}
+.pikk-story-preview{display:grid;justify-items:center;gap:7px;flex:0 0 78px;text-align:center;font-size:11px;color:#3d79ff}
 .pikk-story-ring{width:66px;height:66px;display:grid;place-items:center;border-radius:50%;border:2px solid #e2494e;background:radial-gradient(circle at 70% 25%,rgba(53,102,244,.35),rgba(15,19,35,.95));box-shadow:0 0 0 3px rgba(48,89,183,.15),0 0 18px rgba(234, 56, 61,.16)}
 .pikk-story-ring span{font-size:28px;color:#fff}
 .pikk-stories-preview p{font-size:12px;line-height:1.55;color:#a9b4d0;max-width:430px;margin:0}
@@ -18,14 +18,14 @@
 .pikk-featured-row-hero{grid-template-columns:minmax(0,1fr)}
 .pikk-featured-row-two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .pikk-featured-row-three{grid-template-columns:repeat(3,minmax(0,1fr))}
-.pikk-ad-slot{position:relative;overflow:hidden;min-width:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:6px;padding:17px;border:1px solid rgba(122,148,205,.36);border-radius:16px;background:radial-gradient(ellipse at 84% 4%,rgba(41,83,181,.28),transparent 55%),linear-gradient(155deg,#20263c,#101523 67%,#111827);color:#f5f7ff;box-shadow:inset 0 1px rgba(255,255,255,.06);isolation:isolate}
+.pikk-ad-slot{position:relative;overflow:hidden;min-width:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:6px;padding:17px;border:1px solid rgba(122,148,205,.36);border-radius:16px;background:radial-gradient(ellipse at 84% 4%,rgba(41,83,181,.28),transparent 55%),linear-gradient(155deg,#20263c,#101523 67%,#111827);color:#3d79ff;box-shadow:inset 0 1px rgba(255,255,255,.06);isolation:isolate}
 .pikk-ad-slot::before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#ef3f44,#6b74ee,#20a5e5);opacity:.8}
 .pikk-ad-slot::after{content:"";position:absolute;right:-35px;top:-38px;width:155px;height:155px;border:1px solid rgba(99,150,250,.15);border-radius:50%;pointer-events:none}
 .pikk-ad-spotlight{min-height:188px;padding:22px;background:radial-gradient(ellipse at 82% 0%,rgba(50,96,223,.4),transparent 50%),linear-gradient(140deg,#25283e,#151725 60%,#121827)}
 .pikk-ad-featured{min-height:175px;padding-top:54px}
 .pikk-ad-promo{min-height:175px;padding:44px 12px 12px}
 .pikk-ad-slot-top{position:absolute;left:17px;right:17px;top:14px;display:flex;align-items:center;justify-content:space-between}
-.pikk-ad-slot-icon{display:grid;place-items:center;width:31px;height:31px;border:1px solid rgba(242, 102, 106,.5);border-radius:50%;font-size:11px;color:#ffb1b3;background:rgba(194, 42, 47,.14)}
+.pikk-ad-slot-icon{display:grid;place-items:center;width:31px;height:31px;border:1px solid rgba(239, 67, 72,.5);border-radius:50%;font-size:11px;color:#ff3339;background:rgba(194, 42, 47,.14)}
 .pikk-ad-slot-number{font-size:11px;color:#8996b6;letter-spacing:.12em}
 .pikk-ad-slot strong{font-size:clamp(12px,1.8vw,19px);line-height:1.2}
 .pikk-ad-slot-description{color:#a4b0cd;font-size:10px;line-height:1.35}

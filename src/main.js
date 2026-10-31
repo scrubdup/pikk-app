@@ -31,7 +31,7 @@ import {
 } from './player.js';
 import { getState, ensureDemoPosts, markSplash, shouldShowSplash, getUnreadMessageCount, ensureDemoUnreadMessages } from './store.js';
 import { startRouter, onRoute, getRoute } from './router.js';
-import { ICONS, esc } from './ui.js';
+import { ICONS, esc, shellPage } from './ui.js';
 import { asset, rewriteAssetUrls } from './asset.js';
 import { markActiveTab } from './tabbar-state.js';
 import { updateRouteIdentity } from './page-announcement.js';
@@ -90,8 +90,15 @@ import {
   renderNotFound,
 } from './pages/shells.js';
 
+/* #/create deep link (or a tap before JS binds) renders the same real Create options as the sheet. */
+function renderCreatePage() {
+  return shellPage('Create on PIKK', `<div class="pikk-create-page">${createMenuMarkup()}
+    <p class="muted" style="font-size:11px;margin:10px 0 0">TEST MODE · uploads depend on available prototype tools</p></div>`);
+}
+
 const ROUTES = {
   '/home': { render: renderHome, bind: bindHome },
+  '/create': { render: renderCreatePage },
   '/updates': { render: renderUpdates, bind: bindUpdates },
   '/posts': { render: renderPosts, bind: bindPosts },
   '/music': { render: renderMusic, bind: bindMusic },
