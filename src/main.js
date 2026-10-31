@@ -1,4 +1,5 @@
 import './styles.css';
+import './pikk-mockup.css';
 import './skip-content.css';
 import './page-announcement.css';
 import './featured-promos.css';
