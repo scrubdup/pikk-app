@@ -24,3 +24,9 @@ test('topic forum implements local posts, votes, replies and clear prelaunch lim
  assert.match(view,/no server report submitted/i);
  assert.match(view,/esc\(p\.body\)/);
 });
+
+test('discussion reply disclosure reports its open state and controls the correct thread',()=>{
+ assert.match(view,/data-fopen=.+aria-expanded="false" aria-controls="pikk-forum-thread-/);
+ assert.match(view,/id="pikk-forum-thread-/);
+ assert.match(view,/op\.setAttribute\('aria-expanded',String\(!p\.hidden\)\)/);
+});

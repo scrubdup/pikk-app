@@ -24,9 +24,9 @@ function makePosts(v,user,topic,sort){
       '<b>'+score(p)+'</b><button data-fvote="-1" data-id="'+esc(p.id)+'" aria-label="Downvote" aria-pressed="'+(vote===-1)+'" '+(user?'':'disabled')+'>▼</button></div>'+
       '<div class="pikk-forum-post-content"><p class="pikk-forum-meta">'+esc(label)+' · u/'+esc(p.author)+' · local preview</p>'+
       '<h3>'+esc(p.title)+'</h3><p class="pikk-forum-text">'+esc(p.body)+'</p>'+
-      '<button class="pikk-forum-reply-button" data-fopen="'+esc(p.id)+'">▤ '+replies.length+' replies</button> '+
+      '<button class="pikk-forum-reply-button" data-fopen="'+esc(p.id)+'" aria-expanded="false" aria-controls="pikk-forum-thread-'+esc(p.id)+'">▤ '+replies.length+' replies</button> '+
       (user&&user.id!==p.owner?'<button class="pikk-forum-reply-button" data-freport="'+esc(p.id)+'">◇ Hide / report locally</button>':'')+
-      '<div class="pikk-forum-thread" data-thread="'+esc(p.id)+'" hidden>'+
+      '<div class="pikk-forum-thread" id="pikk-forum-thread-'+esc(p.id)+'" data-thread="'+esc(p.id)+'" hidden>'+ 
       replies.map(r=>'<p class="pikk-forum-comment"><strong>'+esc(r.author)+'</strong> '+esc(r.body)+'</p>').join('')+
       (user?'<form data-freply="'+esc(p.id)+'"><label>Reply</label><textarea maxlength="1000" required rows="2" placeholder="Join the discussion"></textarea><button class="btn primary" type="submit">Reply · local</button></form>':'<a href="#/profile" class="btn ghost">Sign in to reply</a>')+
       '</div></div></article>';
@@ -59,7 +59,7 @@ export function bindCommunities(root){
   host.addEventListener('click',e=>{
     const t=e.target.closest('[data-ftopic]');if(t){topic=t.dataset.ftopic;pressed('[data-ftopic]','ftopic',topic);const select=host.querySelector('#pikkForumTopic');if(select&&topic!=='all')select.value=topic;redraw();return;}
     const so=e.target.closest('[data-fsort]');if(so){sort=so.dataset.fsort;pressed('[data-fsort]','fsort',sort);redraw();return;}
-    const op=e.target.closest('[data-fopen]');if(op){const p=host.querySelector('[data-thread="'+op.dataset.fopen+'"]');if(p)p.hidden=!p.hidden;return;}
+    const op=e.target.closest('[data-fopen]');if(op){const p=host.querySelector('[data-thread="'+op.dataset.fopen+'"]');if(p){p.hidden=!p.hidden;op.setAttribute('aria-expanded',String(!p.hidden));}return;}
     const vote=e.target.closest('[data-fvote]');if(vote&&user()){const v=load(),key=vote.dataset.id+':'+user().id,n=Number(vote.dataset.fvote);v.votes[key]=v.votes[key]===n?0:n;if(save(v))redraw();return;}
     const hide=e.target.closest('[data-freport]');if(hide&&user()){if(!confirm('Hide this post on this browser? This will NOT submit a report to a server.'))return;const v=load();v.hidden.push(hide.dataset.freport);if(save(v))redraw();toast('Hidden locally only — no server report submitted');}
   });
