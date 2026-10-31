@@ -6,10 +6,9 @@ import { CREATE_MENU_ITEMS } from '../src/create-menu.js';
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const data = readFileSync(new URL('../src/data.js', import.meta.url), 'utf8');
 
-test('center Create button keeps approved play triangle plus arrow icon', () => {
+test('center Create button uses owner-approved plus icon (mockup 1, 2026-10-31)', () => {
   assert.match(main, /t\.href === '#\/create' \? '<svg/);
-  assert.match(main, /<path d="M9 5 L25 16 L9 27 Z" fill="currentColor"\/>/);
-  assert.match(main, /<path d="M24 5v11m0 0-4-4m4 4 4-4"/);
+  assert.match(main, /<path d="M16 7v18M7 16h18"/);
 });
 
 test('Create remains the primary fourth tab and opens its menu', () => {

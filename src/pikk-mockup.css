@@ -1,10 +1,13 @@
-/* PIKK mockup match (owner-approved images, 2026-10-31): magenta accents, centered chrome logo,
-   full-width PIKK Music Player card, magenta story rings / pills / raised Create. */
+/* PIKK mockup match (owner-approved images, 2026-10-31): red / electric-blue / chrome accents, centered chrome logo,
+   full-width PIKK Music Player card, red→blue story rings / pills / raised Create. */
 :root {
-  --pikk-magenta: #ff2bd6;
-  --pikk-magenta-2: #e91e8c;
-  --pikk-magenta-glow: rgba(255, 43, 214, .45);
-  --pikk-magenta-dim: rgba(255, 43, 214, .16);
+  /* Owner palette: black · red · electric blue · metallic chrome (from the PIKK logo) */
+  --pikk-red: #ff1f2d;
+  --pikk-blue: #1e6bff;
+  --pikk-chrome: #c9ced8;
+  --pikk-chrome-grad: linear-gradient(180deg, #f4f6fa 0%, #9aa1ae 45%, #e6e9ef 55%, #7d8492 100%);
+  --pikk-red-glow: rgba(255, 31, 45, .5);
+  --pikk-blue-glow: rgba(30, 107, 255, .5);
   --sp-h: 104px;
 }
 /* Header: search left · logo center · bell + messages (+ profile/menu) right */
@@ -26,25 +29,25 @@
 .sticky-player#dbs-sticky-player { background: transparent; border: 0; box-shadow: none; padding: 6px 8px; }
 .sticky-player .sp-row {
   height: calc(var(--sp-h) - 12px); min-height: 0; max-height: none; max-width: 1180px;
-  border: 1.5px solid var(--pikk-magenta); border-radius: 16px; padding: 0 12px;
-  background: linear-gradient(90deg, rgba(255,43,214,.10), #0c0b14 40%, rgba(47,107,255,.10));
-  box-shadow: 0 0 18px var(--pikk-magenta-glow), inset 0 0 12px var(--pikk-magenta-dim);
+  border: 1.5px solid var(--pikk-chrome); border-radius: 16px; padding: 0 12px;
+  background: linear-gradient(90deg, rgba(255,31,45,.12), #0a0a0f 40%, rgba(30,107,255,.12));
+  box-shadow: -8px 0 18px -4px var(--pikk-red-glow), 8px 0 18px -4px var(--pikk-blue-glow), inset 0 1px 0 rgba(255,255,255,.25);
 }
 .sp-art { width: 64px; height: 64px; flex-basis: 64px; border-radius: 10px; }
 .sp-title { font-size: 15px; }
 .sp-progress { margin-top: 4px; }
-.sp-seek { width: 100%; height: 4px; margin: 0; accent-color: var(--pikk-magenta); --sp-pct: 0%;
+.sp-seek { width: 100%; height: 4px; margin: 0; accent-color: var(--pikk-red); --sp-pct: 0%;
   -webkit-appearance: none; appearance: none; border-radius: 4px;
-  background: linear-gradient(90deg, var(--pikk-magenta) var(--sp-pct), #3a3848 var(--sp-pct)); }
+  background: linear-gradient(90deg, var(--pikk-red), var(--pikk-blue) var(--sp-pct), #3a3848 var(--sp-pct)); }
 .sp-seek::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
 .sp-seek:disabled::-webkit-slider-thumb { background: #777; }
 .sp-times { display: flex; justify-content: space-between; font-size: 10px; color: var(--mut); margin-top: 2px; font-variant-numeric: tabular-nums; }
 .sp-btn.sp-play { width: 52px; height: 52px; font-size: 18px; background: #0c0b14;
   border: 3px solid transparent; background-clip: padding-box; position: relative;
-  box-shadow: 0 0 0 2px var(--pikk-magenta), 0 0 16px var(--pikk-magenta-glow), inset 0 0 8px rgba(47,107,255,.5); }
+  box-shadow: 0 0 0 2px var(--pikk-chrome), -4px 0 14px var(--pikk-red-glow), 4px 0 14px var(--pikk-blue-glow); }
 .sp-controls .sp-btn:not(.sp-play) { background: transparent; border: 0; font-size: 22px; }
 .sp-vol { display: flex; align-items: center; gap: 6px; }
-.sp-vol input { width: 96px; accent-color: var(--pikk-magenta); }
+.sp-vol input { width: 96px; accent-color: var(--pikk-blue); }
 .sp-btn.sp-cast[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
 .sp-badge, .sp-source { display: none; }
 @media (max-width: 760px) {
@@ -54,17 +57,34 @@
   .sp-controls .sp-btn:not(.sp-play) { width: 28px; }
 }
 /* Story rail + pills */
-.pikk-home-circle-ring { background: linear-gradient(135deg, var(--pikk-magenta), var(--pikk-magenta-2)); border-color: var(--pikk-magenta); box-shadow: 0 0 0 2px #0e0d1a, 0 0 14px var(--pikk-magenta-glow); }
-.pikk-home-circle-create { background: radial-gradient(circle, var(--pikk-magenta-2), var(--pikk-magenta)); }
-.pikk-home-filterbar a.is-current { background: var(--pikk-magenta); border-color: var(--pikk-magenta); box-shadow: 0 0 15px var(--pikk-magenta-glow); }
-/* Raised magenta Create */
-html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary { position: relative; top: -18px; color: var(--pikk-magenta); overflow: visible; }
+.pikk-home-circle-ring { width: 88px; height: 88px; padding: 3px; background: linear-gradient(135deg, var(--pikk-red), var(--pikk-blue)); border-color: transparent; box-shadow: 0 0 0 2px #0a0a0a, -3px 0 12px var(--pikk-red-glow), 3px 0 12px var(--pikk-blue-glow); }
+.pikk-home-circle-create { background: radial-gradient(circle at 40% 35%, #ff5560, var(--pikk-red) 55%, #a50010); }
+.pikk-home-filterbar a.is-current { background: var(--pikk-red); border: 1.5px solid var(--pikk-chrome); color: #fff; box-shadow: 0 0 14px var(--pikk-red-glow), inset 0 1px 0 rgba(255,255,255,.35); }
+@media (max-width: 560px) { .pikk-home-circle-ring { width: 80px; height: 80px; } }
+/* Remove old HOME/LIVE banner above stories (kept for screen readers) */
+.page:has(#pikkHomeVisual) > .page-head { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); margin: 0; padding: 0; }
+/* Bigger logo, no black box: screen-blend the existing approved JPG (asset unchanged) */
+.top .logo-img { mix-blend-mode: screen; width: 190px; height: 52px; }
+@media (max-width: 560px) { .top .logo-img { width: 150px; height: 44px; } }
+/* Raised Create: red/blue glow, chrome ring, plus icon */
+html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary { position: relative; top: -18px; color: #fff; overflow: visible; }
 html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary .tab-ico svg {
-  width: 34px; height: 34px; padding: 13px; border: 0; border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #ff7aea, var(--pikk-magenta) 45%, var(--pikk-magenta-2));
-  box-shadow: 0 0 0 4px #0a0a0a, 0 0 0 6px rgba(255,43,214,.7), 0 0 28px var(--pikk-magenta-glow);
+  width: 50px; height: 50px; padding: 11px; box-sizing: border-box; border: 0; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #ff4a55, var(--pikk-red) 50%, #8c0010);
+  box-shadow: 0 0 0 3px #0a0a0a, 0 0 0 5px var(--pikk-chrome), -6px 0 20px var(--pikk-red-glow), 6px 0 20px var(--pikk-blue-glow);
 }
-html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary > span:last-child { color: var(--pikk-magenta); }
-.tabbar a.on { color: var(--pikk-magenta); }
-.tabbar a.on svg { filter: drop-shadow(0 0 6px var(--pikk-magenta-glow)); }
+html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary > span:last-child { color: #fff; }
+.tabbar a.on { color: var(--pikk-red); }
+.tabbar a.on svg { filter: drop-shadow(0 0 6px var(--pikk-blue-glow)); }
 @media (prefers-reduced-motion: reduce) { .sp-seek { transition: none; } }
+/* Live activity LIVE pill was absolutely positioned against the page and floated over the top card */
+.live-activity-list .la-hoodie .live-hoodie-pill { position: static; }
+/* Logo: no rectangular glow (filter on a boxed JPG drew the box); screen blend drops the black */
+.top .logo-img { filter: none; }
+/* Home accents in owner palette */
+.pikk-home-visual .kicker { color: var(--pikk-chrome); }
+.pikk-home-visual-more { color: #8fb3ff; }
+.pikk-home-media-badge { background: var(--pikk-red); box-shadow: 0 0 0 1px var(--pikk-chrome); }
+.pikk-home-circle { flex-basis: 92px; }
+@media (max-width: 560px) { .pikk-home-circle { flex-basis: 82px; } .pikk-home-circle-ring { width: 76px; height: 76px; } }
+html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary .tab-ico svg path { stroke: #fff; }
