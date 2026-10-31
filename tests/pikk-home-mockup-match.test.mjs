@@ -4,8 +4,10 @@ import { readFileSync } from 'node:fs';
 const r = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const html = r('index.html'), css = r('src/pikk-mockup.css'), home = r('src/pages/home.js'), player = r('src/player.js'), main = r('src/main.js');
 
-test('magenta token defined and stylesheet loaded', () => {
-  assert.match(css, /--pikk-magenta:\s*#ff2bd6/);
+test('owner palette tokens defined, no magenta remains, stylesheet loaded', () => {
+  for (const t of ['--pikk-red', '--pikk-blue', '--pikk-chrome']) assert.ok(css.includes(t + ':'), t);
+  for (const src of [css, html, home, main]) { assert.doesNotMatch(src, /pikk-magenta/i); assert.doesNotMatch(src, /#ff2bd6|#e91e8c/i); }
+  assert.match(css, /mix-blend-mode: screen/);
   assert.match(main, /import '\.\/pikk-mockup\.css'/);
 });
 test('header: search left, logo centered, bell + messages right; profile and menu still present', () => {
