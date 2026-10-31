@@ -21,5 +21,5 @@ test('Missions visual CSS stays scoped and preserves approved navigation',()=>{
   assert.match(css,/#app:has\(\.pikk-missions-studio\)/);
   assert.match(css,/@media\(max-width:640px\)/);
   assert.match(css,/:focus-visible/);
-  assert.deepEqual(TABBAR.map(t=>t.label),['Music','Videos','Connect','Create','Dating','Games','Shop']);
+  assert.deepEqual(TABBAR.map(t=>t.label),['Music','Videos','Create','Connect','Dating','Shop','Games']);
 });

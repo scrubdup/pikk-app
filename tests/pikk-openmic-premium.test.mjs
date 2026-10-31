@@ -24,5 +24,5 @@ test('Open Mic in-page jump avoids hash router changes and keeps all approved ta
   assert.match(css,/\.openmic-studio/);
   assert.match(css,/@media\(max-width:640px\)/);
   assert.match(css,/:focus-visible/);
-  assert.deepEqual(TABBAR.map(t=>t.label),['Music','Videos','Connect','Create','Dating','Games','Shop']);
+  assert.deepEqual(TABBAR.map(t=>t.label),['Music','Videos','Create','Connect','Dating','Shop','Games']);
 });
