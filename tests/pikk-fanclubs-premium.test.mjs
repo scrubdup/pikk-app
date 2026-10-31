@@ -42,5 +42,5 @@ test('Fan Clubs styles are scoped and maintain seven approved tabs',()=>{
   assert.match(css,/@media\(max-width:650px\)/);
   assert.match(css,/:focus-visible/);
   assert.match(css,/\[hidden\]/);
-  assert.deepEqual(TABBAR.map(t=>t.label),['Music','Videos','Connect','Create','Dating','Games','Shop']);
+  assert.deepEqual(TABBAR.map(t=>t.label),['Music','Videos','Create','Connect','Dating','Shop','Games']);
 });

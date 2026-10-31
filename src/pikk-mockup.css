@@ -70,7 +70,7 @@
 html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary { position: relative; top: -18px; color: #fff; overflow: visible; }
 html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary .tab-ico svg {
   width: 50px; height: 50px; padding: 11px; box-sizing: border-box; border: 0; border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #ff4a55, var(--pikk-red) 50%, #8c0010);
+  background: radial-gradient(circle at 40% 30%, #3a3d45, #101116 60%, #050506);
   box-shadow: 0 0 0 3px #0a0a0a, 0 0 0 5px var(--pikk-chrome), -6px 0 20px var(--pikk-red-glow), 6px 0 20px var(--pikk-blue-glow);
 }
 html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary > span:last-child { color: #fff; }
@@ -87,4 +87,6 @@ html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary > span:last
 .pikk-home-media-badge { background: var(--pikk-red); box-shadow: 0 0 0 1px var(--pikk-chrome); }
 .pikk-home-circle { flex-basis: 92px; }
 @media (max-width: 560px) { .pikk-home-circle { flex-basis: 82px; } .pikk-home-circle-ring { width: 76px; height: 76px; } }
-html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary .tab-ico svg path { stroke: #fff; }
+/* Approved Create icon: play triangle (white on red) with silver/chrome cursor arrow */
+html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary .tab-ico svg path:first-child { fill: var(--pikk-red); filter: drop-shadow(0 0 4px var(--pikk-red-glow)); }
+html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary .tab-ico svg path:last-child { stroke: var(--pikk-chrome); }

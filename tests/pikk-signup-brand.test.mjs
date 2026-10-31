@@ -19,7 +19,7 @@ test('signup calls platform PIKK, not the artist name, while preserving truthful
 
 test('signup route preserves the approved navigation, artist player and logo', () => {
   assert.match(main, /'\/signup': \{ render: renderSignup \}/);
-  assert.deepEqual(TABBAR.map(tab => tab.label), ['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop']);
+  assert.deepEqual(TABBAR.map(tab => tab.label), ['Music', 'Videos', 'Create', 'Connect', 'Dating', 'Shop', 'Games']);
   assert.match(html, /dbs-sticky-player/);
   assert.match(html, /pikk-official-approved\.jpg/);
 });

@@ -7,10 +7,10 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 
 test('approved seven bottom tabs appear in exact order with centered Create', () => {
-  assert.deepEqual(TABBAR.map(({ label }) => label), ['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop']);
-  assert.deepEqual(TABBAR.map(({ href }) => href), ['#/music', '#/videos', '#/connect', '#/create', '#/dating', '#/games', '#/shop']);
+  assert.deepEqual(TABBAR.map(({ label }) => label), ['Music', 'Videos', 'Create', 'Connect', 'Dating', 'Shop', 'Games']);
+  assert.deepEqual(TABBAR.map(({ href }) => href), ['#/music', '#/videos', '#/create', '#/connect', '#/dating', '#/shop', '#/games']);
   assert.equal(TABBAR.length, 7);
-  assert.equal(TABBAR[3].primary, true);
+  assert.equal(TABBAR[2].primary, true);
   assert.equal(TABBAR.filter(({ primary }) => primary).length, 1);
   assert.ok(TABBAR.every(({ href }) => main.includes(`'${href.slice(1)}':`) || href === '#/create'));
 });

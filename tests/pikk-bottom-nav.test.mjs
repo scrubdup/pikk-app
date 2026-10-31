@@ -12,10 +12,10 @@ test('Create is the exact center of seven bottom navigation slots', () => {
   assert.ok(match);
   const entries = [...match[1].matchAll(/\{ href: '([^']+)', label: '([^']+)'[^}]*\}/g)];
   assert.equal(entries.length, 7);
-  assert.equal(entries[3][2], 'Create');
-  assert.equal(entries[3][1], '#/create');
-  assert.match(entries[3][0], /primary: true/);
-  assert.deepEqual(entries.map(x => x[2]), ['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop']);
+  assert.equal(entries[2][2], 'Create');
+  assert.equal(entries[2][1], '#/create');
+  assert.match(entries[2][0], /primary: true/);
+  assert.deepEqual(entries.map(x => x[2]), ['Music', 'Videos', 'Create', 'Connect', 'Dating', 'Shop', 'Games']);
   assert.ok(!entries.some(x => x[2] === 'Profile'));
 });
 

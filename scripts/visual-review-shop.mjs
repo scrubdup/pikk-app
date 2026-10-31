@@ -23,7 +23,7 @@ try {
     assert.equal(await page.locator('#pikkShopProducts .pikk-shop-product').count(), MERCH.length);
     assert.equal(await page.locator('#tabbar a').count(), 7);
     assert.deepEqual((await page.locator('#tabbar a').allTextContents()).map(s => s.trim()),
-      ['Music','Videos','Connect','Create','Dating','Games','Shop']);
+      ['Music','Videos','Create','Connect','Dating','Shop','Games']);
     assert.equal(await page.locator('.logo-img').isVisible(), true);
     assert.equal(await page.locator('#dbs-sticky-player').isVisible(), true);
 

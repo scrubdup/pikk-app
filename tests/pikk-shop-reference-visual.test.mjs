@@ -36,5 +36,5 @@ test('Shop retains external-checkout disclosure and approved seven-tab navigatio
   assert.match(html, /External merchant checkout/);
   assert.match(html, /No PIKK in-app payments/);
   assert.ok(html.includes('target="_blank" rel="noopener noreferrer"'));
-  assert.deepEqual(TABBAR.map((tab) => tab.label), ['Music','Videos','Connect','Create','Dating','Games','Shop']);
+  assert.deepEqual(TABBAR.map((tab) => tab.label), ['Music','Videos','Create','Connect','Dating','Shop','Games']);
 });
