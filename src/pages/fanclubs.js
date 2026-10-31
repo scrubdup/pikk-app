@@ -256,8 +256,9 @@ export function bindFanClubs(root) {
     const target = btn.getAttribute('data-fc-jump');
     root.querySelector(`#${target}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
-  root.querySelector('#fcSearch')?.addEventListener('input', (event) => {
-    const term = String(event.currentTarget.value || '').trim().toLocaleLowerCase();
+  const searchInput = root.querySelector('#fcSearch');
+  const filterClubs = () => {
+    const term = String(searchInput?.value || '').trim().toLocaleLowerCase();
     const cards = [...root.querySelectorAll('.fanclub-card[data-search]')];
     let visible = 0;
     cards.forEach((card) => {
@@ -269,6 +270,16 @@ export function bindFanClubs(root) {
     if (status) status.textContent = `Showing ${visible} of ${cards.length} clubs`;
     const empty = root.querySelector('#fcNoResults');
     if (empty) empty.hidden = visible > 0 || !term;
+  };
+  searchInput?.addEventListener('input', filterClubs);
+  // Escape resets only the directory search and keeps keyboard focus in the field.
+  // Update the visible cards, live result count and no-results message together.
+  searchInput?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !searchInput.value) return;
+    event.preventDefault();
+    event.stopPropagation();
+    searchInput.value = '';
+    filterClubs();
   });
   root.querySelectorAll('[data-open-club]').forEach((btn) => {
     btn.addEventListener('click', () => refresh(btn.getAttribute('data-open-club')));

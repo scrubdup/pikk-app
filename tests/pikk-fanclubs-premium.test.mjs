@@ -25,6 +25,17 @@ test('Fan Clubs search is accessible and never changes hash route for in-page ju
   assert.match(page,/data-search=/);
   assert.doesNotMatch(page,/href="#fcDiscover"/);
 });
+test('Fan Clubs Escape clears directory search, restores results and retains keyboard focus',()=>{
+  assert.match(page,/const searchInput = root\.querySelector\('#fcSearch'\)/);
+  assert.match(page,/searchInput\?\.addEventListener\('input', filterClubs\)/);
+  assert.match(page,/searchInput\?\.addEventListener\('keydown', \(event\) =>/);
+  assert.match(page,/event\.key !== 'Escape' \|\| !searchInput\.value/);
+  assert.match(page,/event\.preventDefault\(\)/);
+  assert.match(page,/searchInput\.value = ''/);
+  assert.match(page,/filterClubs\(\)/);
+  assert.match(page,/status\.textContent = `Showing \$\{visible\} of \$\{cards\.length\} clubs`/);
+  assert.match(page,/empty\.hidden = visible > 0 \|\| !term/);
+});
 test('Fan Clubs styles are scoped and maintain seven approved tabs',()=>{
   assert.match(main,/import '\.\/fanclubs-premium\.css';/);
   assert.match(css,/\.fanclubs-studio/);

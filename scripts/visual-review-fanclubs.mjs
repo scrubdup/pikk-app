@@ -37,8 +37,14 @@ try{
       await page.locator('#fcSearch').fill('zzzz-no-match');
       assert.equal(await page.locator('.fanclub-card:visible').count(),0,'no-match state');
       assert.equal(await page.locator('#fcNoResults').isVisible(),true);
-      await page.locator('#fcSearch').fill('');
-      assert.equal(await page.locator('.fanclub-card:visible').count(),3,'search clears');
+      await verify('no-results');
+      await page.locator('#fcSearch').press('Escape');
+      assert.equal(await page.locator('#fcSearch').inputValue(),'','Escape clears directory search');
+      assert.equal(await page.locator('.fanclub-card:visible').count(),3,'Escape restores all clubs');
+      assert.match(await page.locator('#fcSearchStatus').textContent(),/Showing 3 of 3/,'result count restored');
+      assert.equal(await page.locator('#fcNoResults').isVisible(),false,'no-results message hidden');
+      assert.equal(await page.locator('#fcSearch').evaluate(el=>document.activeElement===el),true,'search retains focus');
+      await verify('escape-cleared');
       await page.locator('[data-fc-jump="fcCreateCard"]').click();
       assert.ok(page.url().endsWith('#/fanclubs'),'in-page jump does not break hash router');
       await page.locator('[data-open-club="fc_official_dbs"]').click();
