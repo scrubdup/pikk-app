@@ -53,7 +53,7 @@ test('Explore retains original PIKK navigation, logo, and player', () => {
 
 
 test('Explore people results link to the matched public profile, not the signed-in profile', () => {
-  assert.match(explore, /href: `#\/profile\/\$\{p\.id\}`/);
+  assert.match(explore, /href: `#\/profile\/\$\{encodeURIComponent\(p\.id\)\}`/);
   assert.match(explore, /title: `@\$\{p\.username \|\| p\.id\}`/);
 });
 
@@ -102,4 +102,13 @@ test('Explore retains the current search across section changes without saving i
   assert.match(activate, /nextInput\.value = query/);
   assert.match(activate, /runSearch\(nextRoot, query\)/);
   assert.doesNotMatch(activate, /setState\(\{[^}]*query/);
+});
+
+
+test('Explore search profile URLs encode special characters like the Following and Discover links', () => {
+  assert.equal(`#/profile/${encodeURIComponent('artist/with spaces?#')}`, '#/profile/artist%2Fwith%20spaces%3F%23');
+  const peopleResults = explore.split('const profiles = res.profiles')[1]?.split('const music = res.music')[0];
+  assert.ok(peopleResults, 'People result mapping exists');
+  assert.ok(peopleResults.includes('href: `#/profile/${encodeURIComponent(p.id)}`'));
+  assert.doesNotMatch(peopleResults, /href: `#\/profile\/\$\{p\.id\}`/);
 });

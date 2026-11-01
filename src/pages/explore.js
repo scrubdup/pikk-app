@@ -83,7 +83,7 @@ function renderResults(res) {
     .slice(0, 8)
     .map((p) =>
       resultRow({
-        href: `#/profile/${p.id}`,
+        href: `#/profile/${encodeURIComponent(p.id)}`,
         title: `@${p.username || p.id}`,
         meta: (p.bio || 'Creator / fan').slice(0, 80),
         chip: p.verified ? 'Verified' : 'Profile',
