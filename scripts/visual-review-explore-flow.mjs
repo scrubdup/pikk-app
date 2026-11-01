@@ -47,6 +47,23 @@ try {
       assert.match(await page.locator('#explorePanel').innerText(), /Trending Across PIKK/);
       await capture('trending');
 
+      // City/state is an actual consent-gated filter: demo data without opt-in
+      // location tags must not fabricate nearby profiles, viewers or broadcasts.
+      await page.locator('#exploreCity').fill('Houston');
+      await page.locator('#exploreState').fill('TX');
+      await page.locator('#exploreGo').click();
+      assert.match(await page.locator('#exploreResultsWrap').innerText(), /No results for.*City & State.*Houston, TX/);
+      await capture('city-state-no-optin');
+      await page.locator('[data-explore-tab="discover"]').click();
+      assert.equal(await page.locator('#exploreCity').inputValue(), 'Houston');
+      assert.equal(await page.locator('#exploreState').inputValue(), 'TX');
+      assert.match(await page.locator('#exploreLiveInsert').innerText(), /No matching public location tags/);
+      await capture('city-state-retained');
+      await page.locator('#exploreClear').click();
+      assert.equal(await page.locator('#exploreCity').inputValue(), '');
+      assert.equal(await page.locator('#exploreState').inputValue(), '');
+      await page.locator('[data-explore-tab="trending"]').click();
+
       // Keyboard-only navigation must switch sections and restore focus after rerender.
       assert.equal(await page.locator('[role="tablist"][aria-label="Explore sections"] [role="tab"]').count(), 3);
       await page.locator('[data-explore-tab="trending"]').focus();
