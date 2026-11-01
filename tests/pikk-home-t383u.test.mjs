@@ -46,3 +46,10 @@ test('t384u: bottom order unchanged', () => {
   assert.ok(at('id="homeArcade"') < at('${renderHomeCommunityHub()}') && at('${renderHomeCommunityHub()}') < at('id="home-live-activity"'));
   assert.ok(at('id="home-live-activity"') > at('id="homeArcade"'));
 });
+test('t385u: ranked feed stage comes immediately after the official-video grid (visualFeed)', () => {
+  const v = body.indexOf('${visualFeed}'), st = body.indexOf('${stageBlock}');
+  assert.ok(v >= 0 && st > v);
+  assert.equal(body.slice(v + '${visualFeed}'.length, st).trim(), '');
+  for (const k of ['${renderHomeShowcase()}', '${sellPromo}', 'id="homeArcade"']) assert.ok(body.indexOf(k) > st, k);
+  assert.ok(home.indexOf('View all videos') < home.indexOf('id="homeFeaturedStage"') || body.indexOf('${visualFeed}') < st);
+});

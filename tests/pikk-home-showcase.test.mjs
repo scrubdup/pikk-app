@@ -23,6 +23,6 @@ test('Games: all 15, Block Wars first, Coming Soon; Dating 18+; lazy images; no 
   for (const m of html.matchAll(/<img [^>]*>/g)) assert.match(m[0], /loading="lazy"/);
   assert.doesNotMatch(html, /Sponsored|Promoted|pikk-ad-slot|YouTube/);
 });
-test('Home renders the showcase after the visual feed', () => {
-  assert.match(readFileSync(new URL('../src/pages/home.js', import.meta.url), 'utf8'), /\$\{visualFeed\}\n    \$\{renderHomeShowcase\(\)\}/);
+test("Home renders visual feed, then ranked stage (t385u), then showcase", () => {
+  assert.match(readFileSync(new URL("../src/pages/home.js", import.meta.url), "utf8"), /\$\{visualFeed\}\n    \$\{stageBlock\}\n    \$\{renderHomeShowcase\(\)\}/);
 });

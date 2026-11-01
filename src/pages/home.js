@@ -639,6 +639,7 @@ export function renderHome() {
   const body = `
     ${appGoalCard}
     ${visualFeed}
+    ${stageBlock}
     ${renderHomeShowcase()}
     <section class="pikk-home-discover" aria-label="PIKK quick discovery">
       <div class="pikk-home-discover-heading">
@@ -656,7 +657,6 @@ export function renderHome() {
     </section>
 
 
-    ${stageBlock}
 
     ${sellPromo}
 
