@@ -18,7 +18,8 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('http://127.0.0.1:5173/#/live?tab=categories', { waitUntil: 'domcontentloaded' });
     await page.locator('#liveTabCategories').waitFor({ state: 'visible', timeout: 20000 });
-    await page.waitForTimeout(3600);
+    // Capture the actual Live directory, not the startup splash overlay.
+    await page.locator('#splash').waitFor({ state: 'hidden', timeout: 20000 });
     assert.equal(await page.locator('.logo-img').isVisible(), true, 'approved logo remains visible');
     assert.equal(await page.locator('#dbs-sticky-player').isVisible(), true, 'persistent music player');
     assert.equal(await page.locator('#tabbar a').count(), 7, 'seven bottom tabs preserved');
