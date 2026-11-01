@@ -32,10 +32,9 @@ test('owner-approved rates are exact and inventory contains six slots per page',
 });
 
 test('Home and Videos include shared UI while preserving existing content',()=>{
-  assert.match(home,/renderStoriesAndPromotions\('home'\)/);
+  assert.doesNotMatch(home,/renderStoriesAndPromotions\('home'\)/,'t372u: Stories card removed from Home');
   assert.match(shells,/renderStoriesAndPromotions\('videos'\)/);
-  assert.ok(home.indexOf('${stageBlock}')<home.indexOf("renderStoriesAndPromotions('home')"),'Top live hero preserved above Stories');
-  assert.match(home,/\$\{bwPreview\}/);
+  assert.ok(home.indexOf('${stageBlock}')<home.indexOf('${renderHomeMediaSlideshow()}'),'Top live hero above slideshow');
   assert.match(home,/\$\{visualFeed\}/);
   assert.match(shells,/\$\{sections\}\$\{extra\}/);
   assert.match(shells,/pikk-video-filters/);

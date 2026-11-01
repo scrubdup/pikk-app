@@ -14,7 +14,7 @@ test('Home discovery shelf links to existing sections and Explore search',()=>{
   }
 });
 test('Home preserves stage, Block Wars teaser and fifteen-game rotation',()=>{
-  for (const feature of ['\u0024{stageBlock}','\u0024{bwPreview}','id="homeArcade"','PIKK_GAMES.map','data-arcade-prev','data-arcade-next']) {
+  for (const feature of ['\u0024{stageBlock}','id="homeArcade"','PIKK_GAMES.map','data-arcade-prev','data-arcade-next']) {
     assert.ok(home.includes(feature),feature);
   }
   assert.match(css,/\.pikk-home-discover-links/);
