@@ -53,10 +53,12 @@ try {
       await page.locator('#exploreState').fill('TX');
       await page.locator('#exploreGo').click();
       assert.match(await page.locator('#exploreResultsWrap').innerText(), /No results in Houston, TX/);
+      assert.equal(await page.locator('#exploreSearchStatus').innerText(), '0 results in Houston, TX.');
       await capture('city-state-no-optin');
       await page.locator('#exploreQ').fill('music');
       await page.locator('#exploreGo').click();
       assert.match(await page.locator('#exploreResultsWrap').innerText(), /No results for “music” in Houston, TX/);
+      assert.equal(await page.locator('#exploreSearchStatus').innerText(), '0 results for “music” in Houston, TX.');
       await capture('keyword-city-state-no-optin');
       // Escape from a location input clears keyword + both location filters,
       // cancels any pending search and leaves focus in the same input.
@@ -68,6 +70,7 @@ try {
       assert.equal(await page.locator('#exploreCity').evaluate(el => el === document.activeElement), true,
         name + ' City Escape retains focus');
       assert.match(await page.locator('#exploreResultsWrap').innerText(), /Search creators, fans, songs/);
+      assert.equal(await page.locator('#exploreSearchStatus').innerText(), 'Ready to search PIKK.');
       await capture('city-state-escape-cleared');
 
       // Escape from State works even with only a state filter.
@@ -92,6 +95,7 @@ try {
       assert.equal(await page.locator('#exploreCity').inputValue(), 'Houston');
       assert.equal(await page.locator('#exploreState').inputValue(), 'TX');
       assert.match(await page.locator('#exploreLiveInsert').innerText(), /No matching public location tags/);
+      assert.equal(await page.locator('#exploreSearchStatus').innerText(), '0 results in Houston, TX.');
       await capture('city-state-retained');
       await page.locator('#exploreClear').click();
       assert.equal(await page.locator('#exploreCity').inputValue(), '');
@@ -121,6 +125,7 @@ try {
       const artistHit = page.locator('#exploreResultsWrap .explore-hit[href="#/profile/dbs"]');
       await artistHit.waitFor({ state: 'visible', timeout: 10000 });
       assert.match(await artistHit.innerText(), /@DatBoiSkeet/);
+      assert.match(await page.locator('#exploreSearchStatus').innerText(), /results? for “DatBoiSkeet”\./);
       await capture('profile-result');
       await artistHit.click();
       await page.waitForURL(/#\/profile\/dbs$/, { timeout: 10000 });
