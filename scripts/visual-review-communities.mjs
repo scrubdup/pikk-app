@@ -47,6 +47,10 @@ try {
     await page.locator('[data-freply] textarea').fill('Welcome to the PIKK discussion.');
     await page.locator('[data-freply] button').click();
     assert.equal(await page.locator('.pikk-forum-comment').count(), 1);
+    assert.equal(await disclosure.getAttribute('aria-expanded'), 'true', 'Posted reply keeps its disclosure expanded');
+    assert.equal(await thread.isVisible(), true, 'Posted reply stays visible after redraw');
+    assert.equal(await disclosure.evaluate(el => el === document.activeElement), true, 'Keyboard focus returns to the reply disclosure');
+    await page.screenshot({ path: 'visual-review/communities-'+name+'-reply-posted.png', fullPage: true });
     await page.locator('.pikk-forum-topic-cards [data-ftopic="business"]').click();
     assert.equal(await page.locator('.pikk-forum-post').count(), 0);
     await page.locator('.pikk-forum-topic-cards [data-ftopic="music"]').click();

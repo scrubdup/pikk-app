@@ -30,3 +30,11 @@ test('discussion reply disclosure reports its open state and controls the correc
  assert.match(view,/id="pikk-forum-thread-/);
  assert.match(view,/op\.setAttribute\('aria-expanded',String\(!p\.hidden\)\)/);
 });
+
+
+test('saving a reply reopens its thread with accurate disclosure state and keyboard focus',()=>{
+ assert.match(view,/if\(save\(v\)\)\{redraw\(\);const panel=host\.querySelector\('\[data-thread=/);
+ assert.match(view,/const trigger=host\.querySelector\('\[data-fopen=/);
+ assert.match(view,/if\(panel&&trigger\)\{panel\.hidden=false;trigger\.setAttribute\('aria-expanded','true'\);trigger\.focus\(\);\}/);
+ assert.match(view,/toast\('Reply saved locally'\)/);
+});
