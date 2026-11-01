@@ -48,6 +48,11 @@ try {
     const matchingCard = await page.locator('.pikk-live-room-card:visible').boundingBox();
     assert.ok(matchingCard && matchingCard.y < height - 60, device + ' search result must be visible in screenshot');
     await page.screenshot({ path: 'visual-review/pikk-live-' + device + '-search.png' });
+    await search.fill('Browse channels');
+    assert.equal(await page.locator('.pikk-live-room-card:visible').count(), 0,
+      device + ' generic action text must not match all topics');
+    assert.equal(await page.locator('#liveRoomSearchStatus').textContent(),
+      '0 matching topics · channel discovery only.');
     await search.press('Escape');
     assert.equal(await search.inputValue(), '', device + ' Escape clears the filtered directory');
     assert.equal(await search.evaluate(el => el === document.activeElement), true, device + ' Escape retains search focus');
