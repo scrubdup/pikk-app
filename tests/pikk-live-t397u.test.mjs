@@ -75,4 +75,6 @@ test('t397u follow-up: Voice mode hides video seats and shows voice avatars', ()
   assert.match(h, /mic off \(demo\)/);
   assert.match(rooms, /\$\('#roomStage'\)\.hidden = st\.mode !== 'Video';/);
   assert.match(rooms, /\$\('#roomVoice'\)\.hidden = st\.mode !== 'Voice';/);
+  const css = readFileSync(new URL("../src/pikk-pages.css", import.meta.url), "utf8");
+  assert.match(css, /\.pikk-room-stage\[hidden\][^{]*\{display:none!important\}/);
 });

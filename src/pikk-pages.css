@@ -143,3 +143,5 @@ html.pikk-reduce-motion *{animation:none!important;transition:none!important}
 .pikk-room-avatar{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;max-width:140px}
 .pikk-room-avatar span{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--pikk-blue);background:radial-gradient(circle,#11131a,#000);border:2px solid var(--pikk-blue);box-shadow:0 0 0 2px rgba(255,49,55,.55),0 0 10px rgba(47,107,255,.4)}
 .pikk-room-avatar small{font-size:11px;color:#d7dae0}
+/* t397u fix: display rules must not override [hidden] (Voice hides video seats) */
+.pikk-room-stage[hidden],.pikk-room-voice[hidden],.pikk-room-shell[hidden],.pikk-room-pinned[hidden],#roomSetup[hidden],#roomHostTools[hidden]{display:none!important}
