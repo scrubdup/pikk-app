@@ -140,4 +140,4 @@ html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary .tab-ico {
   width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; overflow: hidden;
   background: #050506; box-shadow: 0 0 0 3px #0a0a0a, 0 0 0 5px var(--pikk-chrome), -6px 0 20px var(--pikk-red-glow), 6px 0 20px var(--pikk-blue-glow);
 }
-.pikk-create-logo-icon { width: 40px; height: auto; display: block; border-radius: 6px; }
+.pikk-create-logo-icon { width: 36px; height: auto; display: block; border-radius: 50%; }

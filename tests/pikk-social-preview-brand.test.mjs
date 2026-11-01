@@ -13,7 +13,8 @@ test('PIKK social previews point to the real GitHub Pages image, not site root',
 
 test('PIKK approved published logo is retained for splash and sticky player', () => {
   assert.ok(existsSync(new URL('public/brand/pikk-official-approved.jpg', root)));
-  assert.ok((index.match(/%BASE_URL%brand\/pikk-official-approved\.jpg/g) || []).length >= 2);
+  assert.ok((index.match(/%BASE_URL%brand\/pikk-official-approved\.jpg/g) || []).length >= 1);
+  assert.ok((index.match(/%BASE_URL%brand\/pikk-logo-header\.png/g) || []).length >= 2);
 });
 
 test('PIKK public entrypoint and manifest do not revert to KLIK or KLIKK', () => {

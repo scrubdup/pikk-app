@@ -17,7 +17,7 @@ test('approved seven bottom tabs appear in exact order with centered Create', ()
 
 test('header keeps canonical PIKK logo as Home link and top music player', () => {
   assert.match(html, /href="#\/home" class="logo" aria-label="PIKK Home"/);
-  assert.match(html, /class="logo-img" src="%BASE_URL%brand\/pikk-official-approved\.jpg"/);
+  assert.match(html, /class="logo-img" src="%BASE_URL%brand\/pikk-logo-header\.png"/);
   assert.match(html, /id="dbs-sticky-player"/);
   assert.match(html, /id="spPlay"/);
   assert.match(html, /id="spQueueBtn"/);
