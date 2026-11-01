@@ -1,6 +1,8 @@
 import { ApiError, json, errorResponse, corsHeaders, readJson, clientIp } from './http.js';
 import { signup, login, logout, verifyEmail, loadSession, requireAuth, requireVerified, requireActive } from './auth.js';
-import { requirePermission, GRANTABLE_ROLES } from './permissions.js';
+import { requirePermission, GRANTABLE_ROLES, OWNER_ROLE } from './permissions.js';
+import { opsSummary } from './ops.js';
+import { bootstrapOwner } from './bootstrap.js';
 import { assertNotBlocked, NOT_BLOCKED_SQL } from './blocks.js';
 import { safetyRoute, ageVerificationWebhook } from './safety.js';
 import { requireString, requirePositiveInt, validateSignupRoles } from './validate.js';
@@ -129,8 +131,11 @@ async function route(req, env, ctx) {
     const s = requirePermission(ctx, 'roles.grant'); const b = await readJson(req);
     const target = await userByHandle(env, requireString(b, 'handle', { max: 30, pattern: HANDLE }));
     const role = requireString(b, 'role', { max: 20 });
+    if (role === OWNER_ROLE) throw new ApiError(403, 'forbidden', 'The owner role can only be assigned by the one-time server bootstrap');
     if (!GRANTABLE_ROLES.includes(role)) throw new ApiError(422, 'validation_failed', 'Invalid role');
     const reason = requireString(b, 'reason', { min: 3, max: 500 });
+    const targetIsOwner = await env.DB.prepare(`SELECT 1 AS x FROM user_roles WHERE user_id = ? AND role = ?`).bind(target.id, OWNER_ROLE).first();
+    if (targetIsOwner && !s.roles.includes(OWNER_ROLE)) throw new ApiError(403, 'forbidden', 'Only the owner can change the owner\'s roles');
     if (m === 'DELETE' && role === 'admin' && target.id === s.user.id) throw new ApiError(422, 'validation_failed', 'Cannot revoke your own admin role');
     const stmt = m === 'POST'
       ? env.DB.prepare(`INSERT OR IGNORE INTO user_roles(user_id,role,granted_by,granted_at) VALUES (?,?,?,?)`).bind(target.id, role, s.user.id, new Date().toISOString())
@@ -138,6 +143,11 @@ async function route(req, env, ctx) {
     await env.DB.batch([stmt, auditStmt(env, { actor: s.user.id, action: m === 'POST' ? 'admin.grant_role' : 'admin.revoke_role', target: target.id, ip, meta: { role, reason } })]);
     return json(200, { ok: true });
   }
+  if (m === 'POST' && p === '/bootstrap/owner') return json(200, await bootstrapOwner(env, req, ip));
+  if (m === 'GET' && p === '/admin/ops/summary') { requirePermission(ctx, 'ops.view'); 
+    // PIKK Vault (#236) not in this branch: no vault handler is wired, so the vault panel reports unknown.
+    // Once #236 lands: vaultHealth: () => mediaRoute(env, new Request(new URL('/vault/health', req.url)), ctx, 'GET', '/vault/health')
+    return json(200, await opsSummary(env, { vaultHealth: undefined })); }
   if (m === 'GET' && p === '/admin/audit') {
     requirePermission(ctx, 'admin.access');
     const r = await env.DB.prepare(`SELECT id, actor_id, action, target, created_at FROM audit_log ORDER BY created_at DESC LIMIT 100`).all();

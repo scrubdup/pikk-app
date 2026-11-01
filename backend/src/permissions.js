@@ -14,7 +14,12 @@ export const PERMISSIONS = Object.freeze({
   'tickets.view': ['support_agent', 'admin'],
   'tickets.reply': ['support_agent', 'admin'],
   'copyright.takedown.review': ['admin', 'dmca'],
+  'ops.view': ['owner'], // PIKK Master Mind read-only monitoring; owner only
 });
+/** owner sits above admin: it holds every admin permission plus owner-only ones (ops.view).
+ *  owner is NOT grantable via /admin/roles; only the env-gated one-time bootstrap assigns it. */
+export const OWNER_ROLE = 'owner';
+export const effectiveRoles = (roles) => roles.includes(OWNER_ROLE) && !roles.includes('admin') ? [...roles, 'admin'] : roles;
 export const STAFF_ROLES = ['moderator', 'support_agent', 'admin', 'dmca'];
 export const GRANTABLE_ROLES = ['creator', ...STAFF_ROLES];
 
@@ -22,7 +27,8 @@ export function can(session, perm) {
   const allowed = PERMISSIONS[perm];
   if (!allowed) throw new Error(`unknown permission ${perm}`);
   if (!session) return false;
-  return allowed.includes('*') || allowed.some(r => session.roles.includes(r));
+  const roles = effectiveRoles(session.roles);
+  return allowed.includes('*') || allowed.some(r => roles.includes(r));
 }
 
 export function requirePermission(ctx, perm) {

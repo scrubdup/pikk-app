@@ -41,6 +41,7 @@ import { toggleMusicMenu, closeMusicMenu } from './music-menu.js';
 import { renderHome, bindHome } from './pages/home.js';
 import { renderUpdates, bindUpdates } from './pages/updates.js';
 import { renderAdmin, bindAdmin } from './pages/admin.js';
+import { renderMastermind, bindMastermind } from './pages/mastermind.js';
 import { renderPosts, bindPosts } from './pages/posts.js';
 import { renderMusic, bindMusic } from './pages/music.js';
 import { renderAIArtists, bindAIArtists } from './pages/ai-artists.js';
@@ -110,6 +111,7 @@ const ROUTES = {
   '/missions': { render: renderMissions, bind: bindMissions },
   '/pricing': { render: renderPricing, bind: bindPricing },
   '/admin': { render: renderAdmin, bind: bindAdmin },
+  '/mastermind': { render: renderMastermind, bind: bindMastermind },
   '/guidelines': { render: renderGuidelines },
   '/community': { render: renderCommunity, bind: bindCommunity },
   '/communities': { render: renderCommunities, bind: bindCommunities },
