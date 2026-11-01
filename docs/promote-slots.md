@@ -6,8 +6,8 @@ Status: frontend preview only. Booking/checkout is **Coming soon** until Stripe 
 ## Slot caps per window
 | Placement | Key | Slots per window | Prices |
 |---|---|---|---|
-| Top PIKK Music Player (Home) | `player` | 6 | $149 / 24h · $699 / 7 days |
-| Home story rail | `storyrail` | 10 | $49 / 24h · $229 / 7 days |
+| Top PIKK Music Player (Home) | `player` | 20 per 24h | $149 / 24h · $699 / 7 days |
+| Home story rail | `storyrail` | 20 per 24h (swipeable) | $49 / 24h · $229 / 7 days |
 | Premium Spotlight | `spotlight` | 1 | $199 / 24h · $999 / 7 days |
 | Featured Box | `featured` | 2 | $99 / 24h · $499 / 7 days |
 | Promo Box | `promo` | 3 | $49 / 24h · $249 / 7 days |
@@ -30,6 +30,17 @@ Single source: `src/promote-pricing.js` (`SLOT_CAPS`, `PROMOTE_SECTIONS`). Keep 
   clearly labeled house demo).
 - Reference implementation: `rotate()` / `slotStatus()` / `canBook()` in `src/promote-pricing.js`, unit-tested
   in `tests/pikk-promote-slots.test.mjs`.
+
+## Music Player hourly guarantee (t346u)
+- Up to 20 paid songs per 24h window. **Every paid song gets at least one play in every hour.**
+- Each promoted play is capped at `floor(3600 / n)` seconds (n = active songs, so ≥ 180 s at n = 20);
+  the listener can keep playing the full track, but rotation then continues round-robin.
+- Rotation carries over across hours (song after the last one played starts the next hour).
+- Reference: `hourlyPlayerSchedule()` in `src/promote-pricing.js`; test proves all 20 appear in each of 24 hours.
+
+## Story rail
+- Up to 20 promoted stories per 24h window, shown in a horizontally swipeable rail (scroll-snap) in fair
+  round-robin order; unfilled positions use house / Trending stories tagged honestly.
 
 ## Enforcement requirements
 - Caps MUST be enforced **server-side** by the ledger/booking system in a single transaction

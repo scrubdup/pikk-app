@@ -8,8 +8,8 @@ export const PIKK_FEATURED_RATES = Object.freeze([
 const p = (o) => Object.freeze(o);
 export const PROMOTE_SECTIONS = Object.freeze([
   { id: 'featured', title: 'Featured placements', link: '#/videos', items: PIKK_FEATURED_RATES.map((t) => p({ name: t.name, day: t.day, week: t.week, slots: t.slots })) },
-  { id: 'player', title: 'Music Player placement', link: '#/home', items: [p({ name: 'Top PIKK Music Player on Home (Trending / Promoted slot)', day: 149, week: 699, slots: 6 })] },
-  { id: 'storyrail', title: 'Story rail placement', link: '#/home', items: [p({ name: 'Home story rail (Trending / Promoted slot)', day: 49, week: 229, slots: 10 })] },
+  { id: 'player', title: 'Music Player placement', link: '#/home', items: [p({ name: 'Top PIKK Music Player on Home (Trending / Promoted slot)', day: 149, week: 699, slots: 20 })] },
+  { id: 'storyrail', title: 'Story rail placement', link: '#/home', items: [p({ name: 'Home story rail (Trending / Promoted slot)', day: 49, week: 229, slots: 20 })] },
   { id: 'music', title: 'Music', link: '#/music', items: [p({ name: 'Trending Music boost (tracks, albums)', day: 29, week: 129 })] },
   { id: 'videos', title: 'Videos and Clips', link: '#/videos', items: [p({ name: 'Video / Clip boost', day: 19, week: 89 })] },
   { id: 'live', title: 'Live', link: '#/live', items: [p({ name: 'Live stream boost (pre-live + during the live)', perStream: 25 })] },
@@ -28,8 +28,8 @@ export function priceLabels(i) {
     i.perStream != null && `${usd(i.perStream)} per stream`, i.perEvent != null && `${usd(i.perEvent)} per event`, i.perMatch != null && `${usd(i.perMatch)} per match`].filter(Boolean);
 }
 
-/** Rotating placements: slot caps per time window (t345u). Server must enforce (docs/promote-slots.md). */
-export const SLOT_CAPS = Object.freeze({ player: 6, storyrail: 10, spotlight: 1, featured: 2, promo: 3 });
+/** Rotating placements: slot caps per 24h window (t345u, revised t346u). Server must enforce (docs/promote-slots.md). */
+export const SLOT_CAPS = Object.freeze({ player: 20, storyrail: 20, spotlight: 1, featured: 2, promo: 3 });
 /** TEST MODE occupancy: no real bookings exist yet, so every slot is open. */
 export const DEMO_OCCUPANCY = Object.freeze({ player: 0, storyrail: 0, spotlight: 0, featured: 0, promo: 0 });
 
@@ -50,4 +50,27 @@ export function rotate(bookings, cap, impressions) {
   const schedule = [];
   if (accepted.length) for (let i = 0; i < impressions; i++) schedule.push(accepted[i % accepted.length]);
   return { accepted, rejected, schedule };
+}
+
+export const HOUR_S = 3600;
+/**
+ * Music Player hourly rotation (t346u). Pure. Every accepted song gets ≥ 1 play in every hour:
+ * each promoted play is capped at floor(3600 / n) seconds (n ≤ 20 → ≥ 180 s), then the rotation
+ * moves on round-robin and continues where it left off in the next hour.
+ * songs: [{ id, seconds }]. Returns hours[h] = [{ id, start, seconds }].
+ */
+export function hourlyPlayerSchedule(songs, hours = 24, cap = SLOT_CAPS.player) {
+  const list = songs.slice(0, cap); const out = [];
+  if (!list.length) return Array.from({ length: hours }, () => []);
+  const maxPlay = Math.floor(HOUR_S / list.length);
+  let k = 0;
+  for (let h = 0; h < hours; h++) {
+    const plays = []; let t = 0;
+    while (t < HOUR_S) {
+      const s = list[k % list.length]; const secs = Math.min(Math.max(1, s.seconds | 0), maxPlay, HOUR_S - t);
+      plays.push({ id: s.id, start: h * HOUR_S + t, seconds: secs }); t += secs; k++;
+    }
+    out.push(plays);
+  }
+  return out;
 }

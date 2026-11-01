@@ -26,3 +26,6 @@
 .sticky-player .sp-tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#ff3137;border:1px solid rgba(47,107,255,.78);border-radius:999px;padding:1px 6px;margin-bottom:2px}
 .pikk-home-circle .pikk-rail-tag{display:block;font-size:9px;font-weight:800;color:#ff3137;text-transform:uppercase;letter-spacing:.03em;margin-top:1px}
 .pikk-promote-tiers small.pikk-promote-slots{color:#fff;border-color:rgba(47,107,255,.78)}.pikk-promote-tiers small.pikk-promote-slots.is-sold-out{color:#ff3137;border-color:#ff3137}
+/* t346u: story rail is swipeable through promoted stories */
+.pikk-home-circle-strip{overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.pikk-home-circle-strip>.pikk-home-circle{scroll-snap-align:start;flex:0 0 auto}
