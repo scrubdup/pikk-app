@@ -141,6 +141,7 @@ export function renderProfile(route) {
         <a class="btn" href="#/signup">Creator applications</a>
         <a class="btn" href="#/clippers">Clippers apply</a>
         <a class="btn ghost" href="#/guidelines">Guidelines</a>
+        <a class="btn ghost" href="#/support" data-profile-support>Support</a>
       </div>`,
       { lead: 'Free PIKK fan profile · follow · posts · role apps · TEST MODE.' }
     );

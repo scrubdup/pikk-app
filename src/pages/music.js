@@ -290,6 +290,7 @@ export function renderMusic(route = {}) {
       <a href="#/music#vault">Vault</a>
       <a href="#/ai-artists">AI Artists · Clearly labeled</a>
       <a href="#/shield">PIKK Shield · Rights preview</a>
+      <a href="#/support">PIKK Support · Help & tickets</a>
     </nav>
     <section class="pikk-music-release-strip" aria-label="Official music covers">
       <div class="pikk-music-release-header"><h3>Listen &amp; discover</h3><a href="#/music#stream-everywhere">See all releases →</a></div>
