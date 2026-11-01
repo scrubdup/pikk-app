@@ -13,7 +13,7 @@ test('update center is a real route and accessible from menu and footer', () => 
   assert.match(html, /href="#\/updates"/);
 });
 test('update center lists five verified recent merged UI releases in newest-first order', () => {
-  assert.match(updates, /pr: 197[\s\S]*pr: 196[\s\S]*pr: 195[\s\S]*pr: 194[\s\S]*pr: 193/);
+  assert.match(updates, /pr: 276[\s\S]*pr: 274[\s\S]*pr: 272[\s\S]*pr: 271[\s\S]*pr: 270/);
   assert.equal((updates.match(/pr: \d+, kind:/g) || []).length, 5);
   for (const route of ['#/support', '#/communities', '#/profile']) {
     assert.ok(updates.includes("route: '" + route + "'"), 'Missing published section: ' + route);
