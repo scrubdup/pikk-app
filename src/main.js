@@ -1,3 +1,4 @@
+import { renderTerms, bindTerms, renderPrivacy } from './pages/legal.js';
 import { renderSettings, bindSettings } from './pages/settings.js';
 import { getSettings, applyAppearance } from './settings-store.js';
 import { SPLASH_HOLD_MS, SPLASH_FADE_MS } from './splash-config.js';
@@ -146,6 +147,8 @@ const ROUTES = {
   '/community': { render: renderCommunity, bind: bindCommunity },
   '/communities': { render: renderCommunities, bind: bindCommunities },
   '/signup': { render: renderSignup },
+  '/terms': { render: renderTerms, bind: bindTerms },
+  '/privacy': { render: renderPrivacy },
   '/messages': { render: renderMessages, bind: bindMessages },
   '/shop': { render: renderPikkShop, bind: bindPikkShop },
   '/profile-shop': { render: renderShop, bind: bindShop },
