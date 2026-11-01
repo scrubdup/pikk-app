@@ -33,7 +33,7 @@ test('Notification Center uses scoped responsive premium styles without replacin
   assert.match(main, /import '\.\/notifications-premium\.css';/);
   assert.match(main, /import \{ renderNotifications, bindNotifications \} from '\.\/pages\/notifications\.js';/);
   assert.match(main, /'\/notifications': \{ render: renderNotifications, bind: bindNotifications \}/);
-  assert.deepEqual(TABBAR.map(t => t.label), ['Music','Videos','Create','Connect','Dating','Shop','Games']);
+  assert.deepEqual(TABBAR.map(t => t.label), ['Music','Videos','Connect','Create','Dating','Games','Shop']);
   assert.match(html, /pikk-official-approved\.jpg/);
   assert.match(html, /dbs-sticky-player/);
 });

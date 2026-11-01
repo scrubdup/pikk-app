@@ -31,7 +31,7 @@ test('Premium Earnings remains a responsive independent route with original play
   assert.match(css, /@media\(max-width:560px\)/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
   assert.match(css, /\.pikk-earnings-dashboard a:focus-visible/);
-  assert.deepEqual(TABBAR.map(t => t.label), ['Music', 'Videos', 'Create', 'Connect', 'Dating', 'Shop', 'Games']);
+  assert.deepEqual(TABBAR.map(t => t.label), ['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop']);
   assert.match(html, /pikk-official-approved\.jpg/);
   assert.match(html, /dbs-sticky-player/);
 });

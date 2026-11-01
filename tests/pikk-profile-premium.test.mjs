@@ -20,7 +20,7 @@ test('profile remains accessible on mobile, preserves seven tabs and player',()=
   assert.match(css,/@media\(max-width:520px\)/);
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
   assert.match(main,/'\/profile': \{ render: renderProfile, bind: bindProfile \}/);
-  assert.deepEqual(TABBAR.map(t=>t.label),['Music','Videos','Create','Connect','Dating','Shop','Games']);
+  assert.deepEqual(TABBAR.map(t=>t.label),['Music','Videos','Connect','Create','Dating','Games','Shop']);
   assert.match(html,/pikk-official-approved\.jpg/);
   assert.match(html,/dbs-sticky-player/);
 });

@@ -12,7 +12,7 @@ const styles = read('../src/styles.css');
 const main = read('../src/main.js');
 
 test('seven approved tabs stay in owner-approved order', () => {
-  assert.deepEqual(TABBAR.map(item => item.label), ['Music','Videos','Create','Connect','Dating','Shop','Games']);
+  assert.deepEqual(TABBAR.map(item => item.label), ['Music','Videos','Connect','Create','Dating','Games','Shop']);
   assert.equal(TABBAR.filter(item => item.primary).length, 1);
   assert.equal(TABBAR.find(item => item.primary).label, 'Create');
 });

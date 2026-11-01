@@ -33,6 +33,6 @@ test('official PIKK logo and compact header precede and preserve sticky music pl
 });
 
 test('approved seven bottom tabs remain unchanged', () => {
-  assert.deepEqual(TABBAR.map(t => t.label), ['Music', 'Videos', 'Create', 'Connect', 'Dating', 'Shop', 'Games']);
-  assert.equal(TABBAR[2].primary, true);
+  assert.deepEqual(TABBAR.map(t => t.label), ['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop']);
+  assert.equal(TABBAR[3].primary, true);
 });

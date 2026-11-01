@@ -18,7 +18,7 @@ const sections = [
   ['games', 'pikkGamesMenu', 20],
   ['shop', 'pikkShopMenu', 9],
 ];
-const expectedTabs = ['Music', 'Videos', 'Create', 'Connect', 'Dating', 'Shop', 'Games'];
+const expectedTabs = ['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop'];
 await mkdir('visual-review', { recursive: true });
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 try {

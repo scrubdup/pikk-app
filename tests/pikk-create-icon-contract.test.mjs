@@ -17,9 +17,9 @@ test('Create remains the primary fourth tab and opens its menu', () => {
   assert.ok(match, 'TABBAR definition must exist');
   const entries = [...match[1].matchAll(/\{ href: '([^']+)', label: '([^']+)'[^}]*\}/g)];
   assert.equal(entries.length, 7);
-  assert.equal(entries[2][1], '#/create');
-  assert.equal(entries[2][2], 'Create');
-  assert.match(entries[2][0], /primary: true/);
+  assert.equal(entries[3][1], '#/create');
+  assert.equal(entries[3][2], 'Create');
+  assert.match(entries[3][0], /primary: true/);
   assert.match(main, /ensureCreateMenu\(\)/);
   assert.match(main, /aria-controls="pikkCreateMenu"/);
   assert.ok(CREATE_MENU_ITEMS.some(item => item.href === '#/live?go=1'));
