@@ -4,6 +4,7 @@ import { requirePermission } from './permissions.js';
 import { rateLimit } from './ratelimit.js';
 import { auditStmt, audit } from './audit.js';
 import { newId, hex } from './crypto.js';
+import { contentRoute } from './media-content.js';
 import { NOT_BLOCKED_SQL } from './blocks.js';
 import { MEDIA_LIMITS, STORY_TTL_HOURS, ACCESS_POLICIES, UPLOAD_RATE, VAULT_VERSION } from './media-config.js';
 import { sniff } from './magic.js';
@@ -112,12 +113,10 @@ async function complete(env, req, ctx, id) {
   return json(200, { media: view({ ...r, state: 'ready', checksum_sha256: checksum, detected_content_type: found.contentType, ready_at: t }) });
 }
 
-async function getMedia(env, ctx, id) {
-  const s = requireAuth(ctx);
-  const r = await env.DB.prepare(`SELECT * FROM media WHERE id=? AND deleted_at IS NULL`).bind(id).first();
-  if (!r) throw notFound();
-  if (r.owner_id === s.user.id) return json(200, { media: view(r) });
-  if (r.state !== 'ready' || (r.expires_at && r.expires_at <= now())) throw notFound();
+/** Slice 1 audience check, shared by GET /media/:id, /content and /access-url. Owner always; others only ready, unexpired, audience. */
+export async function canView(env, userId, r) {
+  if (r.owner_id === userId) return true;
+  if (r.state !== 'ready' || (r.expires_at && r.expires_at <= now())) return false;
   const t = now();
   const ok = await env.DB.prepare(
     `SELECT 1 AS ok FROM media m JOIN users u ON u.id = m.owner_id
@@ -125,8 +124,16 @@ async function getMedia(env, ctx, id) {
         AND ( m.access_policy = 'public'
           OR (m.access_policy = 'followers' AND EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = ?1 AND f.followee_id = m.owner_id))
           OR (m.access_policy = 'entitled' AND EXISTS (SELECT 1 FROM media_entitlements e WHERE e.media_id = m.id AND e.user_id = ?1 AND (e.expires_at IS NULL OR e.expires_at > ?3))) )`)
-    .bind(s.user.id, id, t).first();
-  if (!ok) throw notFound(); // anyone outside the audience gets 404, not 403
+    .bind(userId, r.id, t).first();
+  return !!ok;
+}
+
+async function getMedia(env, ctx, id) {
+  const s = requireAuth(ctx);
+  const r = await env.DB.prepare(`SELECT * FROM media WHERE id=? AND deleted_at IS NULL`).bind(id).first();
+  if (!r) throw notFound();
+  if (r.owner_id === s.user.id) return json(200, { media: view(r) });
+  if (!(await canView(env, s.user.id, r))) throw notFound(); // anyone outside the audience gets 404, not 403
   const { checksum_sha256, ...pub } = view(r);
   return json(200, { media: pub });
 }
@@ -157,5 +164,7 @@ export async function mediaRoute(env, req, ctx, m, p) {
   if (m === 'PUT' && (mm = p.match(new RegExp(`^/media/uploads/${ID}$`)))) return putUpload(env, req, ctx, mm[1]);
   if (m === 'POST' && (mm = p.match(new RegExp(`^/media/${ID}/complete$`)))) return complete(env, req, ctx, mm[1]);
   if (m === 'GET' && (mm = p.match(new RegExp(`^/media/${ID}$`)))) return getMedia(env, ctx, mm[1]);
+  const c = await contentRoute(env, req, ctx, m, p, ID);
+  if (c) return c;
   return null;
 }

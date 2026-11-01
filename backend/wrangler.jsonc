@@ -18,5 +18,6 @@
     "SESSION_TTL_HOURS": "720",
     "EXPOSE_VERIFY_TOKEN": "false"
   }
-  // Secret (set via `wrangler secret put`, never committed): STRIPE_WEBHOOK_SECRET
+  // Secrets (set via `wrangler secret put`, never committed): STRIPE_WEBHOOK_SECRET, VAULT_SIGNING_KEY (>=32 chars)
+  // Optional var: VAULT_ACCESS_URL_TTL_SEC (default 300)
 }
