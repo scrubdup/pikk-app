@@ -155,3 +155,11 @@ html body .top#topBar a.header-explore-search:focus svg *,
 html body .top#topBar a.header-explore-search:focus-visible svg *,
 html body .top#topBar a.header-explore-search:active svg * { stroke: var(--pikk-red); color: var(--pikk-red); }
 html body .top#topBar a.header-explore-search svg [fill]:not([fill="none"]) { fill: var(--pikk-red); }
+/* t339u: bell, Messages and ☰ menu match search: red glyph inside the existing blue box (badges untouched) */
+html body .top#topBar :is(a.header-notifications, a.header-msg, button.icon-btn) svg,
+html body .top#topBar :is(a.header-notifications, a.header-msg, button.icon-btn) svg *,
+html body .top#topBar :is(a.header-notifications, a.header-msg, button.icon-btn):hover svg *,
+html body .top#topBar :is(a.header-notifications, a.header-msg, button.icon-btn):focus svg *,
+html body .top#topBar :is(a.header-notifications, a.header-msg, button.icon-btn):focus-visible svg *,
+html body .top#topBar :is(a.header-notifications, a.header-msg, button.icon-btn):active svg * { stroke: var(--pikk-red); color: var(--pikk-red); }
+html body .top#topBar :is(a.header-notifications, a.header-msg, button.icon-btn) svg [fill]:not([fill="none"]) { fill: var(--pikk-red); }
