@@ -45,6 +45,28 @@ try {
     await page.waitForTimeout(100);
     await page.screenshot({ path: 'visual-review/pikk-live-' + device + '-directory.png' });
 
+    // Roast Arena is a distinct Coming Soon preview, not a channel search result.
+    const roastCard = page.locator('#pikk-live-group-general .pikk-live-room-card')
+      .filter({ hasText: 'Comedy & Roast Battles' });
+    assert.equal(await roastCard.getAttribute('href'), '#/roast-arena', device + ' roast preview route');
+    assert.equal(await roastCard.getAttribute('aria-label'),
+      'Comedy & Roast Battles: preview Roast Arena (coming soon)', device + ' honest accessible destination');
+    assert.ok((await roastCard.locator('.pikk-live-room-action').textContent()).includes('Preview Roast Arena'),
+      device + ' preview action visible');
+    await roastCard.click();
+    await page.locator('h2').filter({ hasText: 'PIKK Roast Arena' }).waitFor({ state: 'visible' });
+    assert.ok(page.url().endsWith('#/roast-arena'), device + ' roast preview route loads');
+    assert.equal(await page.getByText('Comedy & Roast Battles · Coming Soon').isVisible(), true,
+      device + ' roast arena labels its unavailable live service');
+    assert.equal(await page.locator('.logo-img').isVisible(), true, 'logo retained on Roast Arena');
+    assert.equal(await page.locator('#dbs-sticky-player').isVisible(), true, 'player retained on Roast Arena');
+    assert.equal(await page.locator('#tabbar a').count(), 7, 'seven tabs retained on Roast Arena');
+    assert.ok((await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 3,
+      device + ' roast preview has no horizontal overflow');
+    await page.screenshot({ path: 'visual-review/pikk-live-' + device + '-roast-preview.png' });
+    await page.goto('http://127.0.0.1:5173/#/live?tab=categories', { waitUntil: 'domcontentloaded' });
+    await page.locator('#liveRoomSearch').waitFor({ state: 'visible' });
+
     const search = page.getByRole('searchbox', { name: 'Find a Live topic' });
     assert.equal(await search.isVisible(), true, device + ' accessible topic search');
     await search.fill('Couples Corner');

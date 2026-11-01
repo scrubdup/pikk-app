@@ -52,7 +52,15 @@ test('directory renders accessible collapsible groups with real channel filters'
   assert.match(html, /10 topics/);
   assert.match(html, /category=Why%20Are%20You%20Single%3F/);
   assert.match(html, /category=Single%20%26%20Ready%20to%20Mingle/);
-  assert.match(html, /href="#\/roast-arena"/);
+  assert.ok(html.includes('href="#/roast-arena"'), 'roast preview route is preserved');
+  assert.ok(html.includes('aria-label="Comedy &amp; Roast Battles: preview Roast Arena (coming soon)"'),
+    'roast link announces preview instead of a live channel');
+  assert.ok(html.includes('<span class="pikk-live-room-action">Preview Roast Arena '),
+    'roast CTA matches its preview destination');
+  assert.equal((html.match(/<span class="pikk-live-room-action">Browse channels /g) || []).length, 77,
+    'the other 77 topics continue browsing channel filters');
+  assert.ok(html.includes('aria-label="Gaming: browse channels"'),
+    'regular topics retain their existing accessible channel action');
   assert.doesNotMatch(html, /data-fake-viewers|1000 watching/);
 });
 
