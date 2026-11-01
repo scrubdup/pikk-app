@@ -6,6 +6,7 @@ import { resolveMediaSrc } from '../media-db.js';
 import { PIKK_GAMES, arcadeArtSrc } from '../games/arcade-catalog.js';
 import { renderStoriesAndPromotions } from '../featured-promos.js';
 import { placementTag } from '../promote-data.js';
+import { renderHomeShowcase } from '../home-showcase.js';
 
 const SECTION_ICONS = {
   Explore: '🧭',
@@ -635,6 +636,7 @@ export function renderHome() {
   const body = `
     ${appGoalCard}
     ${visualFeed}
+    ${renderHomeShowcase()}
     <section class="pikk-home-discover" aria-label="PIKK quick discovery">
       <div class="pikk-home-discover-heading">
         <div><p class="kicker">Your world on PIKK</p><h2>Discover what’s happening</h2></div>
