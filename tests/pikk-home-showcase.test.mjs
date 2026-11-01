@@ -8,7 +8,7 @@ const routeExists = (h) => { const p = '/' + h.replace(/^#\/?/, '').split(/[?#]/
 test('showcase sections render in owner order', () => {
   const order = [...html.matchAll(/data-hs="([\w-]+)"/g)].map((m) => m[1]);
   assert.deepEqual(order, SHOWCASE_ORDER);
-  const core = order.filter((k) => !['live', 'battles'].includes(k));
+  const core = order.filter((k) => !['live', 'battles', 'contest'].includes(k));
   assert.deepEqual(core, ['music', 'posts', 'videos', 'connect', 'dating', 'games', 'shop']);
 });
 test('every See all and every card link resolves to a real route', () => {

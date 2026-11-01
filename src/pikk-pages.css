@@ -72,3 +72,12 @@ html body #dbs-sticky-player .sp-plays{position:absolute;bottom:-6px;right:0;fon
 .pikk-hs-card.is-teaser{width:min(320px,86vw)}
 .pikk-hs-note{font-size:11px;color:#8a919c;margin:4px 0 0}
 .pikk-home-showcase,.pikk-hs,.pikk-hs-row{min-width:0;max-width:100%}.pikk-home-showcase{grid-template-columns:minmax(0,1fr)}
+/* t356u Twerk Contest — text only, red+blue via chrome */
+.pikk-hs-contest{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:16px;border-radius:16px;background:#000;border:1px solid transparent;background:linear-gradient(#0a0a0c,#0a0a0c) padding-box,linear-gradient(100deg,var(--pikk-red),#c0c6cf,var(--pikk-blue)) border-box;min-width:260px}
+.pikk-contest-title{font-size:20px;font-weight:900;color:#f4f2ee}
+.pikk-badge-18{font-size:11px;font-weight:800;padding:2px 7px;border-radius:999px;color:#fff;background:var(--pikk-red);box-shadow:0 0 0 1.5px var(--pikk-blue)}
+.pikk-contest-enter{margin-left:auto;padding:9px 18px;border-radius:999px;font-weight:800;color:#fff;text-decoration:none;cursor:pointer;background:linear-gradient(#0a0a0c,#0a0a0c) padding-box,linear-gradient(100deg,var(--pikk-red),#c0c6cf,var(--pikk-blue)) border-box;border:2px solid transparent;box-shadow:inset 0 0 10px rgba(230,20,30,.35),0 0 10px rgba(61,121,255,.35)}
+.pikk-contest{max-width:640px;margin:18px auto;padding:20px;border-radius:18px;border:1px solid transparent;background:linear-gradient(#0a0a0c,#0a0a0c) padding-box,linear-gradient(100deg,var(--pikk-red),#c0c6cf,var(--pikk-blue)) border-box}
+.pikk-contest-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.pikk-contest-actions .pikk-contest-enter{margin-left:0}
+.pikk-contest-leave{color:#c0c6cf}.pikk-contest ul{padding-left:18px;line-height:1.6}.pikk-contest a{color:var(--pikk-blue)}
+.pikk-contest-soon{padding:10px 12px;border-radius:12px;border:1px dashed var(--pikk-blue);color:#f4f2ee}
