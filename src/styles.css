@@ -316,9 +316,9 @@ a.header-profile.pill .header-profile-label {
 .side .drawer-link:last-child { margin-bottom: 0; }
 .side .drawer-link.on {
   color: #fff;
-  background: rgba(255,43,43,.16);
-  border-color: rgba(255,43,43,.3);
-  box-shadow: inset 2px 0 0 var(--acc);
+  background: var(--pikk-chip-selected-bg);
+  border-color: rgba(47,107,255,.9);
+  box-shadow: var(--pikk-chip-selected-edge);
 }
 .side .drawer-link:hover,
 .side .drawer-cat:hover,

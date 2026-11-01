@@ -71,3 +71,26 @@ test('t395: filter/segment chips never use btn primary/ghost as the selected sta
   }
   assert.deepEqual(bad, []);
 });
+test('t397u polish: Dating current-section link, drawer current item and Communities links', () => {
+  const dating = readFileSync(new URL('pages/dating.js', dir), 'utf8');
+  assert.match(dating, /<a class="chip pikk-chip on" href="#\/dating" aria-current="page">/);
+  assert.ok(!/class="btn primary"[^>]*aria-current/.test(dating));
+  const chips = readFileSync(new URL('pikk-chips.css', dir), 'utf8');
+  assert.match(chips, /\.side \.drawer-link:is\(\.on[^{]*\{[^}]*background: var\(--pikk-chip-selected-bg\) !important/);
+  const styles = strip(readFileSync(new URL('styles.css', dir), 'utf8'));
+  const drawerOn = styles.match(/\.side \.drawer-link\.on \{([^}]*)\}/)[1];
+  assert.match(drawerOn, /var\(--pikk-chip-selected-bg\)/);
+  // Communities: label "Communities" always → #/communities (the #/community route is PIKK Lounge); both routes registered
+  const main = readFileSync(new URL('main.js', dir), 'utf8');
+  assert.ok(main.includes("'/communities': {") && main.includes("'/community': {"));
+  const html = readFileSync(new URL('../index.html', dir), 'utf8');
+  const srcs = [html, ...readdirSync(dir).filter((f) => f.endsWith('.js')).map((f) => readFileSync(new URL(f, dir), 'utf8')),
+    ...readdirSync(new URL('pages/', dir)).filter((f) => f.endsWith('.js')).map((f) => readFileSync(new URL('pages/' + f, dir), 'utf8'))];
+  const bad = [];
+  for (const s of srcs) {
+    for (const m of s.matchAll(/href="#\/community"[^>]*>\s*Communities\s*</g)) bad.push(m[0]);
+    for (const m of s.matchAll(/title: 'Communities', href: '#\/community'/g)) bad.push(m[0]);
+  }
+  assert.deepEqual(bad, []);
+  assert.match(html, /<a href="#\/communities">Communities<\/a>/);
+});

@@ -41,7 +41,7 @@ export function renderDating() {
       <h3>Choose your experience</h3>
       <p class="muted">Dating is for romantic mutual matches. Random Chat is for spontaneous conversations and friendships. These are separate opt-in experiences.</p>
       <div class="row wrap" style="gap:8px">
-        <a class="btn primary" href="#/dating" aria-current="page">Dating · current section</a>
+        <a class="chip pikk-chip on" href="#/dating" aria-current="page">Dating · current section</a>
         <a class="btn ghost" href="#/connect#connect-random-chat">Random Chat · 18+ TEST MODE</a>
       </div>
       <p class="muted small">Random Chat never automatically creates a dating match. No camera is started when you open either page.</p>

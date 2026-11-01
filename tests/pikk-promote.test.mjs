@@ -22,7 +22,7 @@ test('every Promote drawer entry resolves to an existing #/promote section', () 
 });
 test('Home top chip row ends with Promote → #/promote; route registered', () => {
   const idx = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(idx, /<a href="#\/community">Communities<\/a>\s*<a class="pikk-explore-promote" href="#\/promote">Promote<\/a>\s*<\/nav>/);
+  assert.match(idx, /<a href="#\/communities">Communities<\/a>\s*<a class="pikk-explore-promote" href="#\/promote">Promote<\/a>\s*<\/nav>/);
   assert.match(readFileSync(new URL('../src/pages/home.js', import.meta.url), 'utf8'), /<a href="#\/dating">Dating<\/a>\s*<a class="pikk-home-promote" href="#\/promote">Promote<\/a>\s*<\/nav>/);
   assert.match(readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), /'\/promote': \{ render: renderPromote, bind: bindPromote \}/);
 });
