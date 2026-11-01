@@ -19,7 +19,46 @@ async function safe(fn, source, freshness) {
   try { return await fn(); } catch { return panel('down', source, freshness, { reason: 'query failed' }); }
 }
 
-export async function opsSummary(env) {
+const VAULT_SOURCE = 'GET /vault/health (in-process, PIKK Vault)';
+const VAULT_FRESHNESS_SEC = 300;
+const VAULT_STATES = ['pending_upload', 'uploaded', 'ready', 'rejected', 'failed', 'deleted'];
+const vaultUnavailable = (why) => panel('unknown', VAULT_SOURCE, VAULT_FRESHNESS_SEC, { reason: `Vault health isn't available (${why}).` }, null);
+
+/** Maps a /vault/health JSON body to a panel. Passes through counts only; last_error keeps only
+ *  state + at (media_id and message text are dropped as possible PII). */
+export function mapVaultHealth(h, now = Date.now()) {
+  if (!h || typeof h !== 'object' || !['ok', 'degraded'].includes(h.status)) return vaultUnavailable('unrecognized response');
+  const counts = {};
+  for (const k of VAULT_STATES) counts[k] = Number.isFinite(Number(h.counts_by_state?.[k])) ? Number(h.counts_by_state[k]) : 0;
+  const le = h.last_error && typeof h.last_error === 'object'
+    ? { state: VAULT_STATES.includes(h.last_error.state) ? h.last_error.state : 'unknown', at: typeof h.last_error.at === 'string' ? h.last_error.at : null }
+    : null;
+  const checkedAt = typeof h.checked_at === 'string' && !Number.isNaN(Date.parse(h.checked_at)) ? h.checked_at : null;
+  let status = h.status === 'ok' ? 'healthy' : 'degraded';
+  if (h.storage?.reachable === false) status = 'down';
+  if (!checkedAt || (now - Date.parse(checkedAt)) / 1000 > VAULT_FRESHNESS_SEC) status = 'stale';
+  return panel(status, VAULT_SOURCE, VAULT_FRESHNESS_SEC, {
+    version: typeof h.version === 'string' ? h.version : null,
+    storageReachable: h.storage?.reachable === true,
+    countsByState: counts,
+    lastError: le,
+  }, checkedAt);
+}
+
+/** vaultHealth: optional async () => Response, an in-process call into PIKK Vault's handler
+ *  (never an external fetch with credentials). Absent, 404, non-2xx or throw => unknown. */
+export async function vaultPanel(vaultHealth, now = Date.now()) {
+  if (typeof vaultHealth !== 'function') return vaultUnavailable('/vault/health route/module not present in this build');
+  try {
+    const res = await vaultHealth();
+    if (!res) return vaultUnavailable('route not found');
+    if (res.status === 404) return vaultUnavailable('404 from /vault/health');
+    if (!res.ok) return vaultUnavailable(`HTTP ${res.status} from /vault/health`);
+    return mapVaultHealth(await res.json(), now);
+  } catch { return vaultUnavailable('/vault/health threw'); }
+}
+
+export async function opsSummary(env, { vaultHealth } = {}) {
   const panels = {};
   panels.api = panel('healthy', 'pikk-api (self: this request was served)', 60, { version: VERSION });
 
@@ -53,7 +92,7 @@ export async function opsSummary(env) {
   }, 'D1 audit_log (read-only)', 300);
 
   panels.ledger = panel('demo', 'stub', null, { reason: 'Stripe is stubbed (webhook returns 503 without a secret); no real revenue is reported.' });
-  panels.vault = unknown('GET /vault/health (planned by PIKK Vault)', 'Vault media worker and /vault/health do not exist yet.');
+  panels.vault = await vaultPanel(vaultHealth);
   panels.live = unknown('none', 'No server-side live/stream source yet.');
   panels.broadcast = unknown('none', 'Restream/broadcast is a client prototype; no server source.');
   panels.costs = unknown('none', 'No billing/usage source connected.');

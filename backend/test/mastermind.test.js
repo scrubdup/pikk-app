@@ -39,7 +39,7 @@ describe('PIKK Master Mind: GET /admin/ops/summary', () => {
     for (const n of ['vault', 'live', 'broadcast', 'costs', 'backups']) {
       expect(panels[n].status).toBe('unknown'); expect(panels[n].checkedAt).toBeNull();
     }
-    expect(panels.vault.detail.reason).toMatch(/vault\/health/);
+    expect(panels.vault.detail.reason).toMatch(/Vault health isn't available/);
   });
 
   it('admin, moderator, support_agent, dmca, user get 403; anonymous gets 401', async () => {
