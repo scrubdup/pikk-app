@@ -46,6 +46,7 @@ import { renderUpdates, bindUpdates } from './pages/updates.js';
 import { renderAdmin, bindAdmin } from './pages/admin.js';
 import { renderPosts, bindPosts } from './pages/posts.js';
 import { renderPromote, bindPromote } from './pages/promote.js';
+import { decoratePlayCounts, recordPlay } from './play-counter.js';
 import { renderMusic, bindMusic } from './pages/music.js';
 import { renderAIArtists, bindAIArtists } from './pages/ai-artists.js';
 import { renderShield, bindShield } from './pages/shield.js';
@@ -387,6 +388,7 @@ function render(route) {
   app.innerHTML = html;
   rewriteAssetUrls(app);
   entry?.bind?.(app);
+  decoratePlayCounts(app);
   updateChrome(route);
   updateRouteIdentity(route, app, document.getElementById('pikkRouteAnnouncer'));
   onRouteForPlayer(route.path);
@@ -558,3 +560,9 @@ new MutationObserver(() => {
     if (!el.hasAttribute('tabindex')) { el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button'); }
   });
 }).observe(document.body, { childList: true, subtree: true });
+
+// t347u: a story-rail open counts as one story view (same shared counter; impressions never count).
+document.addEventListener('click', (e) => {
+  const c = e.target.closest?.('.pikk-home-circle-strip .pikk-home-circle');
+  if (c) recordPlay('story:' + (c.getAttribute('href') || c.textContent.trim()), { kind: 'story', opened: true, source: c.closest('[data-promoted]') ? 'promote' : 'organic' });
+});

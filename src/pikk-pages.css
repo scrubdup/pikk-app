@@ -29,3 +29,4 @@
 /* t346u: story rail is swipeable through promoted stories */
 .pikk-home-circle-strip{overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
 .pikk-home-circle-strip>.pikk-home-circle{scroll-snap-align:start;flex:0 0 auto}
+.sticky-player .sp-plays{display:block;font-size:10px;color:#c0c6cf}.pikk-play-count{display:block;font-size:10px;font-weight:700;color:#c0c6cf;margin-top:2px}

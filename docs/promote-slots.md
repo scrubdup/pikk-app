@@ -48,4 +48,9 @@ Single source: `src/promote-pricing.js` (`SLOT_CAPS`, `PROMOTE_SECTIONS`). Keep 
 - Reject over-cap bookings before payment capture; never charge for a sold-out window.
 - Refund automatically if a race is lost after authorization.
 - Dating profile boost: 18+ only, requires age & ID verification and safety review; not slot-capped yet.
+- **Server-side play/view counting (t347u):** real plays from Promote placements (Music Player, story rail,
+  video/clip boosts) increment the item's normal play/view counter — the same counter as organic plays.
+  Count only actual plays (≥ 3 s of audio/video playback; a story open), never impressions; dedupe rapid
+  repeats per viewer+item (client uses 30 s); record `source = promote | organic` for reporting. Client
+  reference: `src/play-counter.js` (local TEST MODE counter).
 - Log every booking, rotation change and refund to the append-only ledger.
