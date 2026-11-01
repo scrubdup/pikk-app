@@ -322,7 +322,7 @@ export function renderExplore() {
         <button class="btn primary" type="button" id="exploreGo">Search</button>
         <button class="btn ghost" type="button" id="exploreClear">Clear</button>
       </div>
-      <p class="muted" style="margin:10px 0 0;font-size:12px">City/state filters search only explicitly opted-in public location tags. Demo data may have none. No GPS, precise addresses, real-time presence or backend.</p>
+      <p class="muted" style="margin:10px 0 0;font-size:12px">City/state filters search only explicitly opted-in public location tags. Your own profile needs both location and Explore discoverability enabled. Demo data may have none. No GPS, precise addresses, real-time presence or backend.</p>
     </div>
     <div class="shop-chips" style="margin:0 0 12px" role="tablist" aria-label="Explore sections">${tabBtns}</div>
     <div id="explorePanel" role="tabpanel" aria-labelledby="explore-tab-${tab}">${panel}</div>
