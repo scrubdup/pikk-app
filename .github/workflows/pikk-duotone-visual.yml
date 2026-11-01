@@ -36,3 +36,7 @@ jobs:
           exit 1
       - name: Every control on each tab combines red and blue
         run: node scripts/visual-review-duotone.mjs
+      - name: Home goal bar under player, story rail visible at 390x844
+        run: node scripts/visual-review-home-goal.mjs
+      - name: Header logo exactly centered at 390/485/768/1440
+        run: node scripts/visual-review-logo-center.mjs

@@ -48,6 +48,7 @@ import { toast } from './ui.js';
 const YT_API_SRC = 'https://www.youtube.com/iframe_api';
 
 /** @type {QueueItem[]} */
+import { recordPlay, playCount, playCountLabel, decoratePlayCounts } from './play-counter.js';
 let queue = [];
 let index = 0;
 /** @type {YT.Player | null} */
@@ -59,6 +60,8 @@ let playingDesired = false;
 /** @type {Set<string>} */
 const interrupts = new Set();
 let uiBound = false;
+let stickyPlayTimer = null;
+const pageViewTimers = new Map();
 
 function ytIdFromUrl(url) {
   if (!url) return '';
@@ -485,6 +488,14 @@ function ensureYtPlayer() {
         syncUi();
       },
       onStateChange: (e) => {
+        // t347u: count a real play after ≥3 s of continuous playback (shared organic/promote counter)
+        clearTimeout(stickyPlayTimer);
+        if (e.data === 1) {
+          const t = queue[index];
+          stickyPlayTimer = setTimeout(() => {
+            if (queue[index] === t && isYtPlaying()) { recordPlay(t?.youtubeId || t?.title, { kind: 'audio', seconds: 3, source: t?.promoted ? 'promote' : 'organic' }); syncUi(); }
+          }, 3000);
+        }
         // 0 = ended → advance
         if (e.data === 0) {
           nextTrack({ auto: true });
@@ -565,6 +576,8 @@ function syncUi() {
     art.alt = track.title || '';
   }
   if (title) title.textContent = track?.title || 'PIKK Music';
+  const playsEl = document.getElementById('spPlays');
+  if (playsEl) { const n = track ? playCount(track.youtubeId || track.title) : 0; playsEl.textContent = n ? playCountLabel(n, 'audio') : ''; }
   if (sub) {
     if (!userArmed) sub.textContent = 'Tap Play · YouTube embed · Stream Everywhere';
     else if (interrupted) sub.textContent = `Paused · ${[...interrupts][0]} interrupt`;
@@ -931,6 +944,13 @@ function onPagePlayerStateChange(hostId, e) {
   const entry = pageYtById.get(hostId);
   if (!entry) return;
   // YT.PlayerState: ENDED=0 PLAYING=1 PAUSED=2 BUFFERING=3 CUED=5
+  clearTimeout(pageViewTimers.get(hostId));
+  if (e.data === 1) {
+    const vid = e.target?.getVideoData?.()?.video_id;
+    if (vid) pageViewTimers.set(hostId, setTimeout(() => {
+      if (pageYtById.get(hostId)?.playing) { recordPlay(vid, { kind: 'video', seconds: 3, source: document.querySelector(`#${CSS.escape(hostId)}`)?.closest('[data-promoted]') ? 'promote' : 'organic' }); decoratePlayCounts(document); }
+    }, 3000));
+  }
   if (e.data === 1) {
     if (!entry.playing) {
       entry.playing = true;

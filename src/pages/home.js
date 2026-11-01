@@ -5,6 +5,7 @@ import { esc, shellPage, ytEmbedSrc, toast } from '../ui.js';
 import { resolveMediaSrc } from '../media-db.js';
 import { PIKK_GAMES, arcadeArtSrc } from '../games/arcade-catalog.js';
 import { renderStoriesAndPromotions } from '../featured-promos.js';
+import { placementTag } from '../promote-data.js';
 
 const SECTION_ICONS = {
   Explore: '🧭',
@@ -259,7 +260,16 @@ function goalTimeLeft(endsAt) {
   const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
   return ms <= 0 ? 'Ended' : `${h}h ${m}m left`;
 }
-function appGoalInner(g) {
+export function slimGoalBar(g) {
+  const pct = g ? Math.min(100, Math.round((g.raised / (g.targetAmount || 1)) * 100)) : 0;
+  return `<a class="home-goal-slim" id="home-app-goal" href="#/donate" aria-label="PIKK daily goal ${pct}% funded. Open Donate">
+    <span class="home-goal-slim-label"><strong>PIKK goal</strong><small>${g ? `${fmtUsd(g.raised)} of ${fmtUsd(g.targetAmount)} · TEST MODE` : 'No goal today'}</small></span>
+    <span class="home-goal-slim-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></span>
+    <span class="btn primary home-goal-slim-btn">Donate</span>
+  </a>`;
+}
+
+export function appGoalInner(g) {
   if (!g) return '<p class="muted" style="margin:0">No daily app goal right now.</p>';
   const pct = Math.min(100, Math.round((g.raised / (g.targetAmount || 1)) * 100));
   return `
@@ -559,12 +569,8 @@ export function renderHome() {
       <p class="chip" style="margin-top:10px">TEST MODE · no payment processing</p>
     </div>`;
 
-  const appGoalCard = `
-    <div class="card home-sell-promo home-app-goal" id="home-app-goal">
-      <p class="kicker">Daily app goal · 24h</p>
-      <div id="homeAppGoalBody">${appGoalInner(getAppDailyGoal())}</div>
-      <p class="chip" style="margin-top:10px">TEST MODE · no real payments</p>
-    </div>`;
+  // t351u: slim goal bar directly under the player on Home; full view lives at #/donate.
+  const appGoalCard = slimGoalBar(getAppDailyGoal());
 
   // Editorial content uses only existing verified artist videos and cover artwork.
   // No invented creators, view counts, live audiences or substitute model photos.
@@ -591,6 +597,7 @@ export function renderHome() {
   const realCoverCircles = STORY_RAIL.map((c, i) => `
     <a class="pikk-home-circle" href="${c.href}" aria-label="Open ${esc(c.label)}">
       <span class="pikk-home-circle-ring">${storyArt[i] ? `<img src="${esc(storyArt[i])}" alt="" loading="lazy" decoding="async"/>` : '<span aria-hidden="true">●</span>'}</span>
+      <small class="pikk-rail-tag">${esc(placementTag(c))}</small>
       <span>${esc(c.label)}</span>
     </a>`).join('');
   const visualFeed = `
@@ -614,6 +621,7 @@ export function renderHome() {
         <a href="#/live">Live</a>
         <a href="#/shop">Shop</a>
         <a href="#/dating">Dating</a>
+        <a class="pikk-home-promote" href="#/promote">Promote</a>
       </nav>
       <div class="pikk-home-media-grid" aria-label="Official DatBoiSkeet video selections">
         ${mediaFeatureItems}
@@ -625,6 +633,7 @@ export function renderHome() {
     </section>`;
 
   const body = `
+    ${appGoalCard}
     ${visualFeed}
     <section class="pikk-home-discover" aria-label="PIKK quick discovery">
       <div class="pikk-home-discover-heading">
@@ -673,8 +682,6 @@ export function renderHome() {
       <p class="muted" style="font-size:11px;margin:8px 0 0">Concept previews · Games are not playable yet</p>
     </section>
 
-
-    ${appGoalCard}
 
     ${sellPromo}
 
@@ -750,31 +757,7 @@ export function bindHome(root) {
     teardown.observe(document.body, { childList: true, subtree: true });
   }
 
-  /* t255u app goal: donate chips + countdown refresh */
-  const goalBox = root.querySelector('#homeAppGoalBody');
-  if (goalBox) {
-    const redraw = () => { if (document.body.contains(goalBox)) goalBox.innerHTML = appGoalInner(getAppDailyGoal()); else { clearInterval(goalTimer); document.removeEventListener('visibilitychange', goalVis); } };
-    const goalVis = () => { if (document.visibilityState === 'visible') redraw(); };
-    const goalTimer = setInterval(redraw, 30000);
-    document.addEventListener('visibilitychange', goalVis);
-    goalBox.addEventListener('submit', (e) => {
-      if (!e.target.matches('.home-goal-custom-form')) return;
-      e.preventDefault();
-      const amount = Number(e.target.querySelector('.home-goal-custom-coins')?.value);
-      if (!Number.isSafeInteger(amount) || amount < 1 || amount > 1000000) return toast('Enter 1–1,000,000 whole coins');
-      const goalId = getAppDailyGoal()?.id;
-      const result = donateToGoal(goalId, amount);
-      toast(result?.ok ? 'Custom donation sent · TEST MODE' : result?.error === 'insufficient' ? 'Not enough demo coins' : result?.error === 'signin' ? 'Sign in first' : 'Donation unavailable · TEST MODE');
-      redraw();
-    });
-    goalBox.addEventListener('click', (e) => {
-      const b = e.target.closest('.home-goal-donate');
-      if (!b) return;
-      const r = donateToGoal(b.dataset.goalId, Number(b.dataset.coins));
-      toast(r && r.ok ? `TEST MODE · ${b.dataset.coins} coins donated (no real payment)` : 'TEST MODE · donate unavailable');
-      redraw();
-    });
-  }
+  bindAppGoal(root);
 
   /* t227u reject fix: hard-clear any LIVE chrome that landed in the Home page-head */
   const pageHead = root.querySelector('.page-head');
@@ -982,4 +965,34 @@ export function bindHome(root) {
     }
   });
   obs.observe(document.body, { childList: true, subtree: true });
+}
+
+/** Full donate goal view binding (Home legacy + #/donate). */
+export function bindAppGoal(root) {
+  /* t255u app goal: donate chips + countdown refresh */
+  const goalBox = root.querySelector('#homeAppGoalBody');
+  if (goalBox) {
+    const redraw = () => { if (document.body.contains(goalBox)) goalBox.innerHTML = appGoalInner(getAppDailyGoal()); else { clearInterval(goalTimer); document.removeEventListener('visibilitychange', goalVis); } };
+    const goalVis = () => { if (document.visibilityState === 'visible') redraw(); };
+    const goalTimer = setInterval(redraw, 30000);
+    document.addEventListener('visibilitychange', goalVis);
+    goalBox.addEventListener('submit', (e) => {
+      if (!e.target.matches('.home-goal-custom-form')) return;
+      e.preventDefault();
+      const amount = Number(e.target.querySelector('.home-goal-custom-coins')?.value);
+      if (!Number.isSafeInteger(amount) || amount < 1 || amount > 1000000) return toast('Enter 1–1,000,000 whole coins');
+      const goalId = getAppDailyGoal()?.id;
+      const result = donateToGoal(goalId, amount);
+      toast(result?.ok ? 'Custom donation sent · TEST MODE' : result?.error === 'insufficient' ? 'Not enough demo coins' : result?.error === 'signin' ? 'Sign in first' : 'Donation unavailable · TEST MODE');
+      redraw();
+    });
+    goalBox.addEventListener('click', (e) => {
+      const b = e.target.closest('.home-goal-donate');
+      if (!b) return;
+      const r = donateToGoal(b.dataset.goalId, Number(b.dataset.coins));
+      toast(r && r.ok ? `TEST MODE · ${b.dataset.coins} coins donated (no real payment)` : 'TEST MODE · donate unavailable');
+      redraw();
+    });
+  }
+
 }
