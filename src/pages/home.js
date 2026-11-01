@@ -7,6 +7,7 @@ import { PIKK_GAMES, arcadeArtSrc } from '../games/arcade-catalog.js';
 import { renderStoriesAndPromotions } from '../featured-promos.js';
 import { placementTag } from '../promote-data.js';
 import { renderHomeShowcase } from '../home-showcase.js';
+import { bindHomeMatchUp } from '../home-matchup.js';
 import { renderHomeMediaSlideshow, renderHomeCommunityHub, HOME_HUB_ORDER } from '../home-hub.js';
 export { HOME_HUB_ORDER };
 
@@ -657,8 +658,6 @@ export function renderHome() {
 
     ${stageBlock}
 
-    ${renderHomeMediaSlideshow()}
-
     ${sellPromo}
 
     <section class="home-arcade card" id="homeArcade" aria-label="PIKK Games featured slideshow">
@@ -717,7 +716,7 @@ export function renderHome() {
 
   /* t227u / reject fix: never pass badge / badgeHtml / badgeHref — HOME title stays clean */
   return shellPage('Home', body, {
-    lead: 'Featured stage · Posts, Shorts & Videos · creator sell DEMO · PIKK Arcade · Party Line · message board · live chat · community servers · live activity.',
+    lead: 'Featured stage · PIKK Match Up (TEST MODE) · creator sell DEMO · PIKK Arcade · Party Line · message board · live chat · community servers · live activity.',
   });
 }
 
@@ -755,6 +754,7 @@ export function bindHome(root) {
   }
 
   bindAppGoal(root);
+  bindHomeMatchUp(root);
 
   /* t227u reject fix: hard-clear any LIVE chrome that landed in the Home page-head */
   const pageHead = root.querySelector('.page-head');

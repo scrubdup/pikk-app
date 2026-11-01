@@ -10,9 +10,9 @@ test('t372u removals: Stories card, Mix, MV list, separate Block Wars card', () 
   for (const x of ["renderStoriesAndPromotions('home')", '${mixHome}', 'Official DatBoiSkeet MVs', '${bwPreview}']) assert.ok(!body.includes(x), x);
   assert.equal((body.match(/id="homeArcade"/g) || []).length, 1, 'one Games carousel');
 });
-test('t372u order: slideshow → sell promo higher → arcade → hub (Party Line, board, live chat, servers) → live activity last', () => {
+test('t372u order: stage → sell promo higher → arcade → hub (Party Line, board, live chat, servers) → live activity last', () => {
   const at = (k) => { const i = body.indexOf(k); assert.ok(i >= 0, k); return i; };
-  const seq = ['${stageBlock}', '${renderHomeMediaSlideshow()}', '${sellPromo}', 'id="homeArcade"', '${renderHomeCommunityHub()}', 'id="home-live-activity"'];
+  const seq = ['${stageBlock}', '${sellPromo}', 'id="homeArcade"', '${renderHomeCommunityHub()}', 'id="home-live-activity"'];
   for (let i = 1; i < seq.length; i++) assert.ok(at(seq[i - 1]) < at(seq[i]), seq[i]);
   assert.deepEqual(HOME_HUB_ORDER, ['partyline', 'board', 'livechat', 'servers']);
   const hub = renderHomeCommunityHub();
