@@ -137,7 +137,10 @@ export function mountLiveDirectorySearch(root) {
     for (const group of groups) {
       let groupMatches = 0;
       group.querySelectorAll('.pikk-live-room-card').forEach(card => {
-        const matches = matchesLiveRoomSearch(card.textContent, query);
+        // Search the topic name and description, not the shared “Browse channels” CTA.
+        const title = card.querySelector('strong')?.textContent || '';
+        const description = card.querySelector('p')?.textContent || '';
+        const matches = matchesLiveRoomSearch(title + ' ' + description, query);
         card.style.display = matches ? '' : 'none';
         if (matches) groupMatches++;
       });
