@@ -91,4 +91,5 @@ test('Explore exposes city/state inputs, clears them, and preserves them across 
   assert.match(source, /nextCity.value = city/);
   assert.match(source, /nextState.value = region/);
   assert.match(source, /No GPS, precise addresses, real-time presence or backend/);
+  assert.match(source, /Your own profile needs both location and Explore discoverability enabled/);
 });
