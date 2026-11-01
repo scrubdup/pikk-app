@@ -9,6 +9,7 @@ import { balance, transfer } from './ledger.js';
 import { stripeWebhook } from './webhook.js';
 import { newId } from './crypto.js';
 import { audit, auditStmt } from './audit.js';
+import { mediaRoute } from './media.js';
 
 const HANDLE = /^[a-zA-Z0-9_]{3,30}$/;
 
@@ -143,6 +144,9 @@ async function route(req, env, ctx) {
     const r = await env.DB.prepare(`SELECT id, actor_id, action, target, created_at FROM audit_log ORDER BY created_at DESC LIMIT 100`).all();
     return json(200, { entries: r.results });
   }
+
+  const media = await mediaRoute(env, req, ctx, m, p);
+  if (media) return media;
 
   const safety = await safetyRoute(env, req, ctx, m, p);
   if (safety) return safety;
