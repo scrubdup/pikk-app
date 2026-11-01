@@ -147,3 +147,14 @@ html body .top#topBar .logo { position: absolute; inset: 0; margin: auto; width:
 html body .top#topBar .logo-img { width: min(34vw, 340px); height: calc(min(34vw, 340px) * 0.2185); }
 html body .top#topBar .header-notifications { margin-left: auto; }
 html body .top#topBar { justify-content: flex-start; gap: 6px; }
+/* t333u: header search magnifier is PIKK red in every state */
+html body .top#topBar a.header-explore-search,
+html body .top#topBar a.header-explore-search:hover,
+html body .top#topBar a.header-explore-search:focus,
+html body .top#topBar a.header-explore-search:focus-visible,
+html body .top#topBar a.header-explore-search:active { color: var(--pikk-red); }
+html body .top#topBar a.header-explore-search svg,
+html body .top#topBar a.header-explore-search svg *,
+html body .top#topBar a.header-explore-search:hover svg *,
+html body .top#topBar a.header-explore-search:focus-visible svg * { stroke: var(--pikk-red); color: var(--pikk-red); }
+html body .top#topBar a.header-explore-search svg [fill]:not([fill="none"]) { fill: var(--pikk-red); }
