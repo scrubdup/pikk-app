@@ -19,7 +19,7 @@ for (const [name, width, height] of [['mobile', 390, 844], ['desktop', 1440, 900
   const count = await page.locator('.pikk-update-card').count();
   if (count !== 5) throw new Error(name + ': expected 5 published release cards, got ' + count);
   if (!(await page.locator('.pikk-updates-hero-mark img').isVisible())) throw new Error(name + ': approved chrome logo artwork missing');
-  if (!(await page.locator('.pikk-update-card').first().getByText('Support: Find Answers Faster').isVisible())) throw new Error(name + ': latest Viral Live release missing');
+  if (!(await page.locator('.pikk-update-card').first().getByText('Support: Find Answers Faster').isVisible())) throw new Error(name + ': latest Support release missing');
   if (await page.locator('.pikk-update-kind').count() !== 5) throw new Error(name + ': test-mode status labels missing');
   if ((await page.locator('.pikk-update-latest').count()) !== 1) throw new Error(name + ': latest release marker missing or duplicated');
   const hrefs = await page.locator('.pikk-update-links a.btn').evaluateAll(nodes => nodes.map(a => a.getAttribute('href')));
