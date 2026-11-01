@@ -7,7 +7,7 @@ import {
 } from '../store.js';
 import { COMING_SOON, VIDEOS } from '../data.js';
 import { navigate } from '../router.js';
-import { searchOptInLocations } from '../explore-location.js';
+import { searchOptInLocations, exploreResultContext } from '../explore-location.js';
 import { esc, shellPage, toast, timeAgo } from '../ui.js';
 
 const TABS = [
@@ -50,6 +50,7 @@ function renderResults(res) {
     </div>`;
   }
 
+  const resultContext = esc(exploreResultContext(res));
   const total =
     res.posts.length +
     res.profiles.length +
@@ -61,7 +62,7 @@ function renderResults(res) {
 
   if (!total) {
     return `<div class="card" id="exploreResults">
-      <p style="margin:0 0 6px"><strong>No results for “${esc(res.query)}”${res.locationLabel ? ' in ' + esc(res.locationLabel) : ''}</strong></p>
+      <p style="margin:0 0 6px"><strong>No results ${resultContext}</strong></p>
       <p class="muted" style="margin:0">${res.locationLabel ? 'Only content explicitly opted into city/state discovery can appear here. No matching public location tags are available in this demo.' : 'Try another keyword, or browse Trending / Discover below. Report spam from a result’s destination page (demo shell).'}</p>
     </div>`;
   }
@@ -185,7 +186,7 @@ function renderResults(res) {
   ].join('');
 
   return `<div id="exploreResults">
-    <p class="muted" style="margin:0 0 10px">${total} result${total === 1 ? '' : 's'} for “${esc(res.query)}”${res.locationLabel ? ' in ' + esc(res.locationLabel) : ''}</p>
+    <p class="muted" style="margin:0 0 10px">${total} result${total === 1 ? '' : 's'} ${resultContext}</p>
     ${section('People', profiles, 'No matching creators or fans')}
     ${section('Posts', posts, 'No matching posts')}
     ${section('Music (catalog)', music, 'No published songs/albums')}

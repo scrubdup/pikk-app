@@ -1,7 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { matchesOptInLocation, searchOptInLocations } from '../src/explore-location.js';
+import { matchesOptInLocation, searchOptInLocations, exploreResultContext } from '../src/explore-location.js';
+
+test('Explore result labels distinguish location-only searches from keyword searches', () => {
+  assert.equal(exploreResultContext({ query: 'City & State', keywordQuery: '', locationLabel: 'Houston, TX' }), 'in Houston, TX');
+  assert.equal(exploreResultContext({ query: 'music', keywordQuery: 'music', locationLabel: 'Houston, TX' }), 'for “music” in Houston, TX');
+  assert.equal(exploreResultContext({ query: 'music' }), 'for “music”');
+  assert.equal(exploreResultContext({ query: 'City & State', keywordQuery: 'City & State', locationLabel: 'TX' }), 'for “City & State” in TX');
+});
 
 test('City/state matches explicit opt-in only and normalizes US state abbreviations', () => {
   const good = { city: 'Houston', state: 'Texas', locationDiscoverable: true };
@@ -32,6 +39,7 @@ test('Location-only search returns only explicitly opted-in content, never unrel
   assert.equal(result.products.length, 1);
   assert.equal(result.music.length, 0);
   assert.equal(result.locationLabel, 'Houston, Texas');
+  assert.equal(result.keywordQuery, '', 'location-only searches must not fabricate a keyword');
   assert.equal(searchOptInLocations(data, { city: 'Dallas', state: 'TX' }).profiles.length, 0);
 });
 
