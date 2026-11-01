@@ -10,13 +10,13 @@ process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = '1';
 // existing Create dialog's actual grid, outlined icons, tile and cancel CSS.
 // These are real browser interactions, not static string checks.
 const sections = [
-  ['create', 'pikkCreateMenu', 30],
-  ['music', 'pikkMusicMenu', 5],
-  ['videos', 'pikkVideosMenu', 4],
-  ['connect', 'pikkConnectMenu', 6],
-  ['dating', 'pikkDatingMenu', 4],
-  ['games', 'pikkGamesMenu', 16],
-  ['shop', 'pikkShopMenu', 4],
+  ['create', 'pikkCreateMenu', 34],
+  ['music', 'pikkMusicMenu', 10],
+  ['videos', 'pikkVideosMenu', 9],
+  ['connect', 'pikkConnectMenu', 13],
+  ['dating', 'pikkDatingMenu', 8],
+  ['games', 'pikkGamesMenu', 20],
+  ['shop', 'pikkShopMenu', 9],
 ];
 const expectedTabs = ['Music', 'Videos', 'Create', 'Connect', 'Dating', 'Shop', 'Games'];
 await mkdir('visual-review', { recursive: true });

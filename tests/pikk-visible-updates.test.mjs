@@ -9,7 +9,7 @@ const workflow = readFileSync(new URL('../.github/workflows/pages.yml', import.m
 
 test('update center is a real route and accessible from menu and footer', () => {
   assert.match(main, /'\/updates': \{ render: renderUpdates, bind: bindUpdates \}/);
-  assert.match(main, /href="#\/updates"/);
+  assert.match(readFileSync(new URL('../src/nav-sections.js', import.meta.url), 'utf8'), /href: '#\/updates'/);
   assert.match(html, /href="#\/updates"/);
 });
 test('update center lists five verified recent merged UI releases in newest-first order', () => {

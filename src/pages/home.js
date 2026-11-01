@@ -600,8 +600,9 @@ export function renderHome() {
         <a href="#/explore" class="pikk-home-visual-more">Explore ↗</a>
       </div>
       <nav class="pikk-home-circle-strip" aria-label="Browse PIKK features">
-        <a class="pikk-home-circle" href="#/posts?compose=1" aria-label="Create a post on PIKK">
-          <span class="pikk-home-circle-ring pikk-home-circle-symbol pikk-home-circle-create" aria-hidden="true">＋</span><span>Create</span>
+        <a class="pikk-home-circle pikk-home-circle-me" href="#/posts?compose=1" aria-label="Create a post on PIKK">
+          <span class="pikk-home-circle-ring">${getState().user?.avatar ? `<img src="${esc(getState().user.avatar)}" alt="" loading="lazy" decoding="async"/>` : '<span class="pikk-home-circle-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" width="40" height="40"><circle cx="12" cy="8.5" r="4" fill="currentColor"/><path d="M4 21c1.4-4.2 4.6-6.3 8-6.3s6.6 2.1 8 6.3" fill="currentColor"/></svg></span>'}</span>
+          <span class="pikk-home-circle-plus" aria-hidden="true">+</span><span>Create</span>
         </a>
         ${realCoverCircles}
       </nav>
