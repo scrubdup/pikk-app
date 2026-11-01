@@ -54,6 +54,36 @@ try {
       await page.locator('#exploreGo').click();
       assert.match(await page.locator('#exploreResultsWrap').innerText(), /No results for.*City & State.*Houston, TX/);
       await capture('city-state-no-optin');
+      // Escape from a location input clears keyword + both location filters,
+      // cancels any pending search and leaves focus in the same input.
+      await page.locator('#exploreCity').focus();
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator('#exploreQ').inputValue(), '', name + ' keyword reset from City');
+      assert.equal(await page.locator('#exploreCity').inputValue(), '', name + ' City Escape clears city');
+      assert.equal(await page.locator('#exploreState').inputValue(), '', name + ' City Escape clears state');
+      assert.equal(await page.locator('#exploreCity').evaluate(el => el === document.activeElement), true,
+        name + ' City Escape retains focus');
+      assert.match(await page.locator('#exploreResultsWrap').innerText(), /Search creators, fans, songs/);
+      await capture('city-state-escape-cleared');
+
+      // Escape from State works even with only a state filter.
+      await page.locator('#exploreState').fill('Texas');
+      await page.locator('#exploreState').press('Escape');
+      assert.equal(await page.locator('#exploreState').inputValue(), '', name + ' State Escape clears filter');
+      assert.equal(await page.locator('#exploreState').evaluate(el => el === document.activeElement), true,
+        name + ' State Escape retains focus');
+
+      // Escape from an empty keyword field must still clear location-only search.
+      await page.locator('#exploreCity').fill('Houston');
+      await page.locator('#exploreQ').focus();
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator('#exploreCity').inputValue(), '', name + ' Search Escape clears location-only filter');
+      assert.equal(await page.locator('#exploreQ').evaluate(el => el === document.activeElement), true,
+        name + ' Search Escape retains focus');
+
+      await page.locator('#exploreCity').fill('Houston');
+      await page.locator('#exploreState').fill('TX');
+      await page.locator('#exploreGo').click();
       await page.locator('[data-explore-tab="discover"]').click();
       assert.equal(await page.locator('#exploreCity').inputValue(), 'Houston');
       assert.equal(await page.locator('#exploreState').inputValue(), 'TX');

@@ -400,7 +400,13 @@ export function bindExplore(root) {
       debounce = setTimeout(doSearch, 220);
     });
     field?.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
+      if (event.key === 'Escape' && (input?.value || cityInput?.value || stateInput?.value)) {
+        // Escape clears the entire active search, including stale location-only
+        // results, and keeps focus on the field the visitor was editing.
+        event.preventDefault();
+        clearSearch();
+        field.focus();
+      } else if (event.key === 'Enter') {
         event.preventDefault();
         clearTimeout(debounce);
         doSearch();
@@ -408,7 +414,7 @@ export function bindExplore(root) {
     });
   }
   input?.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && input.value) {
+    if (e.key === 'Escape' && (input.value || cityInput?.value || stateInput?.value)) {
       // Native search inputs may clear their text without clearing our rendered results.
       e.preventDefault();
       clearSearch();

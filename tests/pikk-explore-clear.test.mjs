@@ -25,11 +25,22 @@ test('Clear cancels pending debounced search and resets the input', () => {
 test('Escape clears stale search results, cancels debounce and retains keyboard focus', () => {
   const keyHandler = explore.split("input?.addEventListener('keydown', (e) => {")[1]?.split("\n  });")[0];
   assert.ok(keyHandler, 'Explore search keyboard handler exists');
-  assert.match(keyHandler, /e\.key === 'Escape' && input\.value/);
+  assert.match(keyHandler, /e\.key === 'Escape' && \(input\.value \|\| cityInput\?\.value \|\| stateInput\?\.value\)/);
   assert.match(keyHandler, /e\.preventDefault\(\)/);
   assert.match(keyHandler, /clearSearch\(\)/);
   assert.match(keyHandler, /input\.focus\(\)/);
   assert.match(explore, /clearTimeout\(debounce\)/);
+});
+
+test('Escape in city or state clears every Explore filter and retains field focus', () => {
+  const locationKeys = explore.split('for (const field of [cityInput, stateInput]) {')[1]
+    ?.split("\n  input?.addEventListener('keydown'")[0];
+  assert.ok(locationKeys, 'both location inputs share a keyboard handler');
+  assert.match(locationKeys, /event\.key === 'Escape'/);
+  assert.match(locationKeys, /input\?\.value \|\| cityInput\?\.value \|\| stateInput\?\.value/);
+  assert.match(locationKeys, /event\.preventDefault\(\)/);
+  assert.match(locationKeys, /clearSearch\(\)/);
+  assert.match(locationKeys, /field\.focus\(\)/);
 });
 
 test('Explore retains original PIKK navigation, logo, and player', () => {
