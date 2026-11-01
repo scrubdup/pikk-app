@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { LIVE_DISCOVERY_GROUPS, renderLiveDiscoveryDirectory, matchesLiveRoomSearch, mountLiveDirectorySearch } from '../src/live-discovery.js';
+import { LIVE_DISCOVERY_GROUPS, renderLiveDiscoveryDirectory, matchesLiveRoomSearch, mountLiveDirectorySearch, liveDiscoveryRefreshHref } from '../src/live-discovery.js';
 
 const live = readFileSync(new URL('../src/pages/live.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
@@ -178,4 +178,16 @@ test('Following creator chips navigate to public profiles instead of the viewer 
     'each followed creator links to their own public profile route');
   assert.ok(!live.includes('href="#/profile">${esc('),
     'following chips must not silently redirect to the viewer profile');
+});
+
+test('Live refresh preserves a selected channel filter without leaking it to other tabs', () => {
+  assert.equal(liveDiscoveryRefreshHref('channels'), '#/live');
+  assert.equal(liveDiscoveryRefreshHref('channels', 'IRL'), '#/live?tab=channels&category=IRL');
+  assert.equal(liveDiscoveryRefreshHref('channels', '  Gaming  '), '#/live?tab=channels&category=Gaming');
+  assert.equal(liveDiscoveryRefreshHref('channels', 'Comedy & Entertainment'), '#/live?tab=channels&category=Comedy%20%26%20Entertainment');
+  assert.equal(liveDiscoveryRefreshHref('following', 'IRL'), '#/live?tab=following');
+  assert.equal(liveDiscoveryRefreshHref('categories', 'IRL'), '#/live?tab=categories');
+  assert.equal(liveDiscoveryRefreshHref('rooms', 'IRL'), '#/live?tab=rooms');
+  assert.match(live, /navigate\(liveDiscoveryRefreshHref\(tab, category\)\)/,
+    'Live soft refresh uses the safe, category-preserving destination');
 });

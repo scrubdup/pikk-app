@@ -42,7 +42,7 @@ import { esc, toast, shellPage, timeAgo, ytEmbedSrc } from '../ui.js';
 import { navigate, getRoute } from '../router.js';
 import { notifyLiveOpen, notifyLiveClosed } from '../player.js';
 import { giftStickerHtml, getGiftSticker } from '../gift-stickers.js';
-import { renderLiveDiscoveryDirectory, mountLiveDirectorySearch } from '../live-discovery.js';
+import { renderLiveDiscoveryDirectory, mountLiveDirectorySearch, liveDiscoveryRefreshHref } from '../live-discovery.js';
 import { renderGiftForAllControls, bindGiftForAll, renderWinnersStrip, nameHtml as gbNameHtml, hasWinnerBadge as gbHasBadge, loadRecords as gbLoad } from '../live-gift-battle.js';
 import { renderGoLiveCategoryFields, bindGoLiveCategoryFields, readGoLiveFields, renderGroupRoomsPanel, bindGroupRooms } from '../live-rooms.js';
 
@@ -56,7 +56,8 @@ function getLiveDiscTab() {
 
 function refresh() {
   const tab = getLiveDiscTab();
-  navigate(tab === 'channels' ? '#/live' : `#/live?tab=${tab}`);
+  const category = getRoute().query?.category || '';
+  navigate(liveDiscoveryRefreshHref(tab, category));
 }
 
 function fmtMoney(n) {
