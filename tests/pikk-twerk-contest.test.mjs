@@ -20,3 +20,7 @@ test('t356u: Home tile is text only with 18+ badge and Enter to #/contest/twerk;
   assert.doesNotMatch(tile, /<img|<video|background-image|url\(/);
   assert.match(readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), /'\/contest\/twerk': \{ render: renderTwerkContest, bind: bindTwerkContest \}/);
 });
+test('Twerk Contest section sits directly under Dating on Home', () => {
+  const order = [...renderHomeShowcase().matchAll(/data-hs="([\w-]+)"/g)].map((m) => m[1]);
+  assert.equal(order[order.indexOf('dating') + 1], 'contest');
+});
