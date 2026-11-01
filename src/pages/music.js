@@ -95,7 +95,7 @@ function renderStreamingReleaseCard(r) {
 function tierLabel(m) {
   if (m === 'inner') return 'Inner Circle';
   if (m === 'backstage') return 'Backstage';
-  if (m === 'skeet+') return 'Skeet+';
+  if (m === 'skeet+') return 'PIKK+';
   return 'None';
 }
 
@@ -397,7 +397,7 @@ export function renderMusic(route = {}) {
               Cancel anytime with the tier button below (demo). Purchased My Music items are kept.
             </div>`
           : `<div class="vault-lock">
-              🔒 Vault locked. Sign in, then tap <strong>Join · TEST MODE</strong> on Skeet+ or Backstage below.
+              🔒 Vault locked. Sign in, then tap <strong>Join · TEST MODE</strong> on PIKK+ or Backstage below.
               Locked cards show title/cover only — no exclusive content until you join.
             </div>`
       }

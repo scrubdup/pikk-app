@@ -160,7 +160,7 @@ export function renderProfile(route) {
           <h2 style="margin:0">${esc(user.username)}</h2>
           <p class="muted" style="margin:4px 0 0">${esc(user.bio)}</p>
           <span class="chip">TEST MODE · demo</span>
-          ${m.skeetPlus || m.backstage || m.innerCircle ? `<span class="chip">${m.innerCircle ? 'Inner Circle' : m.backstage ? 'Backstage' : 'Skeet+'}</span>` : ''}
+          ${m.skeetPlus || m.backstage || m.innerCircle ? `<span class="chip">${m.innerCircle ? 'Inner Circle' : m.backstage ? 'Backstage' : 'PIKK+'}</span>` : ''}
         </div>
       </div>
       <div class="stats pikk-profile-stats">
@@ -208,7 +208,7 @@ export function renderProfile(route) {
 
     <div class="card">
       <h3>Roles &amp; membership</h3>
-      <p class="muted" style="margin:0 0 8px">Clipper campaigns, Live creator tools, brand ads, or Skeet+ / Backstage / Inner Circle for Vault access.</p>
+      <p class="muted" style="margin:0 0 8px">Clipper campaigns, Live creator tools, brand ads, or PIKK+ / Backstage / Inner Circle for Vault access.</p>
       <a class="btn block" href="#/clippers">Apply as Clipper <span class="badge-cs badge-cs-inline">Coming Soon</span></a>
       <a class="btn block" href="#/signup" style="margin-top:8px">Other creator roles</a>
       <a class="btn block" href="#/music" style="margin-top:8px">Music &amp; Vault membership</a>
