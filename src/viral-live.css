@@ -14,7 +14,7 @@
 .pikk-viral-notice strong { flex-shrink: 0; color: #fff; font-size: 11px; letter-spacing: .08em; }
 .pikk-viral-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid #323242; padding-bottom: 12px; }
 .pikk-viral-tabs button { border: 1px solid #3a3b4b; border-radius: 999px; background: #1a1b27; color: #c2c0cc; padding: 10px 16px; min-height: 40px; font-weight: 800; cursor: pointer; }
-.pikk-viral-tabs button[aria-selected="true"] { background: linear-gradient(110deg,#a92327, #c0c6cf,#253c95); border-color: #bb676a; color: #fff; }
+.pikk-viral-tabs button[aria-selected="true"] { background:var(--pikk-chip-active-bg); border-color: #bb676a; color: #fff; }
 .pikk-viral-stage { display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); border-radius: 22px; overflow: hidden; border: 1px solid #3d3e54; background: #171823; }
 .pikk-viral-stage-art { position: relative; isolation: isolate; overflow: hidden; min-height: 235px; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; background: radial-gradient(circle at 55% 45%,rgba(255, 51, 57,.3),transparent 45%),linear-gradient(140deg,#26223e,#121b38 75%,#19121c); }
 .pikk-viral-stage-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .78; z-index: -1; }

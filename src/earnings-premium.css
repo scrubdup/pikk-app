@@ -22,7 +22,7 @@
 .pikk-earnings-summary>.grid-2>div:first-child{border-color:#394b7a;background:linear-gradient(145deg,#17223e,#1b2035)}
 .pikk-earnings-summary>.grid-2>div>div{overflow-wrap:anywhere;font-variant-numeric:tabular-nums;letter-spacing:-.025em;color:#fff}
 .pikk-earnings-dashboard .earn-filter{display:inline-flex;align-items:center;min-height:36px;padding:7px 12px;border:1px solid #504c6b;background:#222236;color:#e4e0f1;text-decoration:none}
-.pikk-earnings-dashboard .earn-filter.active{background:#1b294c;border-color:#698ad3;color:#fff}
+.pikk-earnings-dashboard .earn-filter.active{background:var(--pikk-chip-selected-bg);border-color:#698ad3;color:#fff}
 .pikk-earnings-dashboard table{min-width:490px}
 .pikk-earnings-dashboard th{color:#c6c3d6;font-weight:700}
 .pikk-earnings-dashboard td{color:#7b91c1}

@@ -1,0 +1,32 @@
+/* t387u — shared chip/pill tokens + global rule. Loaded LAST so every page matches Home.
+   Unselected: dark bg, red+blue outline, white text. Selected: glossy red+blue (--pikk-chip-selected-bg), white text. */
+:root {
+  --pikk-chip-bg: rgba(8, 9, 13, .85);
+  --pikk-chip-border: var(--pikk-blue, #2f6bff);
+  --pikk-chip-edge-red: rgba(255, 49, 55, .55);
+  --pikk-chip-text: #fff;
+  /* t388u/t389u: ONE shared selected look — glossy red→chrome→blue with a top sheen (never white/silver-only, never flat) */
+  --pikk-chip-selected-bg: linear-gradient(180deg, rgba(255, 255, 255, .42) 0%, rgba(255, 255, 255, .12) 46%, rgba(255, 255, 255, 0) 54%), linear-gradient(105deg, #e3242b 0%, #b9353f 38%, #9aa3b2 52%, #3a64e6 66%, #2f6bff 100%);
+  --pikk-chip-selected-edge: 0 0 0 1px rgba(47, 107, 255, .8), 0 0 10px rgba(255, 49, 55, .35), inset 0 1px 0 rgba(255, 255, 255, .45);
+  --pikk-chip-active-bg: var(--pikk-chip-selected-bg); /* legacy alias */
+  --pikk-chip-active-text: #fff;
+}
+/* Unselected chips / pills / tab-pills / segmented controls */
+html body :is(.chip, .pill, [class*="-chip"], [class*="-pill"], [class*="-tab"]:not(#tabbar a):not([class*="tabs"]):not([class*="tab-"]), [class*="-tag"]:is(button, a), .seg button, [class*="-filters"] :is(a, button), [class*="-categories"] > a, [class*="category-nav"] :is(a, button), [class*="-sort"] button, [class*="-tabs"] :is(a, button), .pikk-home-filterbar a, [role="tab"]):not(#tabbar a):not(.tab-primary):not(.pikk-badge-18) {
+  background-image: none;
+  color: var(--pikk-chip-text);
+  border: 1px solid var(--pikk-chip-border) !important;
+  box-shadow: inset 0 -1.5px 0 var(--pikk-chip-edge-red), 0 0 8px rgba(255, 49, 55, .22) !important;
+}
+/* Selected / active — one rule for the whole app */
+html body :is(.chip, .pill, button, a, [role="tab"], [class*="-chip"], [class*="-pill"], [class*="-tab"], [class*="-tag"]):is(.active, .is-active, .selected, .is-selected, .is-on, .on, .is-current, [aria-pressed="true"], [aria-selected="true"], [aria-current="page"], [aria-current="true"]):not(#tabbar a):not(.tab-primary):not(.drawer-link):not(.btn.primary) {
+  background: var(--pikk-chip-selected-bg) !important;
+  color: var(--pikk-chip-active-text) !important;
+  border: 1px solid rgba(47, 107, 255, .9) !important;
+  box-shadow: var(--pikk-chip-selected-edge) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .55) !important;
+  outline: none;
+}
+html body :is(.chip, .pill, button, a, [role="tab"], [class*="-chip"], [class*="-pill"], [class*="-tab"], [class*="-tag"]):is(.active, .is-active, .selected, .is-selected, .is-on, .on, .is-current, [aria-pressed="true"], [aria-selected="true"], [aria-current="page"]):not(#tabbar a) :is(span, small, strong, svg) {
+  color: var(--pikk-chip-active-text) !important;
+}

@@ -59,7 +59,7 @@
 /* Story rail + pills */
 .pikk-home-circle-ring { width: 88px; height: 88px; padding: 3px; background: linear-gradient(135deg, var(--pikk-red), #c0c6cf, var(--pikk-blue)); border-color: transparent; box-shadow: 0 0 0 2px #0a0a0a, -3px 0 12px var(--pikk-red-glow), 3px 0 12px var(--pikk-blue-glow); }
 .pikk-home-circle-create { background: radial-gradient(circle at 40% 35%, #ff3339, var(--pikk-red) 55%, #a50005); }
-.pikk-home-filterbar a.is-current { background: var(--pikk-red); border: 1.5px solid var(--pikk-chrome); color: #fff; box-shadow: 0 0 14px var(--pikk-red-glow), inset 0 1px 0 rgba(255,255,255,.35); }
+.pikk-home-filterbar a.is-current { background:var(--pikk-chip-selected-bg); border: 1.5px solid var(--pikk-chrome); color: #fff; box-shadow:none; }
 @media (max-width: 560px) { .pikk-home-circle-ring { width: 80px; height: 80px; } }
 /* Remove old HOME/LIVE banner above stories (kept for screen readers) */
 .page:has(#pikkHomeVisual) > .page-head { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); margin: 0; padding: 0; }

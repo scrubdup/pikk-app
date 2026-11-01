@@ -57,6 +57,7 @@ import { renderPayments, bindPayments } from './pages/payments.js';
 import { decoratePlayCounts, recordPlay } from './play-counter.js';
 import { renderStory, bindStory, renderCrew, bindCrew, renderFavorites, bindFavorites } from './pages/circle.js';
 import './circle.css';
+import './pikk-chips.css';
 import { renderMusic, bindMusic } from './pages/music.js';
 import { renderAIArtists, bindAIArtists } from './pages/ai-artists.js';
 import { renderShield, bindShield } from './pages/shield.js';

@@ -113,7 +113,7 @@ html.pikk-reduce-motion *{animation:none!important;transition:none!important}
 .pikk-mu-safety{border-left:3px solid var(--pikk-red);padding-left:8px;background:linear-gradient(90deg,rgba(47,107,255,.12),transparent)}
 .pikk-mu-tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 .pikk-mu-tag{font:inherit;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;color:#fff;background:#000;border:1.5px solid var(--pikk-blue);box-shadow:inset 0 -2px 0 var(--pikk-red)}
-.pikk-mu-tag.is-on,.pikk-mu-tag[aria-pressed="true"]{background:var(--pikk-red);color:#fff;border-color:var(--pikk-red);box-shadow:none}
+.pikk-mu-tag.is-on,.pikk-mu-tag[aria-pressed="true"]{background:var(--pikk-chip-selected-bg);color:#fff;border-color:var(--pikk-blue);box-shadow:var(--pikk-chip-selected-edge)}
 .pikk-mu-stage{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .pikk-mu-tile{aspect-ratio:3/4;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:6px;background:linear-gradient(160deg,#1a1c22,#000 60%);border:1.5px solid var(--pikk-blue);box-shadow:0 0 0 1px var(--pikk-red) inset}
 .pikk-mu-tile span{font-size:34px;color:var(--pikk-blue);text-shadow:0 0 6px var(--pikk-red)}
