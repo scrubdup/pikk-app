@@ -1,3 +1,5 @@
+import { renderSettings, bindSettings } from './pages/settings.js';
+import { getSettings, applyAppearance } from './settings-store.js';
 import { SPLASH_HOLD_MS, SPLASH_FADE_MS } from './splash-config.js';
 import { renderTwerkContest, bindTwerkContest } from './pages/contest.js';
 import './styles.css';
@@ -138,6 +140,7 @@ const ROUTES = {
   '/pricing': { render: renderPricing, bind: bindPricing },
   '/admin': { render: renderAdmin, bind: bindAdmin },
   '/guidelines': { render: renderGuidelines },
+  '/settings': { render: renderSettings, bind: bindSettings },
   '/contest': { render: renderTwerkContest, bind: bindTwerkContest }, // only contest today: #/contest/twerk
   '/contest/twerk': { render: renderTwerkContest, bind: bindTwerkContest },
   '/community': { render: renderCommunity, bind: bindCommunity },
@@ -446,6 +449,7 @@ function hideSplash() {
 
 /** §19 t178u — play tuning-fork chime once; swallow autoplay blocks. */
 function playSplashChime() {
+  if (!getSettings().splashChime) return;
   const el = document.getElementById('splashChime');
   if (!el) return;
   const tryPlay = () => {
@@ -538,7 +542,8 @@ function boot() {
 
   // Splash §19 t178u: official logo + tuning fork · hold ~3s when shown.
   // Subsequent visits skip via shouldShowSplash(); ?holdSplash=1 for evidence.
-  if (!shouldShowSplash() && !new URLSearchParams(location.search).has('holdSplash')) {
+  applyAppearance();
+  if ((!shouldShowSplash() || !getSettings().showSplash) && !new URLSearchParams(location.search).has('holdSplash')) {
     const splash = document.getElementById('splash');
     if (splash) splash.remove();
   } else {

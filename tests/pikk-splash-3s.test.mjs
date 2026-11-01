@@ -13,7 +13,7 @@ test('header gear: Settings button next to $ in left cluster (search, $, gear), 
   const h = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const i = h.indexOf('id="exploreSearchBtn"'), j = h.indexOf('id="paymentsBtn"'), k = h.indexOf('id="settingsBtn"');
   assert.ok(i > 0 && i < j && j < k, 'order search, $, gear');
-  assert.match(h, /class="pill header-explore-search header-settings" id="settingsBtn" href="#\/profile\?tab=settings" aria-label="Settings"/);
+  assert.match(h, /class="pill header-explore-search header-settings" id="settingsBtn" href="#\/settings" aria-label="Settings"/);
   const nav = readFileSync(new URL('../src/nav-sections.js', import.meta.url), 'utf8');
-  assert.match(nav, /href: '#\/profile\?tab=settings'/);
+  assert.match(nav, /href: '#\/settings'/);
 });
