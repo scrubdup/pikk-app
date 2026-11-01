@@ -141,13 +141,13 @@ function renderNewChat() {
   const cards = contacts
     .map((c) => {
       const mutual = c.team || isMutualFollow(c.id);
-      const label = c.team ? 'Team inbox' : mutual ? 'Message' : 'Message request';
+      const label = c.team ? 'Artist team inbox' : mutual ? 'Message' : 'Message request';
       return `
       <article class="card msg-contact pikk-msg-contact-card">
         <div class="msg-contact-head">
           <span class="pikk-msg-contact-avatar" aria-hidden="true">${esc(String(c.username || "?").slice(0, 1).toUpperCase())}</span>
           <strong>${esc(c.username)}</strong>
-          ${c.team ? '<span class="chip">Official</span>' : mutual ? '<span class="chip">Mutual</span>' : '<span class="chip">Request</span>'}
+          ${c.team ? '<span class="chip">Artist team</span>' : mutual ? '<span class="chip">Mutual</span>' : '<span class="chip">Request</span>'}
         </div>
         <p class="muted" style="margin:6px 0 10px">${esc(c.bio || '')}</p>
         <button type="button" class="btn ${c.team ? 'primary' : ''}" data-start-peer="${esc(c.id)}" data-peer-name="${esc(c.username)}">${esc(label)}</button>
@@ -183,7 +183,7 @@ function renderTeamIntro() {
     </section>
     <div class="card msg-team-card pikk-msg-flow-panel">
       <div class="row" style="justify-content:space-between">
-        <h3 style="margin:0">Team inbox</h3>
+        <h3 style="margin:0">DatBoiSkeet artist inbox</h3>
         <button type="button" class="btn ghost" id="msgBackInbox">← Inbox</button>
       </div>
       <p class="muted">Message DatBoiSkeet / authorized team. Free inquiry stays in the normal queue; Priority ($2.99 TEST MODE — not charged) flags the thread for priority review only.</p>
