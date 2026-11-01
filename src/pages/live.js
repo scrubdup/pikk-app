@@ -152,7 +152,7 @@ function renderFollowingPanel(user) {
   const followChips = following.length
     ? following
         .slice(0, 12)
-        .map((f) => `<a class="chip" href="#/profile">${esc('@' + (f.username || f.id))}</a>`)
+        .map((f) => `<a class="chip" href="#/profile/${encodeURIComponent(f.id)}">${esc('@' + (f.username || f.id))}</a>`)
         .join('')
     : '<span class="muted">Nobody followed yet · DEMO</span>';
 
