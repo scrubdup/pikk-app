@@ -12,3 +12,12 @@ test('Support avoids duplicate local drafts while allowing different issues',()=
  assert.equal(readSupportTickets(store)[0].id,first.id);
  assert.equal(saveSupportTicket(store,createSupportTicket({...input,message:'Video playback freezes on desktop.'},300)).length,2);
 });
+
+// The visible support screen must distinguish a duplicate from a newly saved draft.
+test('Support form reports duplicate drafts honestly and labels local history',()=>{
+ const page=readFileSync(new URL('../src/pages/support.js',import.meta.url),'utf8');
+ assert.match(page,/const drafts=saveSupportTicket\(window\.localStorage,item\)/);
+ assert.match(page,/drafts\.some\(draft=>draft\.id===item\.id\)/);
+ assert.match(page,/An identical draft is already saved on this device · not sent/);
+ assert.match(page,/Saved drafts \(\$\{tickets\.length\}\)/);
+});
