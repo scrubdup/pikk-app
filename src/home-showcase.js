@@ -14,7 +14,7 @@ const section = (id, title, seeAll, kicker, body, note = '') => `
   </section>`;
 const card = (href, media, title, sub, cls = '', badge = '') => `<a class="pikk-hs-card ${cls}" role="listitem" href="${href}"><span class="pikk-hs-media">${media}${badge ? `<span class="pikk-hs-badge">${esc(badge)}</span>` : ''}</span><strong>${esc(title)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</a>`;
 
-export const SHOWCASE_ORDER = ['music', 'posts', 'videos', 'live', 'connect', 'dating', 'games', 'battles', 'contest', 'shop'];
+export const SHOWCASE_ORDER = ['music', 'posts', 'videos', 'live', 'connect', 'dating', 'contest', 'games', 'battles', 'shop'];
 export const SHOWCASE_SEE_ALL = Object.freeze({ music: '#/music', posts: '#/posts', videos: '#/videos', live: '#/live', connect: '#/connect', dating: '#/dating', games: '#/games', battles: '#/giftbattles', contest: '#/contest/twerk', shop: '#/shop' });
 
 export function renderHomeShowcase() {
