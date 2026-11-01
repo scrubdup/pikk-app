@@ -13,7 +13,8 @@ for (const [name, width, height] of [['mobile', 390, 844], ['desktop', 1440, 900
   page.on('pageerror', err => errors.push(err.message));
   await page.goto('http://127.0.0.1:5173/#/updates', { waitUntil: 'domcontentloaded' });
   await page.locator('.pikk-updates-hero').waitFor({ state: 'visible', timeout: 20000 });
-  await page.waitForTimeout(3300);
+  // The approved splash holds for five seconds plus fade; capture the actual page, not the loading overlay.
+  await page.locator('#splash').waitFor({ state: 'hidden', timeout: 12000 });
   const title = await page.locator('.pikk-updates-hero h2').textContent();
   if (!title.includes('Know what loaded')) throw new Error(name + ': release hero missing');
   const count = await page.locator('.pikk-update-card').count();
