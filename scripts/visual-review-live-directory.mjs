@@ -42,6 +42,10 @@ try {
     assert.equal(await page.locator('#pikk-live-group-coed').getAttribute('open'), '', 'matching folder expands');
     assert.equal(await page.locator('.pikk-live-room-card').count(), 78, 'filter does not delete categories');
     assert.ok((await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 3, device + ' filtered layout must not overflow');
+    await page.locator('.pikk-live-room-search').evaluate(el => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    await page.waitForTimeout(150);
+    const matchingCard = await page.locator('.pikk-live-room-card:visible').boundingBox();
+    assert.ok(matchingCard && matchingCard.y < height - 60, device + ' search result must be visible in screenshot');
     await page.screenshot({ path: 'visual-review/pikk-live-' + device + '-search.png' });
     await page.getByRole('button', { name: 'Clear', exact: true }).click();
     assert.equal(await search.inputValue(), '', device + ' clear resets search');
