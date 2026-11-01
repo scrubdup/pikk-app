@@ -10,3 +10,11 @@ export function messageSearchText(thread) {
   const preview = String(latest?.text || '');
   return `${participant} ${preview}`.toLowerCase();
 }
+
+/** Visible inbox feedback; counts are browser-local, never server search results. */
+export function messageResultSummary(shown, total, filtered = false) {
+  const count = Math.max(0, Math.trunc(Number(total) || 0));
+  const visible = Math.min(count, Math.max(0, Math.trunc(Number(shown) || 0)));
+  const label = `conversation${count === 1 ? '' : 's'}`;
+  return filtered ? `Showing ${visible} of ${count} ${label}` : `${count} ${label}`;
+}

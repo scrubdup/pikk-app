@@ -27,7 +27,7 @@ test('Messages search safely handles empty threads, missing names, and non-strin
 });
 
 test('Inbox binds browser-local preview search to the existing accessible filters', () => {
-  assert.match(messagesPage, /import \{ messageSearchText \} from '\.\.\/message-search\.js';/);
+  assert.match(messagesPage, /import \{ messageSearchText(?:, messageResultSummary)? \} from '\.\.\/message-search\.js';/);
   assert.match(messagesPage, /data-search="\$\{esc\(messageSearchText\(t\)\)\}"/);
   assert.match(messagesPage, /placeholder="Search names or latest messages\.\.\."/);
   assert.match(messagesPage, /row\.dataset\.search \|\| ''\)\.includes\(query\)/);
