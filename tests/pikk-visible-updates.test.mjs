@@ -13,31 +13,32 @@ test('update center is a real route and accessible from menu and footer', () => 
   assert.match(html, /href="#\/updates"/);
 });
 test('update center lists five verified recent merged UI releases in newest-first order', () => {
-  assert.match(updates, /pr: 197[\s\S]*pr: 196[\s\S]*pr: 195[\s\S]*pr: 194[\s\S]*pr: 193/);
+  assert.match(updates, /pr: 276[\s\S]*pr: 274[\s\S]*pr: 272[\s\S]*pr: 271[\s\S]*pr: 270/);
   assert.equal((updates.match(/pr: \d+, kind:/g) || []).length, 5);
-  for (const route of ['#/viral-live', '#/explore']) {
+  for (const route of ['#/support', '#/communities', '#/profile']) {
     assert.ok(updates.includes("route: '" + route + "'"), 'Missing published section: ' + route);
     assert.ok(main.includes("'" + route.slice(1) + "': { render:"), 'Missing real app route: ' + route);
   }
   for (const detail of [
-    'Viral Clips opens Clips, Songs opens Music, and Photos opens Home',
-    'keyboard-selected Videos, Viral Clips, Songs and Photos tabs scroll into view',
-    'Use arrow keys or Home/End',
-    'Press Escape in Explore search',
-    'switching between Trending, Following and Discover',
+    'Search help guides with live match counts',
+    'Saving an identical local ticket draft',
+    'Repeated saves of the same support issue',
+    'After posting a local reply',
+    'Follower, following and public-profile links',
   ]) {
     assert.ok(updates.includes(detail), 'Missing verified release detail: ' + detail);
   }
-  assert.match(updates, /not broadcasting/);
-  assert.match(updates, /not a livestream/);
-  assert.match(updates, /not backend search coverage/);
+  assert.match(updates, /AI agents are not connected/);
+  assert.match(updates, /No ticket is sent to staff/);
+  assert.match(updates, /Public community hosting is not connected/);
+  assert.match(updates, /pikk-update-latest/);
   assert.doesNotMatch(updates, /Premium Wallet & Payouts|real-time viewer counts are live/);
   assert.ok(updates.includes('href="${esc(release.route)}"'));
   assert.ok(updates.includes('aria-label="${esc(`See ${release.title} in PIKK`)}"'), 'Each release link has a descriptive screen-reader name');
   assert.match(updates, /pikkUpdatesRefresh/);
   assert.match(updates, /pikk-logo-official\.png/);
-  assert.match(updates, /VIRAL LIVE · PREVIEW/);
-  assert.match(updates, /EXPLORE · NAVIGATION/);
+  assert.match(updates, /SUPPORT · HELP CENTER/);
+  assert.match(updates, /COMMUNITIES · ACCESSIBILITY/);
 });
 
 test('production version is the source commit of the deployed build', () => {
