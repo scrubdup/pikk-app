@@ -131,7 +131,7 @@ export function buildQueue() {
       id: m.id,
       title: m.title,
       artist: 'DatBoiSkeet',
-      cover: coverFromYtId('DTe4OiX2otg') || '/brand/logo-dbs-v3@2x.webp',
+      cover: coverFromYtId('DTe4OiX2otg') || '/brand/pikk-logo-square.png',
       playlistId: pl,
       youtube: m.youtube,
       embed: m.embed || `https://www.youtube.com/embed/videoseries?list=${pl}`,
@@ -572,7 +572,7 @@ function syncUi() {
   const playing = !interrupted && (playingDesired || isYtPlaying());
 
   if (art && track) {
-    art.src = track.cover || coverFromYtId(track.youtubeId || '') || '/brand/logo-dbs-v3@2x.webp';
+    art.src = track.cover || coverFromYtId(track.youtubeId || '') || '/brand/pikk-logo-square.png';
     art.alt = track.title || '';
   }
   if (title) title.textContent = track?.title || 'PIKK Music';

@@ -28,5 +28,5 @@ test('existing app shell, player, and all seven navigation tabs are preserved',(
   assert.equal(TABBAR.length,7);
   assert.deepEqual(TABBAR.map(t=>t.label),['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop']);
   assert.match(main,/initDbsPlayer/);
-  assert.match(readFileSync(new URL('../index.html',import.meta.url),'utf8'),/pikk-official-approved/);
+  assert.match(readFileSync(new URL('../index.html',import.meta.url),'utf8'),/pikk-logo-official/);
 });

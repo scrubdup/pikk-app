@@ -183,7 +183,7 @@ function buildTabbar() {
     const pathOnly = '/' + raw.replace(/^\//, '').split(/[?#]/)[0];
     const label = esc(t.label);
     const primaryClass = t.primary ? ' class="tab-primary"' : '';
-    return `<a${primaryClass} href="${t.href}" data-path="${pathOnly}" aria-label="${label}"${t.href === '#/create' ? ' aria-haspopup="dialog" aria-controls="pikkCreateMenu" aria-expanded="false"' : t.href === '#/music' ? ' aria-haspopup="dialog" aria-controls="pikkMusicMenu" aria-expanded="false"' : SECTION_MENU_ITEMS[pathOnly.slice(1)] ? ` aria-haspopup="dialog" aria-controls="pikk${label}Menu" aria-expanded="false"` : ''}><span class="tab-ico">${t.href === '#/create' ? `<img class="pikk-create-logo-icon" src="${asset('/brand/pikk-create-play-cursor-blue.png')}" alt="" width="40" height="29" decoding="async" />` : (ICONS[t.icon] || '')}</span><span>${label}</span></a>`;
+    return `<a${primaryClass} href="${t.href}" data-path="${pathOnly}" aria-label="${label}"${t.href === '#/create' ? ' aria-haspopup="dialog" aria-controls="pikkCreateMenu" aria-expanded="false"' : t.href === '#/music' ? ' aria-haspopup="dialog" aria-controls="pikkMusicMenu" aria-expanded="false"' : SECTION_MENU_ITEMS[pathOnly.slice(1)] ? ` aria-haspopup="dialog" aria-controls="pikk${label}Menu" aria-expanded="false"` : ''}><span class="tab-ico">${t.href === '#/create' ? `<img class="pikk-create-logo-icon" src="${asset('/brand/pikk-logo-badge.png')}" alt="" width="40" height="29" decoding="async" />` : (ICONS[t.icon] || '')}</span><span>${label}</span></a>`;
   }).join('');
   for (const name of Object.keys(SECTION_MENU_ITEMS)) {
     el.querySelector(`a[href="#/${name}"]`)?.addEventListener('click', event => {
@@ -318,7 +318,7 @@ function buildDrawer() {
     );
   }).join('');
 
-  el.innerHTML = `<h2>PIKK Network</h2>${groupsHtml}`;
+  el.innerHTML = `<h2 class="drawer-brand"><img src="${asset('/brand/pikk-logo-official.png')}" alt="" width="140" height="33" decoding="async" /><span>PIKK Network</span></h2>${groupsHtml}`;
 }
 
 function setDrawer(open, restoreFocus = false) {

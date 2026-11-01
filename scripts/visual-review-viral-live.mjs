@@ -17,10 +17,10 @@ try {
     assert.equal(await page.locator('#tabbar a').count(), 7, 'seven approved tabs remain');
     assert.equal(await page.locator('.logo-img').isVisible(), true, 'approved PIKK logo remains');
     assert.equal(await page.locator('.pikk-viral-hero-logo').isVisible(), true, 'official approved PIKK hero logo visible on mobile and desktop');
-    assert.match(await page.locator('.pikk-viral-hero-logo').getAttribute('src'), /\/brand\/pikk-official-approved\.jpg$/);
+    assert.match(await page.locator('.pikk-viral-hero-logo').getAttribute('src'), /\/brand\/pikk-logo-official\.png$/);
     assert.equal(await page.locator('.pikk-viral-hero-logo').evaluate(el => el.complete && el.naturalWidth > 0), true, 'approved hero image loads');
     const heroPath = await page.locator('.pikk-viral-hero-logo').evaluate(el => new URL(el.currentSrc).pathname);
-    assert.equal(heroPath, new URL('brand/pikk-official-approved.jpg', BASE_URL).pathname, 'hero artwork uses the actual deployment base');
+    assert.equal(heroPath, new URL('brand/pikk-logo-official.png', BASE_URL).pathname, 'hero artwork uses the actual deployment base');
     assert.equal(await page.locator('#dbs-sticky-player').isVisible(), true, 'persistent player remains');
     assert.equal(await page.locator('[data-viral-pick]').count(), 3, 'three original sources');
     assert.equal(await page.locator('#pikkViralSource').getAttribute('href'), 'https://www.youtube.com/watch?v=-rHDLWfiuDI');

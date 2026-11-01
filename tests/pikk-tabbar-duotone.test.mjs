@@ -9,7 +9,7 @@ test('tab bar: red/blue duotone icons, WHITE labels in all states; active shown 
   assert.match(css, /\.tab-ico svg \* \{ color: var\(--pikk-red\) !important; stroke: var\(--pikk-red\) !important; \}/);
   assert.match(css, /:is\(\.on, \[aria-current="page"\]\) \{ box-shadow: inset 0 -2px 0 var\(--pikk-blue\) !important; \}/);
   assert.ok(!/#tabbar > a\.tab-primary[^{]*\{[^}]*pikk-create-play-cursor/.test(css));
-  assert.match(readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), /pikk-create-play-cursor-blue\.png/);
+  assert.match(readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), /pikk-logo-badge\.png/);
   assert.deepEqual(TABBAR.map((t) => t.label), ['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop']);
 });
 

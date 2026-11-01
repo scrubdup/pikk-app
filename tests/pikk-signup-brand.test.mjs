@@ -21,5 +21,5 @@ test('signup route preserves the approved navigation, artist player and logo', (
   assert.match(main, /'\/signup': \{ render: renderSignup \}/);
   assert.deepEqual(TABBAR.map(tab => tab.label), ['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop']);
   assert.match(html, /dbs-sticky-player/);
-  assert.match(html, /pikk-official-approved\.jpg/);
+  assert.match(html, /pikk-logo-official\.png/);
 });

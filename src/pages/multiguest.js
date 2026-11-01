@@ -147,7 +147,7 @@ function renderStage(session) {
       <div class="row wrap" style="justify-content:space-between;gap:8px;align-items:center">
         <div>
           <div class="row wrap" style="gap:8px;align-items:center">
-            <img class="mg-brand-logo" src="/brand/pikk-official-approved.jpg" alt="PIKK" />
+            <img class="mg-brand-logo" src="/brand/pikk-logo-official.png" alt="PIKK" />
             <div>
               <strong>${esc(session.title)}</strong>
               <div class="muted" style="font-size:12px">@${esc(session.hostName)} · Multi-Guest · Follow DatBoiSkeet</div>

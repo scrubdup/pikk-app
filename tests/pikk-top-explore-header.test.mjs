@@ -20,7 +20,7 @@ test('official PIKK logo and compact header precede and preserve sticky music pl
   const player = html.indexOf('id="dbs-sticky-player"');
   const rail = html.indexOf('class="pikk-explore-rail"');
   assert.ok(header > 0 && header < player && player < rail);
-  assert.match(html, /src="%BASE_URL%brand\/pikk-logo-header\.png" alt="PIKK"/);
+  assert.match(html, /src="%BASE_URL%brand\/pikk-logo-official\.png" alt="PIKK"/);
   assert.match(html, /href="#\/home" class="logo" aria-label="PIKK Home"/);
   const actions = ['id="headerProfile"', 'id="headerMsg"', 'id="notifBtn"', 'id="menuBtn"'];
   let last = header;

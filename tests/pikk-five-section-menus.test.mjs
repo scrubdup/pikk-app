@@ -45,7 +45,7 @@ test('menus retain fail-safe disclosure and protect player and branding', () => 
   assert.match(SECTION_MENU_ITEMS.connect.find(item => item.title === 'Random Chat').detail, /unavailable/);
   assert.match(SECTION_MENU_ITEMS.games.find(item => item.title === 'PIKK Arcade').detail, /preview/);
   assert.match(html, /id="dbs-sticky-player"/);
-  assert.match(html, /brand\/pikk-official-approved\.jpg/);
+  assert.match(html, /brand\/pikk-logo-official\.png/);
 });
 
 // Keep the Games popup in lockstep with the fifteen exact owner-approved Arcade tiles.

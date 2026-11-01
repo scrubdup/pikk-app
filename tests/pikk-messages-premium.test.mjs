@@ -33,7 +33,7 @@ test('Messages visual is isolated, responsive, keyboard accessible and preserves
   assert.match(main, /import '\.\/messages-premium\.css';/);
   assert.match(main, /'\/messages': \{ render: renderMessages, bind: bindMessages \}/);
   assert.deepEqual(TABBAR.map(t => t.label), ['Music','Videos','Connect','Create','Dating','Games','Shop']);
-  assert.match(html, /pikk-official-approved\.jpg/);
+  assert.match(html, /pikk-logo-official\.png/);
   assert.match(html, /dbs-sticky-player/);
 });
 

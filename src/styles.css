@@ -37,7 +37,7 @@ button, input, textarea, select {
 img { max-width: 100%; display: block; }
 
 /* Splash — §19 t178u: official logo centered 3s + tuning-fork chime
-   Logo: /public/brand/logo-dbs-v3@*.webp · Audio: /public/loading/dbs-tuning-fork.*
+   Logo: /public/brand/pikk-logo-square.png · Audio: /public/loading/dbs-tuning-fork.*
    Legacy PNG retained at /public/loading/DBS_Official_Loading_Screen.png (not primary) */
 .splash {
   position: fixed; inset: 0; z-index: 200;

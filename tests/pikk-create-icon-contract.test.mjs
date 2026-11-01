@@ -7,9 +7,9 @@ const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const data = readFileSync(new URL('../src/data.js', import.meta.url), 'utf8');
 
 test('center Create icon is the play button + white cursor cropped from the approved PIKK logo', () => {
-  assert.match(main, /t\.href === '#\/create' \? `<img class="pikk-create-logo-icon" src="\$\{asset\('\/brand\/pikk-create-play-cursor-blue\.png'\)\}"/);
-  assert.ok(existsSync(new URL('../public/brand/pikk-create-play-cursor-blue.png', import.meta.url)));
-  assert.ok(existsSync(new URL('../public/brand/pikk-official-approved.jpg', import.meta.url)), 'source logo unchanged');
+  assert.match(main, /t\.href === '#\/create' \? `<img class="pikk-create-logo-icon" src="\$\{asset\('\/brand\/pikk-logo-badge\.png'\)\}"/);
+  assert.ok(existsSync(new URL('../public/brand/pikk-logo-badge.png', import.meta.url)));
+  assert.ok(existsSync(new URL('../public/brand/pikk-logo-official.png', import.meta.url)), 'source logo unchanged');
 });
 
 test('Create remains the primary fourth tab and opens its menu', () => {

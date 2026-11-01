@@ -35,7 +35,7 @@ test('update center lists five verified recent merged UI releases in newest-firs
   assert.ok(updates.includes('href="${esc(release.route)}"'));
   assert.ok(updates.includes('aria-label="${esc(`See ${release.title} in PIKK`)}"'), 'Each release link has a descriptive screen-reader name');
   assert.match(updates, /pikkUpdatesRefresh/);
-  assert.match(updates, /pikk-official-approved\.jpg/);
+  assert.match(updates, /pikk-logo-official\.png/);
   assert.match(updates, /VIRAL LIVE · PREVIEW/);
   assert.match(updates, /EXPLORE · NAVIGATION/);
 });

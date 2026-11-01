@@ -564,7 +564,7 @@ function renderStage(live) {
     <div class="card live-stage">
       <div class="live-stage-frame" role="img" aria-label="Fake stream stage · TEST MODE">
         <div class="live-stage-brand">
-          <img src="/brand/pikk-official-approved.jpg" alt="PIKK" />
+          <img src="/brand/pikk-logo-official.png" alt="PIKK" />
           <div>
             <div class="live-stage-title">${esc(live.title)}</div>
             <div class="muted" style="font-size:12px">@${esc(live.hostName)} · Follow DatBoiSkeet</div>
