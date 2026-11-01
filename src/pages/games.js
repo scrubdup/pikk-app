@@ -7,7 +7,7 @@ export function renderGames() {
       <div class="pikk-arcade-heading">
         <div>
           <p class="kicker">Play · Compete · Hang out</p>
-          <div class="pikk-arcade-brand"><img src="${esc(arcadeArtSrc({ artwork: '/brand/pikk-official-approved.jpg' }))}" alt="PIKK" loading="eager" decoding="async"/><span>ARCADE</span></div>
+          <div class="pikk-arcade-brand"><img src="${esc(arcadeArtSrc({ artwork: '/brand/pikk-logo-official.png' }))}" alt="PIKK" loading="eager" decoding="async"/><span>ARCADE</span></div>
           <p>15 original game concepts. Find your favorites, see the art, and follow their development.</p>
         </div>
         <span class="pikk-arcade-icon" aria-hidden="true">🎮</span>

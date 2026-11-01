@@ -64,5 +64,5 @@ test('drawer accessibility is integrated without altering PIKK player, tabs or a
   for (const id of ['dbs-sticky-player', 'tabbar', 'spPlay', 'menuBtn']) {
     assert.ok(html.includes('id="' + id + '"'), id);
   }
-  assert.match(html, /brand\/pikk-official-approved\.jpg/);
+  assert.match(html, /brand\/pikk-logo-official\.png/);
 });

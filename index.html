@@ -3,24 +3,28 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-title" content="PIKK" />
   <meta name="application-name" content="PIKK" />
   <title>PIKK — Music, Social & Live</title>
   <meta name="description" content="PIKK — videos, music, live, dating, shopping, games, and creators. DatBoiSkeet official music." />
-  <link rel="icon" href="%BASE_URL%favicon.ico" sizes="48x48" />
-  <link rel="icon" href="%BASE_URL%favicon-32.png" sizes="32x32" type="image/png" />
-  <link rel="icon" href="%BASE_URL%favicon-16.png" sizes="16x16" type="image/png" />
-  <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" sizes="180x180" />
-  <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+  <link rel="icon" href="%BASE_URL%favicon.ico?v=4" sizes="48x48" />
+  <link rel="icon" href="%BASE_URL%favicon-32.png?v=4" sizes="32x32" type="image/png" />
+  <link rel="icon" href="%BASE_URL%favicon-16.png?v=4" sizes="16x16" type="image/png" />
+  <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png?v=4" sizes="180x180" />
+  <link rel="manifest" href="%BASE_URL%manifest.webmanifest?v=4" />
   <meta property="og:title" content="PIKK" />
   <meta property="og:description" content="PIKK — videos, music, live, dating, shopping, games, and creators." />
-  <meta property="og:image" content="https://scrubdup.github.io/pikk-app/og-image.png" />
+  <meta property="og:image" content="https://scrubdup.github.io/pikk-app/og-image.png?v=4" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://scrubdup.github.io/pikk-app/og-image.png?v=4" />
 </head>
 <body>
   <!-- §19 Splash t178u: official logo 3s + tuning-fork chime (legacy PNG kept under /loading/) -->
   <div id="splash" class="splash" aria-live="polite" role="status">
-    <img class="splash-logo" src="%BASE_URL%brand/pikk-logo-header.png" alt="PIKK" width="280" height="80" decoding="async" fetchpriority="high" />
+    <img class="splash-logo" src="%BASE_URL%brand/pikk-logo-official.png" alt="PIKK" width="280" height="80" decoding="async" fetchpriority="high" />
     <p class="splash-loading" aria-hidden="true">LOADING</p>
     <p class="splash-credit">Made by Cox Creations</p>
     <audio id="splashChime" preload="auto" playsinline>
@@ -33,7 +37,7 @@
   <!-- TEST MODE remains enforced; disclosure stays in footer, not the top header. -->
   <header class="top" id="topBar">
     <a href="#/home" class="logo" aria-label="PIKK Home">
-      <img class="logo-img" src="%BASE_URL%brand/pikk-logo-header.png" alt="PIKK" width="86" height="25" />
+      <img class="logo-img" src="%BASE_URL%brand/pikk-logo-official.png" alt="PIKK" width="86" height="25" />
     </a>
     <div class="top-actions">
       <!-- t290u/t291u: Sign in removed from header; Messages always in this slot. Sign in on #/profile. -->
@@ -65,7 +69,7 @@
   <!-- §17 Sticky top player — YouTube embeds / Stream Everywhere open links (no rehost) -->
   <div class="sticky-player" id="dbs-sticky-player" data-also="stickyPlayer" role="region" aria-label="PIKK Music Player">
     <div class="sp-row">
-      <img class="sp-art" id="spArt" src="%BASE_URL%brand/pikk-official-approved.jpg" alt="" width="44" height="44" />
+      <img class="sp-art" id="spArt" src="%BASE_URL%brand/pikk-logo-square.png" alt="" width="44" height="44" />
       <div class="sp-meta">
         <span class="sp-tag" id="spTag" title="Top player slot · Trending or Promoted when available">House pick</span>
         <div class="sp-title" id="spTitle">PIKK Music</div>

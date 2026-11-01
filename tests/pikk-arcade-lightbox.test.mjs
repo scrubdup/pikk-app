@@ -12,7 +12,7 @@ test('all 15 approved Arcade covers open a full-size concept preview, not fake g
   assert.ok(html.includes('data-arcade-full-image'));
   assert.ok(html.includes('data-arcade-prev'));
   assert.ok(html.includes('data-arcade-next'));
-  assert.ok(html.includes('pikk-official-approved.jpg'));
+  assert.ok(html.includes('pikk-logo-official.png'));
   assert.ok(html.includes('Games are not playable yet'));
   assert.ok(html.includes('Play Chips have no cash value or cash-out'));
   for (const game of PIKK_GAMES) {

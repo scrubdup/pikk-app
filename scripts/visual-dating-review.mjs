@@ -44,7 +44,7 @@ try {
       const bounds=await page.evaluate(()=>({
         documentWidth:document.documentElement.scrollWidth,
         viewportWidth:window.innerWidth,
-        logoLoaded:[...document.images].some(img=>/pikk-official-approved|pikk-logo-header/.test(img.src)&&img.complete&&img.naturalWidth>0)
+        logoLoaded:[...document.images].some(img=>/pikk-logo-official/.test(img.src)&&img.complete&&img.naturalWidth>0)
       }));
       assert.ok(bounds.documentWidth<=bounds.viewportWidth+3,
         name+' horizontal overflow: '+JSON.stringify(bounds));

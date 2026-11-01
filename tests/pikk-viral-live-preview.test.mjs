@@ -37,9 +37,9 @@ test('channel preview uses only existing official source links with no fabricate
 });
 
 test('approved PIKK hero artwork respects root and GitHub Pages project base', () => {
-  assert.equal(viralLiveLogoSrc('/'), '/brand/pikk-official-approved.jpg');
-  assert.equal(viralLiveLogoSrc('/pikk-app/'), '/pikk-app/brand/pikk-official-approved.jpg');
-  assert.equal(viralLiveLogoSrc('/pikk-app'), '/pikk-app/brand/pikk-official-approved.jpg');
+  assert.equal(viralLiveLogoSrc('/'), '/brand/pikk-logo-official.png');
+  assert.equal(viralLiveLogoSrc('/pikk-app/'), '/pikk-app/brand/pikk-logo-official.png');
+  assert.equal(viralLiveLogoSrc('/pikk-app'), '/pikk-app/brand/pikk-logo-official.png');
 });
 
 test('featured source thumbnails are derived from original YouTube video IDs, not fabricated assets', () => {
@@ -52,7 +52,7 @@ test('featured source thumbnails are derived from original YouTube video IDs, no
     assert.ok(html.includes('https://i.ytimg.com/vi/' + id + '/hqdefault.jpg'));
   }
   assert.match(css, /pikk-viral-choice-thumb/);
-  assert.match(html, /class="pikk-viral-hero-logo" src="\/brand\/pikk-official-approved\.jpg"/);
+  assert.match(html, /class="pikk-viral-hero-logo" src="\/brand\/pikk-logo-official\.png"/);
   assert.doesNotMatch(html, /<small>PIKK<\/small>/);
   assert.match(css, /\.pikk-viral-hero-logo/);
   assert.doesNotMatch(html, /autoplay=1|data-fake-viewers/);

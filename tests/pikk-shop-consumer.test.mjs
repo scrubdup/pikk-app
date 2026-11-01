@@ -43,8 +43,8 @@ test('product search and category filtering work on the existing catalog', () =>
 
 test('official approved PIKK JPG remains the brand source', () => {
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(index, /brand\/pikk-official-approved\.jpg/);
-  assert.ok(existsSync(new URL('../public/brand/pikk-official-approved.jpg', import.meta.url)));
+  assert.match(index, /brand\/pikk-logo-official\.png/);
+  assert.ok(existsSync(new URL('../public/brand/pikk-logo-official.png', import.meta.url)));
 });
 
 

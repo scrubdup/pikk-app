@@ -55,7 +55,7 @@ function clubCard(c, selectedId) {
     .join(' ');
   return `<button type="button" class="fanclub-card${on ? ' on' : ''}" data-open-club="${esc(c.id)}" data-search="${esc(`${c.name || ''} ${c.hostName || ''} ${c.description || ''}`)}" aria-label="Open ${esc(c.name)} club">
     <div class="row" style="gap:10px;align-items:center">
-      <img src="${esc(c.graphic || '/brand/logo-dbs-v3@2x.webp')}" alt="" width="48" height="48" style="border-radius:12px;object-fit:cover;background:#111" />
+      <img src="${esc(c.graphic || '/brand/pikk-logo-square.png')}" alt="" width="48" height="48" style="border-radius:12px;object-fit:cover;background:#111" />
       <div style="flex:1;min-width:0">
         <strong>${esc(c.name)}</strong>
         <div class="muted" style="font-size:12px;margin-top:2px">Host @${esc(c.hostName)} · Discover DatBoiSkeet</div>
@@ -133,7 +133,7 @@ function renderDetail(clubId) {
     <div class="card fanclubs-detail">
       <button class="btn ghost" data-back-list style="margin-bottom:8px">← All clubs</button>
       <div class="row" style="gap:12px;align-items:flex-start">
-        <img src="${esc(c.graphic || '/brand/logo-dbs-v3@2x.webp')}" alt="" width="72" height="72" style="border-radius:16px;object-fit:cover" />
+        <img src="${esc(c.graphic || '/brand/pikk-logo-square.png')}" alt="" width="72" height="72" style="border-radius:16px;object-fit:cover" />
         <div style="flex:1">
           <h2 style="margin:0 0 4px">${esc(c.name)}</h2>
           <p class="muted" style="margin:0 0 8px">${esc(c.description)}</p>
@@ -198,7 +198,7 @@ export function renderFanClubs(route) {
         <label class="muted" style="font-size:12px">Description</label>
         <textarea id="fcDesc" maxlength="280" rows="2" placeholder="What this club is about…" style="width:100%;margin:4px 0 10px;background:#0e0e14;border:1px solid var(--line);border-radius:12px;padding:10px;color:inherit;resize:vertical"></textarea>
         <label class="muted" style="font-size:12px">Graphic URL</label>
-        <input id="fcGraphic" placeholder="/brand/logo-dbs-v3@2x.webp" style="width:100%;margin:4px 0 10px;background:#0e0e14;border:1px solid var(--line);border-radius:12px;padding:10px;color:inherit" />
+        <input id="fcGraphic" placeholder="/brand/pikk-logo-square.png" style="width:100%;margin:4px 0 10px;background:#0e0e14;border:1px solid var(--line);border-radius:12px;padding:10px;color:inherit" />
         <label class="muted" style="font-size:12px">Room privacy</label>
         <select id="fcPrivacy" style="width:100%;margin:4px 0 12px;background:#0e0e14;border:1px solid var(--line);border-radius:12px;padding:10px;color:inherit">
           <option value="public">Public discussion</option>
@@ -310,7 +310,7 @@ export function bindFanClubs(root) {
     ensureSignedIn('DemoCreator');
     const name = root.querySelector('#fcName')?.value;
     const description = root.querySelector('#fcDesc')?.value;
-    const graphic = root.querySelector('#fcGraphic')?.value || '/brand/logo-dbs-v3@2x.webp';
+    const graphic = root.querySelector('#fcGraphic')?.value || '/brand/pikk-logo-square.png';
     const privacy = root.querySelector('#fcPrivacy')?.value || 'public';
     const res = createFanClub({ name, description, graphic, privacy });
     if (res.error === 'signin') return toast('Sign in required');

@@ -9,7 +9,7 @@ const defaultState = () => ({
       id: 'dbs',
       username: 'DatBoiSkeet',
       bio: 'Official DatBoiSkeet · Long Story Short & Ladies Only Coming Soon · Vault · Foreign X-Change',
-      avatar: '/brand/logo-dbs-v3@2x.webp',
+      avatar: '/brand/pikk-logo-square.png',
       followers: [],
       following: [],
       verified: true,
@@ -4534,7 +4534,7 @@ export function ensureFanClubsSeeded({ force = false } = {}) {
       name: 'DatBoiSkeet Official',
       description:
         'Official DatBoiSkeet fan club inside DBS Lounge. Music drops, Vault tips, Foreign X-Change, and community rules — DBS branding first. Follow optional.',
-      graphic: '/brand/logo-dbs-v3@2x.webp',
+      graphic: '/brand/pikk-logo-square.png',
       hostId: 'dbs',
       hostName: 'DatBoiSkeet',
       privacy: 'public', // public | members | paid
@@ -4640,7 +4640,7 @@ export function createFanClub({ name, description, graphic, privacy = 'public' }
     id: fcUid('fc'),
     name: n,
     description: String(description || '').trim().slice(0, 280),
-    graphic: String(graphic || '/brand/logo-dbs-v3@2x.webp').slice(0, 200),
+    graphic: String(graphic || '/brand/pikk-logo-square.png').slice(0, 200),
     hostId: user.id,
     hostName: user.username,
     privacy: priv,

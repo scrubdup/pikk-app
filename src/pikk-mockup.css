@@ -163,3 +163,6 @@ html body .top#topBar :is(a.header-notifications, a.header-msg, button.icon-btn)
 html body .top#topBar :is(a.header-notifications, a.header-msg, button.icon-btn):focus-visible svg *,
 html body .top#topBar :is(a.header-notifications, a.header-msg, button.icon-btn):active svg * { stroke: var(--pikk-red); color: var(--pikk-red); }
 html body .top#topBar :is(a.header-notifications, a.header-msg, button.icon-btn) svg [fill]:not([fill="none"]) { fill: var(--pikk-red); }
+/* t360u drawer brand: official logo above label */
+#sideNav .drawer-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+#sideNav .drawer-brand img { width: 140px; height: auto; background: #000; display: block; }

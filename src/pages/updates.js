@@ -46,7 +46,7 @@ export function renderUpdates() {
           <a class="btn ghost" href="#/home">Return home</a>
         </div>
       </div>
-      <div class="pikk-updates-hero-mark"><img src="${esc(asset('brand/pikk-official-approved.jpg'))}" alt="PIKK official chrome logo" loading="eager"></div>
+      <div class="pikk-updates-hero-mark"><img src="${esc(asset('brand/pikk-logo-official.png'))}" alt="PIKK official chrome logo" loading="eager"></div>
     </section>
     <section class="pikk-updates-list" aria-label="Recent published updates">
       <h2>Latest verified improvements</h2>

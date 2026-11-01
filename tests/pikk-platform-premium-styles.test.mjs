@@ -14,7 +14,7 @@ test('all route pages share one premium style foundation',()=>{
  assert.match(css,/focus-visible/);
 });
 test('branding, player, navigation and test-mode content remain intact',()=>{
- assert.match(html,/brand\/pikk-official-approved\.jpg/);
+ assert.match(html,/brand\/pikk-logo-official\.png/);
  for(const id of ['dbs-sticky-player','spPlay','spQueueBtn','headerProfile','headerMsg','notifBtn','exploreSearchBtn','menuBtn']) assert.ok(html.includes('id="'+id+'"'),id);
  assert.deepEqual(TABBAR.map(t=>t.label),['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop']);
  assert.match(css,/\.pikk-create-overlay\[hidden\]/);

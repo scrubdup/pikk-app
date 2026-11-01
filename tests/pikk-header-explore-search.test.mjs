@@ -16,7 +16,7 @@ test('Explore search magnifying glass appears between notifications and menu', (
 });
 
 test('PIKK branding, music player, existing header actions and Explore rail remain', () => {
-  assert.match(html, /src="%BASE_URL%brand\/pikk-logo-header\.png" alt="PIKK"/);
+  assert.match(html, /src="%BASE_URL%brand\/pikk-logo-official\.png" alt="PIKK"/);
   assert.match(html, /id="dbs-sticky-player"/);
   assert.match(html, /id="spPlay"/);
   for (const id of ['headerProfile', 'headerMsg', 'notifBtn', 'menuBtn']) assert.ok(html.includes('id="'+id+'"'));
