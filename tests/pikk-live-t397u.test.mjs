@@ -31,7 +31,7 @@ test('t397u categories tab renders all 78 topics with correct per-section counts
   for (const s of spec) {
     const g = LIVE_DISCOVERY_GROUPS.find((x) => x.title === s.title);
     const sec = h.slice(h.indexOf(`id="pikk-live-group-${g.id}"`)); 
-    assert.match(sec, new RegExp(`pikk-live-directory-count">${s.count} rooms`));
+    assert.match(sec, new RegExp(`pikk-live-directory-count">${s.count} topics`));
   }
   assert.equal((h.match(/class="live-cat-card pikk-live-room-card"/g) || []).length, 78);
 });

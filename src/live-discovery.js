@@ -93,7 +93,7 @@ export function renderLiveDiscoveryDirectory(categories, escapeHtml) {
       '<span class="pikk-live-directory-icon" aria-hidden="true">' + group.icon + '</span>' +
       '<span class="pikk-live-directory-label"><strong>' + escapeHtml(group.title) +
       '</strong><small>' + escapeHtml(group.description) + '</small></span>' +
-      '<span class="pikk-live-directory-count">' + entries.length + ' rooms</span>' +
+      '<span class="pikk-live-directory-count">' + entries.length + ' topics</span>' +
       '<span class="pikk-live-directory-chevron" aria-hidden="true">⌄</span>' +
       '</summary><div class="live-cat-cards pikk-live-directory-cards">' +
       entries.map(card).join('') + '</div></details>';
@@ -104,7 +104,7 @@ export function renderLiveDiscoveryDirectory(categories, escapeHtml) {
     groups.push('<details class="pikk-live-directory-group" open>' +
       '<summary class="pikk-live-directory-summary"><span class="pikk-live-directory-icon" aria-hidden="true">✨</span>' +
       '<span class="pikk-live-directory-label"><strong>More Live</strong><small>Additional topics</small></span>' +
-      '<span class="pikk-live-directory-count">' + extra.length + ' rooms</span>' +
+      '<span class="pikk-live-directory-count">' + extra.length + ' topics</span>' +
       '<span class="pikk-live-directory-chevron" aria-hidden="true">⌄</span></summary>' +
       '<div class="live-cat-cards pikk-live-directory-cards">' + extra.map(card).join('') + '</div></details>');
   }
@@ -152,7 +152,7 @@ export function mountLiveDirectorySearch(root) {
       const count = group.querySelector('.pikk-live-directory-count');
       if (count) {
         const total = group.querySelectorAll('.pikk-live-room-card').length;
-        count.textContent = query ? groupMatches + ' of ' + total + ' topics' : total + ' rooms';
+        count.textContent = query ? groupMatches + ' of ' + total + ' topics' : total + ' topics';
       }
       if (query && groupMatches) group.open = true;
       visible += groupMatches;

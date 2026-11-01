@@ -75,7 +75,7 @@ try {
     assert.equal(await search.inputValue(), '', device + ' clear resets search');
     assert.equal(await page.locator('#liveRoomSearchStatus').textContent(), 'Browse 78 topics · these filter channels, not hosted rooms.');
     assert.equal(await page.locator('#pikk-live-group-coed').getAttribute('open'), '', 'clear restores original open folder');
-    assert.equal(await page.locator('#pikk-live-group-coed .pikk-live-directory-count').textContent(), '10 rooms', 'clear restores original folder count');
+    assert.equal(await page.locator('#pikk-live-group-coed .pikk-live-directory-count').textContent(), '10 topics', 'clear restores original folder count');
     assert.equal(await page.locator('#pikk-live-group-women').getAttribute('open'), null, 'clear restores collapsed folder');
     assert.equal(await page.locator('#liveRoomSearchClear').isVisible(), false, 'clear button hides when empty');
     assert.equal(await search.evaluate(el => el === document.activeElement), true, 'clear returns keyboard focus');
