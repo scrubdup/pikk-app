@@ -166,8 +166,8 @@ test('Escape clears a filtered Live room search and restores the previous folder
 });
 
 test('Following creator chips navigate to public profiles instead of the viewer profile', () => {
-  assert.match(live, /href="#\\/profile\\/\\$\\{encodeURIComponent\\(f\\.id\\)\\}"/,
+  assert.ok(live.includes('href="#/profile/${encodeURIComponent(f.id)}"'),
     'each followed creator links to their own public profile route');
-  assert.doesNotMatch(live, /<a class="chip" href="#\\/profile">\\$\\{esc\\('\\@'/,
+  assert.ok(!live.includes('href="#/profile">${esc('),
     'following chips must not silently redirect to the viewer profile');
 });
