@@ -650,6 +650,7 @@ export function renderSignup() {
       <p class="muted" style="margin:8px 0 12px"><strong>Basic fan signup is free</strong> — no manual approval. This demo uses local Profile sign-in (TEST MODE · no real email/auth yet).</p>
       <a class="btn primary" href="#/profile">Sign in / create demo user</a>
       <a class="btn ghost" href="#/guidelines" style="margin-left:8px">Read Guidelines</a>
+      <p class="muted" style="margin:10px 0 0;font-size:12px">By signing up you agree to the <a href="#/terms">Terms</a> (draft), including <a href="#/terms?s=security">Security &amp; Data Breach / Limitation of Liability</a>, and the <a href="#/privacy">Privacy</a> notice.</p>
     </div>
 
     <div class="card">
