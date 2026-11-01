@@ -23,7 +23,7 @@ export function renderSupport(){
      </form>
     </section>
    </div>
-   <section class="card support-pane" id="support-tickets"><h3>My tickets (${tickets.length})</h3><div class="support-history">${history}</div></section>
+   <section class="card support-pane" id="support-tickets"><h3>Saved drafts (${tickets.length})</h3><div class="support-history">${history}</div></section>
   </div>`,{lead:'Local help preview · Ticket submission and AI agents are not yet live'});
 }
 export function bindSupport(root){
@@ -38,8 +38,9 @@ export function bindSupport(root){
   const f=event.currentTarget;
   try{
    const item=createSupportTicket({category:f.elements.category.value,subject:f.elements.subject.value,contact:f.elements.contact.value,message:f.elements.message.value});
-   saveSupportTicket(window.localStorage,item);
-   toast('Ticket draft saved locally · not sent');
+   const drafts=saveSupportTicket(window.localStorage,item);
+   const added=drafts.some(draft=>draft.id===item.id);
+   toast(added?'Ticket draft saved locally · not sent':'An identical draft is already saved on this device · not sent');
    if(location.hash==='#/support')location.hash='#/support?updated=1';
    window.dispatchEvent(new HashChangeEvent('hashchange'));
   }catch(e){toast(e.message)}
