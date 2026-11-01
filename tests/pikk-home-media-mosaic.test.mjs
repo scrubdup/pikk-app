@@ -20,7 +20,7 @@ test('new layout uses real existing routes and keeps Home live/player/game modul
   assert.ok(home.includes('href="#/'+route+'"'),route);
   assert.ok(main.includes("'/"+route+"':"),route);
  }
- for(const s of ['\u0024{visualFeed}','\u0024{stageBlock}','\u0024{bwPreview}','id="homeArcade"','\u0024{liveActivityList}']) assert.ok(home.includes(s),s);
+ for(const s of ['\u0024{visualFeed}','\u0024{stageBlock}','id="homeArcade"','\u0024{liveActivityList}']) assert.ok(home.includes(s),s);
  assert.match(home,/#\/posts\?compose=1/);
  assert.match(home,/No fabricated views or live counts/);
 });

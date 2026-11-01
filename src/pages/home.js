@@ -7,6 +7,8 @@ import { PIKK_GAMES, arcadeArtSrc } from '../games/arcade-catalog.js';
 import { renderStoriesAndPromotions } from '../featured-promos.js';
 import { placementTag } from '../promote-data.js';
 import { renderHomeShowcase } from '../home-showcase.js';
+import { renderHomeMediaSlideshow, renderHomeCommunityHub, HOME_HUB_ORDER } from '../home-hub.js';
+export { HOME_HUB_ORDER };
 
 const SECTION_ICONS = {
   Explore: '🧭',
@@ -655,9 +657,9 @@ export function renderHome() {
 
     ${stageBlock}
 
-    ${renderStoriesAndPromotions('home')}
+    ${renderHomeMediaSlideshow()}
 
-    ${bwPreview}
+    ${sellPromo}
 
     <section class="home-arcade card" id="homeArcade" aria-label="PIKK Games featured slideshow">
       <div class="home-arcade-top">
@@ -685,9 +687,6 @@ export function renderHome() {
     </section>
 
 
-    ${sellPromo}
-
-    ${mixHome}
 
     <p class="kicker">Coming Soon</p>
     <h2 style="margin:0 0 8px;font-size:15px;text-transform:uppercase;letter-spacing:.04em">Upcoming Releases</h2>
@@ -696,6 +695,8 @@ export function renderHome() {
     <p class="kicker">DatBoiSkeet Network</p>
     <h2 style="margin:0 0 8px;font-size:15px;text-transform:uppercase;letter-spacing:.04em">Explore PIKK</h2>
     <div class="section-swipe" style="margin-bottom:18px">${previews}</div>
+
+    ${renderHomeCommunityHub()}
 
     <div class="card live-activity" id="home-live-activity">
       <div class="live-activity-head">
@@ -712,17 +713,11 @@ export function renderHome() {
         <a class="btn ghost" href="#/posts">Posts · Hot</a>
       </div>
     </div>
-
-    <div class="card video-list">
-      <h3>Official DatBoiSkeet MVs</h3>
-      ${vids}${adminHomeVidHtml}
-      <a class="btn ghost block" href="#/videos" style="margin-top:10px">All videos</a>
-    </div>
   `;
 
   /* t227u / reject fix: never pass badge / badgeHtml / badgeHref — HOME title stays clean */
   return shellPage('Home', body, {
-    lead: 'Featured stage · Top live · Block Wars preview · Live activity (hot lives · high-engagement posts from creators &amp; community · house updates) · Mix · Coming Soon · creator sell DEMO.',
+    lead: 'Featured stage · Posts, Shorts & Videos · creator sell DEMO · PIKK Arcade · Party Line · message board · live chat · community servers · live activity.',
   });
 }
 
