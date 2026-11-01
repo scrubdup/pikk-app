@@ -1,3 +1,4 @@
+import { SPLASH_HOLD_MS, SPLASH_FADE_MS } from './splash-config.js';
 import { renderTwerkContest, bindTwerkContest } from './pages/contest.js';
 import './styles.css';
 import './pikk-mockup.css';
@@ -435,7 +436,7 @@ function hideSplash() {
   if (!splash || splash.classList.contains('hide')) return;
   splash.classList.add('hide');
   markSplash();
-  setTimeout(() => splash.remove(), 500);
+  setTimeout(() => splash.remove(), SPLASH_FADE_MS);
 }
 
 /** §19 t178u — play tuning-fork chime once; swallow autoplay blocks. */
@@ -544,7 +545,7 @@ function boot() {
       hideSplash();
     };
     // Fixed 3s hold from boot (user ask t178u); same as safety max.
-    setTimeout(ready, 3000);
+    setTimeout(ready, SPLASH_HOLD_MS);
   }
 }
 

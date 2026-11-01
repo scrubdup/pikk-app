@@ -166,3 +166,6 @@ html body .top#topBar :is(a.header-notifications, a.header-msg, button.icon-btn)
 /* t360u drawer brand: official logo above label */
 #sideNav .drawer-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 #sideNav .drawer-brand img { width: 140px; height: auto; background: #000; display: block; }
+/* official master logo on splash: no black box */
+html body .splash { background: #000; }
+html body .splash .splash-logo { filter: none; mix-blend-mode: screen; }
