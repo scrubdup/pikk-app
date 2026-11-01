@@ -60,3 +60,19 @@ test('t397u honesty: no camera/mic access, no fabricated viewer counts in rooms'
   assert.ok(!/Math\.random|viewers\s*[:=]/.test(rooms));
   assert.match(rooms, /1 participant \(you\)/);
 });
+test('t397u follow-up: no Math.random viewer counts in Go Live / live page / rooms code', () => {
+  const store = readFileSync(new URL('../src/store.js', import.meta.url), 'utf8');
+  const fn = (name) => { const i = store.indexOf(`export function ${name}(`); return store.slice(i, store.indexOf('\nexport function', i + 10)); };
+  for (const n of ['startLiveDemo', 'bumpLiveViewers']) assert.ok(!/Math\.random/.test(fn(n)), n);
+  assert.match(fn('startLiveDemo'), /viewers: 0,/);
+  assert.ok(!/Math\.random[^;\n]*view|view[^;\n]*Math\.random/i.test(live + rooms));
+  assert.ok(!live.includes('liveBumpViewers'));
+  assert.match(live, /Demo · no real viewers/);
+});
+test('t397u follow-up: Voice mode hides video seats and shows voice avatars', () => {
+  const h = renderGroupRoomsPanel();
+  assert.match(h, /id="roomVoice" hidden/);
+  assert.match(h, /mic off \(demo\)/);
+  assert.match(rooms, /\$\('#roomStage'\)\.hidden = st\.mode !== 'Video';/);
+  assert.match(rooms, /\$\('#roomVoice'\)\.hidden = st\.mode !== 'Voice';/);
+});

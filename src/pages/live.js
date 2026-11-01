@@ -4,7 +4,6 @@ import {
   endLiveDemo,
   sendLiveChat,
   sendLiveSupport,
-  bumpLiveViewers,
   getLiveHistory,
   listHotLives,
   simulateLiveSpike,
@@ -540,12 +539,11 @@ function renderStage(live) {
     : Math.max(0, Math.floor((Date.now() - live.startedAt) / 1000));
   const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
   const ss = String(elapsed % 60).padStart(2, '0');
-  const viewersLabel = fmtCount(live.viewers || 0);
   const liveHoodie = live.endedAt
     ? `<div class="live-stage-meta"><span class="chip">Ended · ${timeAgo(live.endedAt)}</span></div>`
-    : `<div class="live-hoodie live-hoodie--stage" aria-label="Live · ${esc(viewersLabel)} watching">
+    : `<div class="live-hoodie live-hoodie--stage" aria-label="Live demo · no real viewers">
           <span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span>
-          <span class="live-hoodie-viewers" id="liveViewers" title="${esc(viewersLabel)} watching">${esc(viewersLabel)}</span>
+          <span class="live-hoodie-viewers" id="liveViewers" title="TEST MODE demo stream">Demo · no real viewers</span>
         </div>
         <div class="live-stage-meta">
           <span class="chip">${mm}:${ss}</span>
@@ -591,7 +589,6 @@ function renderStage(live) {
           : `<div class="row wrap" style="margin-top:10px;gap:8px">
                <button class="btn" id="liveTip" data-kind="tip" data-amt="1">Tip $1 · demo</button>
                <button class="btn ghost" id="liveFocusGifts">Gifts tray</button>
-               <button class="btn ghost" id="liveBumpViewers">Refresh viewers</button>
                <button class="btn ghost danger" id="liveEnd">End stream</button>
              </div>`
       }
@@ -1220,12 +1217,6 @@ export function bindLive(root) {
     refresh();
   });
 
-  root.querySelector('#liveBumpViewers')?.addEventListener('click', () => {
-    const live = bumpLiveViewers();
-    const el = root.querySelector('#liveViewers');
-    if (el && live) el.textContent = fmtCount(live.viewers || 0);
-    toast('Viewers updated (stub)');
-  });
 
   root.querySelector('#liveTip')?.addEventListener('click', (e) => {
     const btn = e.currentTarget;
