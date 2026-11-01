@@ -35,4 +35,5 @@ test('support styling protects mobile layout and keyboard focus',()=>{
  assert.match(css,/\.support-search-row\{display:grid;grid-template-columns:minmax\(0,1fr\) auto/);
  assert.match(css,/\.support-search-clear\[hidden\]\{display:none!important\}/);
  assert.match(css,/#pikkSupportSearch:focus-visible/);
+ assert.match(css,/scroll-margin-top:225px/);
 });
