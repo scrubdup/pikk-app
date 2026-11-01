@@ -2195,7 +2195,7 @@ const CREATOR_SPLITS = {
 const DEMO_EARNING_SEEDS = [
   { category: 'gifts', gross: 40, note: 'Live gifts · demo week' },
   { category: 'tips', gross: 22.5, note: 'Live tips · demo week' },
-  { category: 'subscriptions', gross: 29.99, note: 'Skeet+ fan sub · demo' },
+  { category: 'subscriptions', gross: 29.99, note: 'PIKK+ fan sub · demo' },
   { category: 'referrals', gross: 15, note: 'Refer & Earn milestone · demo' },
   { category: 'clippers', gross: 50, note: 'Clippers campaign payout · demo' },
   { category: 'sponsorships', gross: 100, note: 'Sponsored livestream · demo' },
@@ -4546,7 +4546,7 @@ export function ensureFanClubsSeeded({ force = false } = {}) {
     {
       id: 'fc_lss_crew',
       name: 'Long Story Short Crew',
-      description: 'Creator club for LSS listeners. Public lounge chat + Skeet+ members-only drop room.',
+      description: 'Creator club for LSS listeners. Public lounge chat + PIKK+ members-only drop room.',
       graphic: '/music/01_Long_Story_Short_Coming_Soon.jpg',
       hostId: 'dbs',
       hostName: 'DatBoiSkeet',
@@ -4561,7 +4561,7 @@ export function ensureFanClubsSeeded({ force = false } = {}) {
     {
       id: 'fc_ladies_only',
       name: 'Ladies Only Circle',
-      description: 'Paid / Skeet+ gated room demo for Ladies Only supporters. Unlock via membership TEST MODE.',
+      description: 'Paid / PIKK+ gated room demo for Ladies Only supporters. Unlock via membership TEST MODE.',
       graphic: '/music/02_Ladies_Only_Coming_Soon.jpg',
       hostId: 'dbs',
       hostName: 'DatBoiSkeet',
@@ -4611,7 +4611,7 @@ export function ensureFanClubsSeeded({ force = false } = {}) {
         id: 'fcp_lo1',
         userId: 'dbs',
         username: 'DatBoiSkeet',
-        text: 'Skeet+ members-only preview chat. Join Skeet+ on Pricing (TEST MODE) to unlock.',
+        text: 'PIKK+ members-only preview chat. Join PIKK+ on Pricing (TEST MODE) to unlock.',
         at: now - 12 * 3600000,
         pinned: true,
         removed: false,
@@ -4732,7 +4732,7 @@ export function isClubMod(clubId) {
   return isAdmin() || c.hostId === user.id || (c.mods || []).includes(user.id);
 }
 
-/** Access gate for discussion room: public always; members need join; paid needs Skeet+ (or higher). */
+/** Access gate for discussion room: public always; members need join; paid needs PIKK+ (or higher). */
 export function canAccessClubRoom(clubId) {
   const c = getFanClub(clubId);
   if (!c) return { ok: false, reason: 'missing' };
@@ -4812,12 +4812,12 @@ const SHARE_PLATFORMS = ['instagram', 'tiktok', 'facebook', 'youtube', 'x', 'sna
 const SHARE_REWARD_TIERS = [
   { id: 'badge', minVerified: 1, label: 'Exclusive DBS badge', kind: 'badge' },
   { id: 'decoration', minVerified: 2, label: 'Premium avatar decoration', kind: 'decoration' },
-  { id: 'skeet7', minVerified: 3, label: '7 days Skeet+ (TEST MODE)', kind: 'membership_trial', membership: 'skeet+', days: 7 },
+  { id: 'skeet7', minVerified: 3, label: '7 days PIKK+ (TEST MODE)', kind: 'membership_trial', membership: 'skeet+', days: 7 },
   {
     id: 'skeet30',
     minVerified: 3,
     requireAllLinked: true,
-    label: '30 days Skeet+ (all linked · min 3)',
+    label: '30 days PIKK+ (all linked · min 3)',
     kind: 'membership_trial',
     membership: 'skeet+',
     days: 30,
@@ -4826,8 +4826,8 @@ const SHARE_REWARD_TIERS = [
 
 const REFER_MILESTONES = [
   { n: 1, id: 'm1', label: 'Profile decoration', kind: 'decoration' },
-  { n: 3, id: 'm3', label: '7 days Skeet+ (TEST MODE)', kind: 'membership_trial', membership: 'skeet+', days: 7 },
-  { n: 5, id: 'm5', label: '30 days Skeet+ (TEST MODE)', kind: 'membership_trial', membership: 'skeet+', days: 30 },
+  { n: 3, id: 'm3', label: '7 days PIKK+ (TEST MODE)', kind: 'membership_trial', membership: 'skeet+', days: 7 },
+  { n: 5, id: 'm5', label: '30 days PIKK+ (TEST MODE)', kind: 'membership_trial', membership: 'skeet+', days: 30 },
   { n: 10, id: 'm10', label: 'Premium profile bundle', kind: 'bundle' },
   { n: 25, id: 'm25', label: '30 days Backstage (TEST MODE)', kind: 'membership_trial', membership: 'backstage', days: 30 },
   { n: 50, id: 'm50', label: '30 days Inner Circle (TEST MODE)', kind: 'membership_trial', membership: 'inner', days: 30 },

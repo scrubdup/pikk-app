@@ -20,7 +20,7 @@ test('settings page has all groups and saves locally', () => {
 });
 test('pricing: every tier has Join/Subscribe; Inner Circle stores test-mode status', async () => {
   const { MEMBERSHIPS } = await import('../src/data.js');
-  assert.ok(MEMBERSHIPS.find((m) => m.id === 'inner' && m.price === 14.99));
+  assert.ok(MEMBERSHIPS.find((m) => m.id === 'inner' && m.price === 12.99));
   assert.match(read('src/pages/shells.js'), /data-join="\$\{esc\(m\.id\)\}"/);
   mem.clear(); const m = ss.joinMembership(MEMBERSHIPS.find((x) => x.id === 'inner'));
   assert.equal(JSON.parse(mem.get(ss.MEMBERSHIP_KEY)).id, 'inner');

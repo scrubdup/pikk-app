@@ -468,7 +468,7 @@ const LOUNGE_CHANNELS = [
     cat: 'MEMBERS',
     hash: '#backstage-rooms',
     name: 'Backstage Rooms',
-    blurb: 'Tier-restricted spaces for Skeet+ / Backstage / Inner Circle',
+    blurb: 'Tier-restricted spaces for PIKK+ / Backstage / Inner Circle',
     chip: 'Members',
   },
   {
@@ -501,7 +501,7 @@ const LOUNGE_DEMO_MSGS = {
     { who: 'DEMO', text: 'Listening parties will sync reactions here — preview only.', tag: 'DEMO' },
   ],
   backstage: [
-    { who: 'DEMO', text: 'Member-tier rooms unlock with Skeet+ / Backstage / Inner Circle.', tag: 'DEMO' },
+    { who: 'DEMO', text: 'Member-tier rooms unlock with PIKK+ / Backstage / Inner Circle.', tag: 'DEMO' },
   ],
   'live-rooms': [
     { who: 'DEMO', text: 'Scheduled community events will list here — no live presence yet.', tag: 'DEMO' },

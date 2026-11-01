@@ -246,7 +246,7 @@ function renderShareTab() {
 
     <div class="card">
       <h3>Rewards</h3>
-      <p class="muted" style="margin:0 0 8px;font-size:13px">1 → badge · 2 → decoration · 3 → 7d Skeet+ · all linked (≥3) → 30d Skeet+. No auto paid billing.</p>
+      <p class="muted" style="margin:0 0 8px;font-size:13px">1 → badge · 2 → decoration · 3 → 7d PIKK+ · all linked (≥3) → 30d PIKK+. No auto paid billing.</p>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <tbody>${rewardRows}</tbody>
@@ -391,8 +391,8 @@ function renderReferTab() {
       <h3>Invitee welcome path</h3>
       <ul class="list-plain">
         <li><span>Welcome badge / decoration</span><span class="chip">on signup perk</span></li>
-        <li><span>3 days Skeet+</span><span class="chip">after 3 active days</span></li>
-        <li><span>Extra 7 days Skeet+</span><span class="chip">7-day first-week streak</span></li>
+        <li><span>3 days PIKK+</span><span class="chip">after 3 active days</span></li>
+        <li><span>Extra 7 days PIKK+</span><span class="chip">7-day first-week streak</span></li>
       </ul>
       <p class="muted" style="margin:8px 0 0;font-size:12px">Invitee membership grants are illustrative chips in this demo; use Welcome perk + active days on each invitee card.</p>
     </div>

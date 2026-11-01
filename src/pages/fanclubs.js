@@ -39,7 +39,7 @@ function ensureSignedIn(name = 'DemoFan') {
 }
 
 function privacyLabel(p) {
-  if (p === 'paid') return 'Paid / Skeet+';
+  if (p === 'paid') return 'Paid / PIKK+';
   if (p === 'members') return 'Members only';
   return 'Public';
 }
@@ -80,15 +80,15 @@ function renderDetail(clubId) {
   const gate =
     !access.ok
       ? `<div class="card" style="border-color:rgba(245,158,11,.35)">
-          <h3 style="margin:0 0 6px">${c.privacy === 'paid' ? 'Skeet+ room' : 'Members only'}</h3>
+          <h3 style="margin:0 0 6px">${c.privacy === 'paid' ? 'PIKK+ room' : 'Members only'}</h3>
           <p class="muted" style="margin:0 0 10px">${
             c.privacy === 'paid'
-              ? 'This room uses membership permissions (Skeet+ or higher). TEST MODE unlock below — no real charge.'
+              ? 'This room uses membership permissions (PIKK+ or higher). TEST MODE unlock below — no real charge.'
               : 'Join the club to enter the discussion room.'
           }</p>
           ${
             c.privacy === 'paid'
-              ? `<button class="btn primary" id="fcUnlockSkeet">Unlock Skeet+ · TEST MODE</button>
+              ? `<button class="btn primary" id="fcUnlockSkeet">Unlock PIKK+ · TEST MODE</button>
                  <a class="btn" href="#/pricing">Pricing</a>
                  <p class="chip" style="margin-top:8px">Current membership: ${esc(mem || 'none')}</p>`
               : `<button class="btn primary" data-join="${esc(c.id)}">Join club</button>`
@@ -203,7 +203,7 @@ export function renderFanClubs(route) {
         <select id="fcPrivacy" style="width:100%;margin:4px 0 12px;background:#0e0e14;border:1px solid var(--line);border-radius:12px;padding:10px;color:inherit">
           <option value="public">Public discussion</option>
           <option value="members">Members only</option>
-          <option value="paid">Paid / Skeet+ gate</option>
+          <option value="paid">Paid / PIKK+ gate</option>
         </select>
         <button class="btn primary" type="submit">Create club</button>
         <button class="btn ghost" type="button" id="fcSeedBtn">Reseed demos</button>
@@ -362,7 +362,7 @@ export function bindFanClubs(root) {
   root.querySelector('#fcUnlockSkeet')?.addEventListener('click', () => {
     ensureSignedIn();
     setMembership('skeet+', true);
-    toast('Skeet+ unlocked · TEST MODE');
+    toast('PIKK+ unlocked · TEST MODE');
     const q = new URLSearchParams((location.hash.split('?')[1] || ''));
     refresh(q.get('club') || undefined);
   });
