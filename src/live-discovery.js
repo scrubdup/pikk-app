@@ -80,11 +80,15 @@ export function renderLiveDiscoveryDirectory(categories, escapeHtml) {
       '<p class="muted">' + escapeHtml(description) + '</p>' +
       '<span class="pikk-live-room-action">Browse channels <span aria-hidden="true">›</span></span></a>';
   };
-  const groups = LIVE_DISCOVERY_GROUPS.map(group => {
+  const groups = [...LIVE_DISCOVERY_GROUPS]
+    // General livestream choices (IRL, Gaming, Music, etc.) should be visible
+    // before community room folders, without changing the approved topic roster.
+    .sort((a, b) => Number(b.id === 'general') - Number(a.id === 'general'))
+    .map(group => {
     const entries = group.names.map(name => byName.get(name)).filter(Boolean);
     entries.forEach(entry => assigned.add(entry[0]));
     return '<details class="pikk-live-directory-group" id="pikk-live-group-' + group.id +
-      '"' + (group.id === 'coed' ? ' open' : '') + '>' +
+      '"' + (group.id === 'coed' || group.id === 'general' ? ' open' : '') + '>' +
       '<summary class="pikk-live-directory-summary">' +
       '<span class="pikk-live-directory-icon" aria-hidden="true">' + group.icon + '</span>' +
       '<span class="pikk-live-directory-label"><strong>' + escapeHtml(group.title) +

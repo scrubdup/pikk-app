@@ -43,6 +43,9 @@ test('directory renders accessible collapsible groups with real channel filters'
   assert.equal((html.match(/class="live-cat-card pikk-live-room-card"/g) || []).length, 78);
   assert.equal((html.match(/class="pikk-live-directory-summary"/g) || []).length, 8);
   assert.match(html, /id="pikk-live-group-coed" open/);
+  assert.match(html, /id="pikk-live-group-general" open/, 'IRL and Gaming section starts expanded');
+  assert.ok(html.indexOf('id="pikk-live-group-general"') < html.indexOf('id="pikk-live-group-women"'), 'General Live is the first folder');
+  assert.match(html, /17 rooms/, 'all 17 General Live topics retained');
   assert.match(html, /15 rooms/);
   assert.ok(html.includes('<span class="pikk-live-directory-icon" aria-hidden="true">🫱🏻‍🫲🏿</span>'), 'Men\'s Rooms shows mixed-tone handshake in rendered directory');
   assert.match(html, /10 rooms/);

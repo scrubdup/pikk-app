@@ -18,12 +18,19 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('http://127.0.0.1:5173/#/live?tab=categories', { waitUntil: 'domcontentloaded' });
     await page.locator('#liveTabCategories').waitFor({ state: 'visible', timeout: 20000 });
-    await page.waitForTimeout(3600);
+    // Capture the actual Live directory, not the startup splash overlay.
+    await page.locator('#splash').waitFor({ state: 'hidden', timeout: 20000 });
     assert.equal(await page.locator('.logo-img').isVisible(), true, 'approved logo remains visible');
     assert.equal(await page.locator('#dbs-sticky-player').isVisible(), true, 'persistent music player');
     assert.equal(await page.locator('#tabbar a').count(), 7, 'seven bottom tabs preserved');
     assert.equal(await page.locator('.pikk-live-directory-group').count(), 8, 'eight organized sections');
     assert.equal(await page.locator('#pikk-live-group-coed').getAttribute('open'), '', 'coed open by default');
+    assert.equal(await page.locator('.pikk-live-directory-group').first().getAttribute('id'), 'pikk-live-group-general', 'General Live is first');
+    assert.equal(await page.locator('#pikk-live-group-general').getAttribute('open'), '', 'General Live opens by default');
+    assert.equal(await page.locator('#pikk-live-group-general .pikk-live-room-card:visible').count(), 17, 'all General Live categories visible');
+    assert.equal(await page.locator('#pikk-live-group-general').getByText('IRL', { exact: true }).isVisible(), true, 'IRL discoverable');
+    assert.equal(await page.locator('#pikk-live-group-general').getByText('Gaming', { exact: true }).isVisible(), true, 'Gaming discoverable');
+    await page.locator('#pikk-live-group-general').screenshot({ path: 'visual-review/pikk-live-' + device + '-general.png' });
     assert.equal(await page.locator('#pikk-live-group-coed .pikk-live-room-card').count(), 10);
     assert.equal(await page.locator('#pikk-live-group-women .pikk-live-room-card').count(), 15);
     assert.equal(await page.locator('#pikk-live-group-men .pikk-live-room-card').count(), 15);
@@ -32,6 +39,10 @@ try {
     assert.ok(iconWidth >= 32, 'handshake icon retains its visible tile');
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     assert.ok(overflow <= 3, device + ' must not overflow viewport: ' + overflow);
+    // Element screenshots scroll the page. Reset before capturing the initial
+    // viewport so review shows the real header, search and first Live section.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(100);
     await page.screenshot({ path: 'visual-review/pikk-live-' + device + '-directory.png' });
 
     const search = page.getByRole('searchbox', { name: 'Find a Live topic' });
