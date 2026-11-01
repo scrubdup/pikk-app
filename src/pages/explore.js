@@ -322,6 +322,7 @@ export function renderExplore() {
         <button class="btn primary" type="button" id="exploreGo">Search</button>
         <button class="btn ghost" type="button" id="exploreClear">Clear</button>
       </div>
+      <p class="muted" id="exploreSearchStatus" role="status" aria-live="polite" aria-atomic="true" style="margin:8px 0 0;font-size:12px">Ready to search PIKK.</p>
       <p class="muted" style="margin:10px 0 0;font-size:12px">City/state filters search only explicitly opted-in public location tags. Your own profile needs both location and Explore discoverability enabled. Demo data may have none. No GPS, precise addresses, real-time presence or backend.</p>
     </div>
     <div class="shop-chips" style="margin:0 0 12px" role="tablist" aria-label="Explore sections">${tabBtns}</div>
@@ -365,6 +366,13 @@ function runSearch(root, q) {
     (res.lives?.length || 0) +
     (res.products?.length || 0) +
     (res.pictures?.length || 0);
+  const status = root.querySelector('#exploreSearchStatus');
+  if (status) {
+    const context = exploreResultContext(res);
+    status.textContent = res.query
+      ? `${total} result${total === 1 ? '' : 's'} ${context || 'across PIKK'}.`
+      : 'Enter a keyword, city or state to search.';
+  }
   if (res.query) toast(total ? `${total} result(s)` : 'No matches');
 }
 
@@ -386,6 +394,8 @@ export function bindExplore(root) {
     const wrap = root.querySelector('#exploreResultsWrap');
     if (wrap) wrap.innerHTML = renderResults(null);
     root.querySelector('#exploreLiveInsert')?.remove();
+    const status = root.querySelector('#exploreSearchStatus');
+    if (status) status.textContent = 'Ready to search PIKK.';
     toast('Cleared');
   }
   clear?.addEventListener('click', clearSearch);
