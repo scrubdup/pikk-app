@@ -28,6 +28,7 @@ const UTILITY = [
   { id: 'messages', label: 'Messages', href: '#/messages' },
   { id: 'notifications', label: 'Notifications', href: '#/notifications' },
   { id: 'settings', label: 'Settings', href: '#/profile?tab=settings' },
+  { id: 'donate', label: 'Donate · PIKK goal', href: '#/donate' },
 ];
 
 const pathOf = (h) => '/' + String(h).replace(/^#\/?/, '').split(/[?#]/)[0];

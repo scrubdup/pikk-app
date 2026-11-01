@@ -24,9 +24,23 @@
 .pikk-explore-rail a.pikk-explore-promote{border-color:rgba(47,107,255,.78)!important;color:#ff3137!important;box-shadow:0 0 9px rgba(255,49,55,.3)}
 .pikk-home-filterbar a.pikk-home-promote{border:1px solid rgba(47,107,255,.78)!important;color:#ff3137!important;box-shadow:0 0 9px rgba(255,49,55,.3)}
 .sticky-player .sp-tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#ff3137;border:1px solid rgba(47,107,255,.78);border-radius:999px;padding:1px 6px;margin-bottom:2px}
-.pikk-home-circle .pikk-rail-tag{display:block;font-size:9px;font-weight:800;color:#ff3137;text-transform:uppercase;letter-spacing:.03em;margin-top:1px}
+.pikk-home-circle .pikk-rail-tag{display:block;order:9;font-size:9px;font-weight:800;color:#ff3137;text-transform:uppercase;letter-spacing:.03em;margin-top:1px}
 .pikk-promote-tiers small.pikk-promote-slots{color:#fff;border-color:rgba(47,107,255,.78)}.pikk-promote-tiers small.pikk-promote-slots.is-sold-out{color:#ff3137;border-color:#ff3137}
 /* t346u: story rail is swipeable through promoted stories */
 .pikk-home-circle-strip{overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
-.pikk-home-circle-strip>.pikk-home-circle{scroll-snap-align:start;flex:0 0 auto}
+.pikk-home-circle-strip>.pikk-home-circle{scroll-snap-align:start}
 .sticky-player .sp-plays{display:block;font-size:10px;color:#c0c6cf}.pikk-play-count{display:block;font-size:10px;font-weight:700;color:#c0c6cf;margin-top:2px}
+/* t351u: slim Home goal bar under the player */
+.home-goal-slim{display:flex;align-items:center;gap:10px;min-height:44px;max-height:56px;box-sizing:border-box;padding:6px 8px 6px 12px;margin:0 0 10px;border-radius:14px;text-decoration:none;color:#fff;background:#0b0d13;border:1px solid rgba(47,107,255,.78);box-shadow:0 0 9px rgba(255,49,55,.3)}
+.home-goal-slim-label{display:flex;flex-direction:column;line-height:1.1;min-width:0;flex:0 1 auto}
+.home-goal-slim-label strong{font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.home-goal-slim-label small{font-size:10px;color:#c0c6cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-goal-slim-bar{flex:1 1 auto;height:8px;border-radius:99px;background:#1a1f2b;overflow:hidden;min-width:50px}
+.home-goal-slim-bar>span{display:block;height:100%;background:linear-gradient(90deg,#ff3137,#c0c6cf,#2f6bff);border-radius:99px;min-width:4px}
+.home-goal-slim-btn{flex:0 0 auto;padding:7px 14px!important;font-size:12px;min-height:0}
+/* t351u: player card ~10% shorter (92→83px card) without cramping controls */
+html:root { --sp-h: 95px; }
+html body #dbs-sticky-player .sp-meta{position:relative}
+html body #dbs-sticky-player .sp-tag{position:absolute;top:-13px;right:0;margin:0;line-height:1.3;font-size:8px;padding:0 5px;background:#0b0d13;z-index:1}
+html body #dbs-sticky-player .sp-plays:empty{display:none}
+html body #dbs-sticky-player .sp-plays{position:absolute;bottom:-6px;right:0;font-size:9px}

@@ -46,6 +46,7 @@ import { renderUpdates, bindUpdates } from './pages/updates.js';
 import { renderAdmin, bindAdmin } from './pages/admin.js';
 import { renderPosts, bindPosts } from './pages/posts.js';
 import { renderPromote, bindPromote } from './pages/promote.js';
+import { renderDonate, bindDonate } from './pages/donate.js';
 import { decoratePlayCounts, recordPlay } from './play-counter.js';
 import { renderMusic, bindMusic } from './pages/music.js';
 import { renderAIArtists, bindAIArtists } from './pages/ai-artists.js';
@@ -105,6 +106,7 @@ const ROUTES = {
   '/home': { render: renderHome, bind: bindHome },
   '/create': { render: renderCreatePage },
   '/promote': { render: renderPromote, bind: bindPromote },
+  '/donate': { render: renderDonate, bind: bindDonate },
   '/updates': { render: renderUpdates, bind: bindUpdates },
   '/posts': { render: renderPosts, bind: bindPosts },
   '/music': { render: renderMusic, bind: bindMusic },
