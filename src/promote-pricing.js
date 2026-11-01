@@ -7,9 +7,9 @@ export const PIKK_FEATURED_RATES = Object.freeze([
 ]);
 const p = (o) => Object.freeze(o);
 export const PROMOTE_SECTIONS = Object.freeze([
-  { id: 'featured', title: 'Featured placements', link: '#/videos', items: PIKK_FEATURED_RATES.map((t) => p({ name: t.name, day: t.day, week: t.week })) },
-  { id: 'player', title: 'Music Player placement', link: '#/home', items: [p({ name: 'Top PIKK Music Player on Home (Trending / Promoted slot)', day: 149, week: 699 })] },
-  { id: 'storyrail', title: 'Story rail placement', link: '#/home', items: [p({ name: 'Home story rail (Trending / Promoted slot)', day: 49, week: 229 })] },
+  { id: 'featured', title: 'Featured placements', link: '#/videos', items: PIKK_FEATURED_RATES.map((t) => p({ name: t.name, day: t.day, week: t.week, slots: t.slots })) },
+  { id: 'player', title: 'Music Player placement', link: '#/home', items: [p({ name: 'Top PIKK Music Player on Home (Trending / Promoted slot)', day: 149, week: 699, slots: 6 })] },
+  { id: 'storyrail', title: 'Story rail placement', link: '#/home', items: [p({ name: 'Home story rail (Trending / Promoted slot)', day: 49, week: 229, slots: 10 })] },
   { id: 'music', title: 'Music', link: '#/music', items: [p({ name: 'Trending Music boost (tracks, albums)', day: 29, week: 129 })] },
   { id: 'videos', title: 'Videos and Clips', link: '#/videos', items: [p({ name: 'Video / Clip boost', day: 19, week: 89 })] },
   { id: 'live', title: 'Live', link: '#/live', items: [p({ name: 'Live stream boost (pre-live + during the live)', perStream: 25 })] },
@@ -26,4 +26,28 @@ const usd = (n) => '$' + (Number.isInteger(n) ? n : n.toFixed(2));
 export function priceLabels(i) {
   return [i.hour != null && `${usd(i.hour)} / hour`, i.day != null && `${usd(i.day)} / 24h`, i.week != null && `${usd(i.week)} / 7 days`,
     i.perStream != null && `${usd(i.perStream)} per stream`, i.perEvent != null && `${usd(i.perEvent)} per event`, i.perMatch != null && `${usd(i.perMatch)} per match`].filter(Boolean);
+}
+
+/** Rotating placements: slot caps per time window (t345u). Server must enforce (docs/promote-slots.md). */
+export const SLOT_CAPS = Object.freeze({ player: 6, storyrail: 10, spotlight: 1, featured: 2, promo: 3 });
+/** TEST MODE occupancy: no real bookings exist yet, so every slot is open. */
+export const DEMO_OCCUPANCY = Object.freeze({ player: 0, storyrail: 0, spotlight: 0, featured: 0, promo: 0 });
+
+export function slotStatus(cap, booked) {
+  const c = Math.max(0, cap | 0), b = Math.min(c, Math.max(0, booked | 0)), left = c - b;
+  return { cap: c, booked: b, left, soldOut: left === 0, label: left === 0 ? 'Sold out' : `${left} of ${c} slots left` };
+}
+/** Booking is allowed only when a slot is free (and, today, never — checkout is Coming soon). */
+export function canBook(cap, booked) { return !slotStatus(cap, booked).soldOut; }
+/**
+ * Fair round-robin rotation. Pure. Given booked items (≤ cap are accepted, extras rejected),
+ * returns an order of `impressions` positions where each accepted item gets an equal share
+ * (counts differ by at most 1, earlier bookings first on ties).
+ */
+export function rotate(bookings, cap, impressions) {
+  const accepted = bookings.slice(0, Math.max(0, cap | 0));
+  const rejected = bookings.slice(accepted.length);
+  const schedule = [];
+  if (accepted.length) for (let i = 0; i < impressions; i++) schedule.push(accepted[i % accepted.length]);
+  return { accepted, rejected, schedule };
 }

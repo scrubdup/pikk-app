@@ -25,3 +25,4 @@
 .pikk-home-filterbar a.pikk-home-promote{border:1px solid rgba(47,107,255,.78)!important;color:#ff3137!important;box-shadow:0 0 9px rgba(255,49,55,.3)}
 .sticky-player .sp-tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#ff3137;border:1px solid rgba(47,107,255,.78);border-radius:999px;padding:1px 6px;margin-bottom:2px}
 .pikk-home-circle .pikk-rail-tag{display:block;font-size:9px;font-weight:800;color:#ff3137;text-transform:uppercase;letter-spacing:.03em;margin-top:1px}
+.pikk-promote-tiers small.pikk-promote-slots{color:#fff;border-color:rgba(47,107,255,.78)}.pikk-promote-tiers small.pikk-promote-slots.is-sold-out{color:#ff3137;border-color:#ff3137}
