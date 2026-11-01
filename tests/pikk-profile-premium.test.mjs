@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {TABBAR} from '../src/data.js';
+import { profileRouteHref } from '../src/profile-links.js';
+import { getRoute } from '../src/router.js';
 const profile=readFileSync(new URL('../src/pages/profile.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../src/styles.css',import.meta.url),'utf8');
 const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
@@ -31,4 +33,22 @@ test('Public view shows the signed-in owner their read-only profile, not the edi
   assert.match(profile, /\?view=public">Public view<\/a>/);
   assert.match(profile, /isOwnPreview\s*\? `<a class="btn primary" href="#\/profile">Edit profile<\/a>`/);
   assert.match(profile, /user && !isOwnPreview &&/);
+});
+
+
+test('profile follower, following, public view and follow refresh links encode reserved IDs', () => {
+  for (const id of ['user/name', 'name with spaces', 'user?query#fragment', 'quote"&<tag>']) {
+    const href = profileRouteHref(id);
+    assert.equal(href, '#/profile/' + encodeURIComponent(id));
+    const oldLocation = globalThis.location;
+    try {
+      globalThis.location = { hash: href };
+      assert.equal(getRoute().parts[1], id, 'encoded profile URL round-trips through router');
+    } finally { globalThis.location = oldLocation; }
+  }
+  assert.equal(profileRouteHref('user/one', 'public'), '#/profile/user%2Fone?view=public');
+  assert.match(profile, /profileRouteHref\(p\.id\)/);
+  assert.match(profile, /profileRouteHref\(user\.id, 'public'\)/);
+  assert.match(profile, /refresh\(profileRouteHref\(uid\)\)/);
+  assert.doesNotMatch(profile, /href="#\/profile\/\$\{esc\(p\.id\)\}"/);
 });
