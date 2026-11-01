@@ -6,7 +6,11 @@
 :root { --splash-total: 5s; }
 html body .splash { animation: splashOut var(--splash-total) ease-in both; }
 html body .splash .splash-logo-wrap { position: relative; display: inline-block; line-height: 0; overflow: visible; animation: splashZoom var(--splash-total) cubic-bezier(.2,.7,.2,1) both; }
-html body .splash .splash-logo { animation: splashNeon var(--splash-total) ease-in-out both; }
+html body .splash .splash-logo { position: relative; animation: splashLogoShow var(--splash-total) linear both; }
+/* neon edge = soft blurred red(top)/blue(bottom) glow BEHIND the screen-blended logo (no rectangular halo) */
+html body .splash .splash-neon { position: absolute; inset: -12% -6%; pointer-events: none; filter: blur(14px);
+  background: radial-gradient(60% 45% at 50% 22%, rgba(255,49,55,.9), transparent 70%), radial-gradient(60% 45% at 50% 80%, rgba(47,107,255,.9), transparent 70%);
+  animation: splashNeon var(--splash-total) ease-in-out both; }
 html body .splash .splash-shine {
   position: absolute; inset: 0; overflow: hidden; pointer-events: none; mix-blend-mode: screen;
   background: linear-gradient(105deg, rgba(255,255,255,0) 35%, rgba(235,240,248,.85) 50%, rgba(255,255,255,0) 65%) no-repeat;
@@ -30,22 +34,19 @@ html body .splash .splash-tagline { margin: 0; font-size: 13px; font-weight: 800
   32%, 100% { opacity: 0; transform: scale(4); }
 }
 @keyframes splashZoom {
-  0%, 18% { opacity: 0; transform: scale(.7); }
-  20% { opacity: 1; transform: scale(.7); }
-  50% { opacity: 1; transform: scale(1.1); }
-  70%, 100% { opacity: 1; transform: scale(1); }
+  0%, 20% { transform: scale(.7); }
+  50% { transform: scale(1.1); }
+  70%, 100% { transform: scale(1); }
 }
-@keyframes splashShine { 0%, 20% { background-position: -80% 0; } 50%, 100% { background-position: 220% 0; } }
-@keyframes splashNeon {
-  0%, 50% { filter: drop-shadow(0 0 0 rgba(255,49,55,0)); }
-  58% { filter: drop-shadow(0 -2px 10px rgba(255,49,55,.75)) drop-shadow(0 3px 12px rgba(47,107,255,.75)); }
-  70%, 100% { filter: drop-shadow(0 -1px 5px rgba(255,49,55,.35)) drop-shadow(0 2px 6px rgba(47,107,255,.35)); }
-}
+/* logo art hidden during the black 0–1s intro (the cursor + ripple stay visible); appears at 1s */
+@keyframes splashLogoShow { 0%, 17% { opacity: 0; } 20%, 100% { opacity: 1; } }
+@keyframes splashShine { 0%, 20% { background-position: -80% 0; opacity: 0; } 21% { opacity: 1; } 49% { opacity: 1; } 50%, 100% { background-position: 220% 0; opacity: 0; } }
+@keyframes splashNeon { 0%, 50% { opacity: 0; } 58% { opacity: .75; } 70%, 100% { opacity: .35; } }
 @keyframes splashTagline { 0%, 70% { opacity: 0; transform: translateY(6px); } 82%, 100% { opacity: 1; transform: none; } }
 @keyframes splashOut { 0%, 86% { opacity: 1; transform: none; } 100% { opacity: 0; transform: scale(1.08); } }
 /* reduced motion: a simple fade only */
 @media (prefers-reduced-motion: reduce) {
-  html body .splash .splash-logo-wrap, html body .splash .splash-logo, html body .splash .splash-shine,
+  html body .splash .splash-logo-wrap, html body .splash .splash-logo, html body .splash .splash-shine, html body .splash .splash-neon,
   html body .splash .splash-cursor, html body .splash .splash-ripple, html body .splash .splash-tagline { animation: none !important; }
   html body .splash .splash-cursor, html body .splash .splash-ripple, html body .splash .splash-shine { display: none; }
   html body .splash { animation: splashFadeSimple var(--splash-total) ease both !important; }
