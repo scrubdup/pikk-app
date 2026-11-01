@@ -18,6 +18,7 @@ import './openmic-premium.css';
 import './shield.css';
 import './ai-artists.css';
 import './dating-premium.css';
+import './support.css';
 import { SECTION_MENU_ITEMS, closeSectionMenus, toggleSectionMenu } from './section-menus.js';
 import { CREATE_MENU_GROUPS } from './create-menu.js';
 import { DRAWER_GROUPS, TABBAR } from './data.js';
@@ -52,6 +53,7 @@ import { decoratePlayCounts, recordPlay } from './play-counter.js';
 import { renderMusic, bindMusic } from './pages/music.js';
 import { renderAIArtists, bindAIArtists } from './pages/ai-artists.js';
 import { renderShield, bindShield } from './pages/shield.js';
+import { renderSupport, bindSupport } from './pages/support.js';
 import { renderMerch, bindMerch } from './pages/merch.js';
 import { renderProfile, bindProfile } from './pages/profile.js';
 import { renderClippers, bindClippers } from './pages/clippers.js';
@@ -114,6 +116,7 @@ const ROUTES = {
   '/music': { render: renderMusic, bind: bindMusic },
   '/ai-artists': { render: renderAIArtists, bind: bindAIArtists },
   '/shield': { render: renderShield, bind: bindShield },
+  '/support': { render: renderSupport, bind: bindSupport },
   '/vault': { render: renderMusic, bind: bindMusic },
   '/merch': { render: renderMerch, bind: bindMerch },
   '/profile': { render: renderProfile, bind: bindProfile },
