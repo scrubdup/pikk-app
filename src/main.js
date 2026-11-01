@@ -1,7 +1,7 @@
 import { renderTerms, bindTerms, renderPrivacy } from './pages/legal.js';
 import { renderSettings, bindSettings } from './pages/settings.js';
 import { getSettings, applyAppearance } from './settings-store.js';
-import { SPLASH_HOLD_MS, SPLASH_FADE_MS } from './splash-config.js';
+import { SPLASH_HOLD_MS, SPLASH_FADE_MS, SPLASH_CLICK_MS } from './splash-config.js';
 import { renderTwerkContest, bindTwerkContest } from './pages/contest.js';
 import './styles.css';
 import './pikk-mockup.css';
@@ -58,6 +58,7 @@ import { decoratePlayCounts, recordPlay } from './play-counter.js';
 import { renderStory, bindStory, renderCrew, bindCrew, renderFavorites, bindFavorites } from './pages/circle.js';
 import './circle.css';
 import './pikk-chips.css';
+import './pikk-splash.css';
 import { renderMusic, bindMusic } from './pages/music.js';
 import { renderAIArtists, bindAIArtists } from './pages/ai-artists.js';
 import { renderShield, bindShield } from './pages/shield.js';
@@ -561,7 +562,8 @@ function boot() {
     const splash = document.getElementById('splash');
     if (splash) splash.remove();
   } else {
-    playSplashChime();
+    // t407u: chime synced to the cursor click on the play button
+    setTimeout(() => playSplashChime(), SPLASH_CLICK_MS);
     let done = false;
     const ready = () => {
       if (done) return;
