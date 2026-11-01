@@ -43,6 +43,7 @@ import { navigate, getRoute } from '../router.js';
 import { notifyLiveOpen, notifyLiveClosed } from '../player.js';
 import { giftStickerHtml, getGiftSticker } from '../gift-stickers.js';
 import { renderLiveDiscoveryDirectory, mountLiveDirectorySearch } from '../live-discovery.js';
+import { renderGiftForAllControls, bindGiftForAll } from '../live-gift-battle.js';
 import { renderGoLiveCategoryFields, bindGoLiveCategoryFields, readGoLiveFields, renderGroupRoomsPanel, bindGroupRooms } from '../live-rooms.js';
 
 /** t197u discovery tabs — preserve ?tab= on soft refresh */
@@ -590,7 +591,8 @@ function renderStage(live) {
                <button class="btn" id="liveTip" data-kind="tip" data-amt="1">Tip $1 · demo</button>
                <button class="btn ghost" id="liveFocusGifts">Gifts tray</button>
                <button class="btn ghost danger" id="liveEnd">End stream</button>
-             </div>`
+             </div>
+             ${renderGiftForAllControls('live')}`
       }
     </div>
 
@@ -1181,6 +1183,7 @@ export function bindLive(root) {
 
   bindGoLiveCategoryFields(root);
   bindGroupRooms(root, { toast });
+  bindGiftForAll(root, { toast, me: getState().user?.username || 'You' });
   root.querySelector('#liveStart')?.addEventListener('click', () => {
     const title = root.querySelector('#liveTitle')?.value?.trim();
     const goFields = readGoLiveFields(root);
