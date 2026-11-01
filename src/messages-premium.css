@@ -8,12 +8,12 @@
     linear-gradient(125deg,#1c1624,#101829 78%);
   box-shadow:0 16px 40px #0006;
 }
-.pikk-msg-flow-hero:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#f04c51,#6689d6,#3c83ff)}
+.pikk-msg-flow-hero:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#f04c51, #c0c6cf,#6689d6,#3c83ff)}
 .pikk-msg-flow-kicker{display:block;color:#ff3339;font-size:10px;font-weight:850;letter-spacing:.15em}
 .pikk-msg-flow-hero h2{font-size:clamp(25px,4vw,37px);line-height:1.12;letter-spacing:-.035em;color:#fff;margin:10px 0}
 .pikk-msg-flow-hero h2 em{font-style:normal;color:#3d79ff}
 .pikk-msg-flow-hero p{max-width:620px;color:#d4d2e4;line-height:1.6;font-size:13px;margin:0 0 13px}
-.pikk-msg-flow-hero .chip{background:#27263c;border-color:#62567c;color:#6f8ccd}
+.pikk-msg-flow-hero .chip{background:#27263c;border-color:#3d4e7c;color:#6f8ccd}
 .pikk-msg-flow-hero-thread{padding-block:20px}
 .pikk-msg-flow-hero-thread h2{overflow-wrap:anywhere}
 .pikk-msg-flow-panel{border:1px solid #41405a;border-radius:17px;background:linear-gradient(145deg,#1d1b2c,#151822);box-shadow:0 8px 22px #0003}
@@ -25,13 +25,13 @@
 .pikk-msg-contact-card .msg-contact-head strong{font-size:15px;color:#fff;overflow-wrap:anywhere}
 .pikk-msg-contact-card p{font-size:12px;line-height:1.5;flex:1}
 .pikk-msg-contact-card .btn{min-height:39px}
-.pikk-msg-contact-avatar{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;border-radius:14px;border:1px solid #ba6c6e;background:linear-gradient(145deg,#94393c,#2c4c9e);font-weight:900;font-size:18px;color:white}
+.pikk-msg-contact-avatar{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;border-radius:14px;border:1px solid #ba6c6e;background:linear-gradient(145deg,#94393c, #c0c6cf,#2c4c9e);font-weight:900;font-size:18px;color:white}
 .pikk-msg-flow-panel.msg-thread-head{margin-bottom:10px}
 .pikk-msg-flow-panel.msg-thread-head .msg-privacy-btns{align-self:flex-start}
 .pikk-msg-flow-panel.msg-thread-card{padding:16px}
 .pikk-msg-flow-panel .msg-thread{max-height:min(55vh,550px);min-height:170px;padding:14px;background:#0e1320;border:1px solid #32334c;border-radius:14px}
 .pikk-msg-flow-panel .msg-bubble{max-width:min(84%,600px);padding:12px 14px;background:#25243a;border:1px solid #4c476a}
-.pikk-msg-flow-panel .msg-bubble.mine{background:linear-gradient(135deg,#41304c,#243f70);border-color:#6b619d}
+.pikk-msg-flow-panel .msg-bubble.mine{background:linear-gradient(135deg,#2f6bff,#243f70);border-color:#6b619d}
 .pikk-msg-flow-panel .msg-bubble-text{font-size:14px;line-height:1.55}
 .pikk-msg-flow-panel .msg-composer{align-items:stretch}
 .pikk-msg-flow-panel .msg-composer input{min-width:0;flex:1 1 220px;border:1px solid #555273;background:#141927;border-radius:12px;padding:10px 12px}

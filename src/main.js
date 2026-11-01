@@ -33,7 +33,7 @@ import {
 } from './player.js';
 import { getState, ensureDemoPosts, markSplash, shouldShowSplash, getUnreadMessageCount, ensureDemoUnreadMessages } from './store.js';
 import { startRouter, onRoute, getRoute } from './router.js';
-import { ICONS, esc, shellPage } from './ui.js';
+import { ICONS, esc, shellPage, toast } from './ui.js';
 import { asset, rewriteAssetUrls } from './asset.js';
 import { markActiveTab } from './tabbar-state.js';
 import { updateRouteIdentity } from './page-announcement.js';
@@ -172,7 +172,7 @@ function buildTabbar() {
     const pathOnly = '/' + raw.replace(/^\//, '').split(/[?#]/)[0];
     const label = esc(t.label);
     const primaryClass = t.primary ? ' class="tab-primary"' : '';
-    return `<a${primaryClass} href="${t.href}" data-path="${pathOnly}" aria-label="${label}"${t.href === '#/create' ? ' aria-haspopup="dialog" aria-controls="pikkCreateMenu" aria-expanded="false"' : t.href === '#/music' ? ' aria-haspopup="dialog" aria-controls="pikkMusicMenu" aria-expanded="false"' : SECTION_MENU_ITEMS[pathOnly.slice(1)] ? ` aria-haspopup="dialog" aria-controls="pikk${label}Menu" aria-expanded="false"` : ''}><span class="tab-ico">${t.href === '#/create' ? `<img class="pikk-create-logo-icon" src="${asset('/brand/pikk-create-play-cursor.png')}" alt="" width="40" height="29" decoding="async" />` : (ICONS[t.icon] || '')}</span><span>${label}</span></a>`;
+    return `<a${primaryClass} href="${t.href}" data-path="${pathOnly}" aria-label="${label}"${t.href === '#/create' ? ' aria-haspopup="dialog" aria-controls="pikkCreateMenu" aria-expanded="false"' : t.href === '#/music' ? ' aria-haspopup="dialog" aria-controls="pikkMusicMenu" aria-expanded="false"' : SECTION_MENU_ITEMS[pathOnly.slice(1)] ? ` aria-haspopup="dialog" aria-controls="pikk${label}Menu" aria-expanded="false"` : ''}><span class="tab-ico">${t.href === '#/create' ? `<img class="pikk-create-logo-icon" src="${asset('/brand/pikk-create-play-cursor-blue.png')}" alt="" width="36" height="36" decoding="async" />` : (ICONS[t.icon] || '')}</span><span>${label}</span></a>`;
   }).join('');
   for (const name of Object.keys(SECTION_MENU_ITEMS)) {
     el.querySelector(`a[href="#/${name}"]`)?.addEventListener('click', event => {
@@ -534,3 +534,24 @@ function boot() {
 }
 
 boot();
+
+// Coming Soon / Planned tiles: tapping shows an honest "Coming Soon" toast instead of doing nothing.
+const COMING_SOON_SELECTOR = '.pikk-menu-planned, .pikk-create-tile-planned, .drawer-soon, .pikk-notif-planned, [data-coming-soon]';
+function comingSoonToast(el) {
+  const title = (el.querySelector('.pikk-menu-title, strong')?.textContent || el.firstChild?.textContent || '').trim();
+  toast(title ? `${title} · Coming Soon` : 'Coming Soon');
+}
+document.addEventListener('click', (e) => {
+  const el = e.target.closest?.(COMING_SOON_SELECTOR);
+  if (el) { e.preventDefault(); comingSoonToast(el); }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const el = e.target.closest?.(COMING_SOON_SELECTOR);
+  if (el) { e.preventDefault(); comingSoonToast(el); }
+});
+new MutationObserver(() => {
+  document.querySelectorAll(COMING_SOON_SELECTOR).forEach((el) => {
+    if (!el.hasAttribute('tabindex')) { el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button'); }
+  });
+}).observe(document.body, { childList: true, subtree: true });

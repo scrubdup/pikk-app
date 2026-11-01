@@ -1,7 +1,7 @@
 /* PIKK Viral Live: rights-safe premium channel preview; does not alter chrome. */
 #app:has(.pikk-viral-page) { max-width: 1080px; }
 .pikk-viral-page { display: grid; gap: 18px; min-width: 0; }
-.pikk-viral-hero { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: minmax(0,1.6fr) minmax(180px,.7fr); gap: 12px; align-items: center; min-height: 280px; padding: clamp(22px,4vw,42px); border: 1px solid #4c4159; border-radius: 24px; background: radial-gradient(ellipse at 90% 0%,rgba(47,107,255,.32),transparent 50%),radial-gradient(ellipse at 0% 100%,rgba(255,43,43,.25),transparent 55%),#11111b; box-shadow: 0 16px 48px rgba(0,0,0,.24); }
+.pikk-viral-hero { position: relative; isolation: isolate; overflow: hidden; display: grid; grid-template-columns: minmax(0,1.6fr) minmax(180px,.7fr); gap: 12px; align-items: center; min-height: 280px; padding: clamp(22px,4vw,42px); border: 1px solid #2f3b59; border-radius: 24px; background: radial-gradient(ellipse at 90% 0%,rgba(47,107,255,.32),transparent 50%),radial-gradient(ellipse at 0% 100%,rgba(255,43,43,.25),transparent 55%),#11111b; box-shadow: 0 16px 48px rgba(0,0,0,.24); }
 .pikk-viral-kicker { display: inline-flex; align-items: center; gap: 9px; font-size: 11px; font-weight: 850; letter-spacing: .14em; color: #e7dfe9; }
 .pikk-viral-signal { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #ff4149; box-shadow: 0 0 14px rgba(255,65,73,.7); }
 .pikk-viral-hero h2 { margin: 18px 0 12px; font-size: clamp(31px,5vw,56px); line-height: 1.06; letter-spacing: -.055em; font-weight: 900; }
@@ -14,7 +14,7 @@
 .pikk-viral-notice strong { flex-shrink: 0; color: #fff; font-size: 11px; letter-spacing: .08em; }
 .pikk-viral-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid #323242; padding-bottom: 12px; }
 .pikk-viral-tabs button { border: 1px solid #3a3b4b; border-radius: 999px; background: #1a1b27; color: #c2c0cc; padding: 10px 16px; min-height: 40px; font-weight: 800; cursor: pointer; }
-.pikk-viral-tabs button[aria-selected="true"] { background: linear-gradient(110deg,#a92327,#253c95); border-color: #bb676a; color: #fff; }
+.pikk-viral-tabs button[aria-selected="true"] { background: linear-gradient(110deg,#a92327, #c0c6cf,#253c95); border-color: #bb676a; color: #fff; }
 .pikk-viral-stage { display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); border-radius: 22px; overflow: hidden; border: 1px solid #3d3e54; background: #171823; }
 .pikk-viral-stage-art { position: relative; isolation: isolate; overflow: hidden; min-height: 235px; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; background: radial-gradient(circle at 55% 45%,rgba(255, 51, 57,.3),transparent 45%),linear-gradient(140deg,#26223e,#121b38 75%,#19121c); }
 .pikk-viral-stage-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .78; z-index: -1; }

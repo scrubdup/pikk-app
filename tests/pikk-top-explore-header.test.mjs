@@ -20,7 +20,7 @@ test('official PIKK logo and compact header precede and preserve sticky music pl
   const player = html.indexOf('id="dbs-sticky-player"');
   const rail = html.indexOf('class="pikk-explore-rail"');
   assert.ok(header > 0 && header < player && player < rail);
-  assert.match(html, /src="%BASE_URL%brand\/pikk-official-approved\.jpg" alt="PIKK"/);
+  assert.match(html, /src="%BASE_URL%brand\/pikk-logo-header\.png" alt="PIKK"/);
   assert.match(html, /href="#\/home" class="logo" aria-label="PIKK Home"/);
   const actions = ['id="headerProfile"', 'id="headerMsg"', 'id="notifBtn"', 'id="menuBtn"'];
   let last = header;
@@ -33,6 +33,6 @@ test('official PIKK logo and compact header precede and preserve sticky music pl
 });
 
 test('approved seven bottom tabs remain unchanged', () => {
-  assert.deepEqual(TABBAR.map(t => t.label), ['Music', 'Videos', 'Create', 'Connect', 'Dating', 'Shop', 'Games']);
-  assert.equal(TABBAR[2].primary, true);
+  assert.deepEqual(TABBAR.map(t => t.label), ['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop']);
+  assert.equal(TABBAR[3].primary, true);
 });

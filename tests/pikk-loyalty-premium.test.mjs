@@ -23,5 +23,5 @@ test('Loyalty Studio is a scoped premium layout with mobile grid and visible rea
   assert.match(css,/:focus-visible/);
   assert.match(main,/import '\.\/loyalty-premium\.css';/);
   assert.match(main,/'\/loyalty': \{ render: renderLoyalty, bind: bindLoyalty \}/);
-  assert.deepEqual(TABBAR.map(t=>t.label),['Music','Videos','Create','Connect','Dating','Shop','Games']);
+  assert.deepEqual(TABBAR.map(t=>t.label),['Music','Videos','Connect','Create','Dating','Games','Shop']);
 });

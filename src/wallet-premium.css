@@ -2,20 +2,20 @@
 #app:has(.pikk-wallet-studio){max-width:1100px}
 .pikk-wallet-studio{display:grid;gap:15px;min-width:0}
 .pikk-wallet-hero{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(180px,.65fr);gap:18px;align-items:center;padding:29px 32px;min-height:235px;border:1px solid #4c4968;border-radius:24px;background:radial-gradient(circle at 89% 25%,#2f6bff4a,transparent 42%),radial-gradient(circle at 7% 94%,#ef3d4238,transparent 46%),linear-gradient(125deg,#191421,#10192c 70%,#121321);box-shadow:0 18px 45px #0006}
-.pikk-wallet-hero:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#ff3339,#6287da,#458cff)}
+.pikk-wallet-hero:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#ff3339, #c0c6cf,#6287da,#458cff)}
 .pikk-wallet-eyebrow{color:#ff3339;font-size:11px;font-weight:850;letter-spacing:.13em}
 .pikk-wallet-hero h2{margin:12px 0;font-size:clamp(28px,4vw,43px);line-height:1.08;letter-spacing:-.035em;color:#fff}
-.pikk-wallet-hero h2 em{font-style:normal;background:linear-gradient(95deg,#ff3339,#3d79ff);background-clip:text;color:transparent}
+.pikk-wallet-hero h2 em{font-style:normal;background:linear-gradient(95deg,#ff3339, #c0c6cf,#3d79ff);background-clip:text;color:transparent}
 .pikk-wallet-hero p{max-width:520px;margin:0;color:#d9d9e9;font-size:14px;line-height:1.6}
 .pikk-wallet-hero-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}
 .pikk-wallet-hero-actions a{min-height:41px;display:inline-flex;align-items:center}
-.pikk-wallet-hero-art{position:relative;min-height:165px;display:grid;place-content:center;justify-items:center;gap:8px;overflow:hidden;border:1px solid #5c527a;border-radius:22px;background:radial-gradient(circle at 50% 30%,#303665,#1a1d35 65%,#141321)}
+.pikk-wallet-hero-art{position:relative;min-height:165px;display:grid;place-content:center;justify-items:center;gap:8px;overflow:hidden;border:1px solid #394b7a;border-radius:22px;background:radial-gradient(circle at 50% 30%,#303665,#1a1d35 65%,#141321)}
 .pikk-wallet-hero-art:before{content:"";position:absolute;left:50%;top:50%;width:155px;height:155px;transform:translate(-50%,-50%) rotate(-25deg);border:1px solid #5181eb8a;border-radius:50%;box-shadow:0 0 0 19px #7268c522,0 0 0 36px #4479d215}
 .pikk-wallet-hero-art strong{position:relative;font-size:68px;line-height:1;color:#3d79ff;text-shadow:0 4px 0 #6a6fae,0 10px 20px #0009}
 .pikk-wallet-hero-art small{position:relative;color:#d5d5ef;font-size:10px;font-weight:800;letter-spacing:.19em}
 .pikk-wallet-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .pikk-wallet-metric{display:flex;flex-direction:column;gap:7px;min-width:0;padding:18px 16px;border:1px solid #49475f;border-radius:17px;background:linear-gradient(145deg,#29253d,#1a1c2e);box-shadow:0 8px 22px #0003}
-.pikk-wallet-metric:first-child{border-color:#785079;background:linear-gradient(145deg,#38283d,#1a1d31)}
+.pikk-wallet-metric:first-child{border-color:#374a79;background:linear-gradient(145deg,#1b253d,#1a1d31)}
 .pikk-wallet-metric span{font-size:12px;color:#cac8dc}
 .pikk-wallet-metric strong{color:#fff;font-size:clamp(18px,2.4vw,28px);letter-spacing:-.035em;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .pikk-wallet-metric small{color:#b5b4cd;font-size:11px}
@@ -24,7 +24,7 @@
 .pikk-wallet-studio>.card h4{color:#6187db}
 .pikk-wallet-studio>.card .grid-2{gap:10px}
 .pikk-wallet-studio>.card .grid-2>div:not(.coin-pack-btn){min-width:0}
-.pikk-wallet-studio #wallet-coins{border-color:#62517b}
+.pikk-wallet-studio #wallet-coins{border-color:#384b7b}
 .pikk-wallet-studio .coin-pack-btn{min-height:124px;border-color:#4c4865!important;border-radius:14px!important;background:linear-gradient(135deg,#29243e,#1a1e32)!important;transition:transform .15s,border-color .15s}
 .pikk-wallet-studio .coin-pack-btn:hover{border-color:#c87b7d!important;transform:translateY(-2px)}
 .pikk-wallet-studio .list-plain li{gap:12px;overflow-wrap:anywhere}

@@ -14,7 +14,7 @@ test('premium music uses authentic catalog and links to existing Music views',()
 });
 test('existing Vault, Apple streaming, member and Admin functionality preserved',()=>{
  for(const s of ['id="vault"','id="stream-everywhere"','id="youtube-mixes"','mem-toggle','buy-track','listCatalog','resolveMediaSrc','bindPageYoutubeEmbeds','stream-plat-apple'])assert.ok(music.includes(s),s);
- assert.deepEqual(TABBAR.map(x=>x.label),['Music', 'Videos', 'Create', 'Connect', 'Dating', 'Shop', 'Games']);
+ assert.deepEqual(TABBAR.map(x=>x.label),['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop']);
  assert.match(css,/\.pikk-music-showcase/);
  assert.match(css,/@media\(max-width:520px\)/);
 });
