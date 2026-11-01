@@ -48,6 +48,13 @@ try {
     const matchingCard = await page.locator('.pikk-live-room-card:visible').boundingBox();
     assert.ok(matchingCard && matchingCard.y < height - 60, device + ' search result must be visible in screenshot');
     await page.screenshot({ path: 'visual-review/pikk-live-' + device + '-search.png' });
+    await search.press('Escape');
+    assert.equal(await search.inputValue(), '', device + ' Escape clears the filtered directory');
+    assert.equal(await search.evaluate(el => el === document.activeElement), true, device + ' Escape retains search focus');
+    assert.equal(await page.locator('#pikk-live-group-women').getAttribute('open'), null, device + ' Escape restores collapsed folders');
+    assert.equal(await page.locator('#liveRoomSearchStatus').textContent(), 'Browse 78 topics · these filter channels, not hosted rooms.');
+    await search.fill('City Connect');
+    assert.equal(await page.locator('.pikk-live-room-card:visible').count(), 1, device + ' searching again works after Escape');
     await page.getByRole('button', { name: 'Clear', exact: true }).click();
     assert.equal(await search.inputValue(), '', device + ' clear resets search');
     assert.equal(await page.locator('#liveRoomSearchStatus').textContent(), 'Browse 78 topics · these filter channels, not hosted rooms.');
