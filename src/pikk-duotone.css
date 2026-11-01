@@ -23,16 +23,16 @@ html body .pikk-menu-icon { color: var(--pikk-red) !important; filter: drop-shad
 html body #tabbar > a:not(.tab-primary) .tab-ico svg { stroke: var(--pikk-red); color: var(--pikk-red); filter: drop-shadow(0 0 3px rgba(47, 107, 255, .8)); }
 /* Focus stays visible and duotone. */
 html body :is(.btn, button, .chip, .pill, .icon-btn, .drawer-link, .pikk-create-tile, #tabbar > a):focus-visible { outline: 2px solid var(--pikk-blue); outline-offset: 2px; }
-/* t338u — bottom tab bar: icons PIKK red, labels electric blue in every state; active = glow + underline only. */
+/* t338u/t340u — bottom tab bar: duotone icons (red glyph + blue glow), WHITE labels in every state; active = glow + underline only. */
 html body #tabbar > a,
 html body #tabbar > a:hover,
 html body #tabbar > a:focus,
 html body #tabbar > a:focus-visible,
 html body #tabbar > a.on,
-html body #tabbar > a[aria-current="page"] { color: var(--pikk-blue) !important; }
+html body #tabbar > a[aria-current="page"] { color: #fff !important; }
 html body #tabbar > a > span:not(.tab-ico),
 html body #tabbar > a.on > span:not(.tab-ico),
-html body #tabbar > a[aria-current="page"] > span:not(.tab-ico) { color: var(--pikk-blue) !important; }
+html body #tabbar > a[aria-current="page"] > span:not(.tab-ico) { color: #fff !important; }
 html body #tabbar > a:not(.tab-primary) .tab-ico,
 html body #tabbar > a:not(.tab-primary) .tab-ico svg,
 html body #tabbar > a:not(.tab-primary) .tab-ico svg *,
@@ -41,3 +41,24 @@ html body #tabbar > a:not(.tab-primary)[aria-current="page"] .tab-ico svg * { co
 html body #tabbar > a:not(.tab-primary) .tab-ico svg [fill]:not([fill="none"]) { fill: var(--pikk-red) !important; }
 html body #tabbar > a:not(.tab-primary):is(.on, [aria-current="page"]) { box-shadow: inset 0 -2px 0 var(--pikk-blue) !important; }
 html body #tabbar > a:not(.tab-primary):is(.on, [aria-current="page"]) .tab-ico svg { filter: drop-shadow(0 0 6px rgba(255, 49, 55, .9)) drop-shadow(0 0 3px rgba(47, 107, 255, .8)); }
+
+/* t340u — PIKK Music Player: red→chrome→blue edge (no purple) and duotone controls. */
+html body #dbs-sticky-player.sticky-player > .sp-row {
+  border: 1.5px solid transparent !important;
+  background: linear-gradient(#0b0d13, #0b0d13) padding-box, linear-gradient(90deg, #ff3137, #c0c6cf, #2f6bff) border-box !important;
+  box-shadow: 0 0 14px rgba(255, 49, 55, .22), 0 0 14px rgba(47, 107, 255, .22) !important;
+}
+html body #dbs-sticky-player .sp-btn { color: var(--pikk-red) !important; border-color: var(--pikk-duo-edge) !important; }
+html body #dbs-sticky-player .sp-btn svg, html body #dbs-sticky-player .sp-btn svg * { stroke: var(--pikk-red); color: var(--pikk-red); }
+html body #dbs-sticky-player .sp-btn svg [fill]:not([fill="none"]) { fill: var(--pikk-red); }
+html body #dbs-sticky-player .sp-btn.sp-play { border: 2px solid var(--pikk-blue) !important; box-shadow: 0 0 0 1px var(--pikk-blue), 0 0 12px rgba(255, 49, 55, .55) !important; }
+html body #dbs-sticky-player .sp-vol-ico { color: var(--pikk-red); }
+html body #dbs-sticky-player input[type="range"] { accent-color: var(--pikk-blue); }
+html body #dbs-sticky-player input#spVol::-webkit-slider-runnable-track { background: linear-gradient(90deg, #ff3137, #c0c6cf, #2f6bff); height: 4px; border-radius: 4px; }
+html body #dbs-sticky-player input#spVol::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%; background: var(--pikk-red); border: 2px solid var(--pikk-blue); }
+html body #dbs-sticky-player input#spVol { -webkit-appearance: none; appearance: none; background: transparent; }
+html body #dbs-sticky-player input#spVol::-moz-range-track { background: linear-gradient(90deg, #ff3137, #c0c6cf, #2f6bff); height: 4px; border-radius: 4px; }
+html body #dbs-sticky-player input#spVol::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--pikk-red); border: 2px solid var(--pikk-blue); }
+
+/* t340u — Home filter chips: inactive = blue border + white text; All stays the red active chip. */
+html body .pikk-home-filterbar a:not(.is-current) { border: 1px solid var(--pikk-blue) !important; color: #fff !important; background: #0b0d13 !important; }
