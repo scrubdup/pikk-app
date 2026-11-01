@@ -75,7 +75,7 @@ export function bindCommunities(root){
       const body=clean(form.querySelector('textarea')?.value);if(!body)return;
       const v=load(),p=v.posts.find(x=>x.id===form.dataset.freply);if(!p)return;
       p.replies ||= [];p.replies.push({author:clean(user().username).slice(0,30)||'Member',body});
-      if(save(v)){redraw();const panel=host.querySelector('[data-thread="'+p.id+'"]');if(panel)panel.hidden=false;toast('Reply saved locally');}
+      if(save(v)){redraw();const panel=host.querySelector('[data-thread="'+p.id+'"]');const trigger=host.querySelector('[data-fopen="'+p.id+'"]');if(panel&&trigger){panel.hidden=false;trigger.setAttribute('aria-expanded','true');trigger.focus();}toast('Reply saved locally');}
     }
   });
   redraw();
