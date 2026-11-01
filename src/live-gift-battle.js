@@ -39,8 +39,79 @@ export function computeWinner(b) {
   return { result: b.a.total > b.b.total ? 'a' : 'b', name: w.name };
 }
 
+/* ---------- t403u/t404u winners: badge (24h), W-L record, daily top-10 (pure) ---------- */
+export const BADGE_MS = 24 * 3600000;
+export const DAY_MS = 24 * 3600000;
+export const STRIP_MAX = 10;
+export const emptyRecords = () => ({ results: [] }); // { a, b, aTotal, bTotal, winner|null, at }
+/** Append a finished battle. Pure. */
+export function recordResult(rec, battle, now = Date.now()) {
+  const w = computeWinner(battle);
+  const r = { a: battle.a.name, b: battle.b.name, aTotal: battle.a.total, bTotal: battle.b.total, winner: w.name, at: now };
+  return { results: [...(rec?.results || []), r].slice(-500) };
+}
+/** Winner badge lasts 24h from the most recent win. */
+export function hasWinnerBadge(rec, name, now = Date.now()) {
+  return (rec?.results || []).some((r) => r.winner === name && now - r.at < BADGE_MS && now >= r.at);
+}
+export function battleRecord(rec, name) {
+  let w = 0, l = 0, t = 0;
+  for (const r of rec?.results || []) {
+    if (r.a !== name && r.b !== name) continue;
+    if (!r.winner) t++; else if (r.winner === name) w++; else l++;
+  }
+  return { w, l, t };
+}
+/** The daily list resets every 24h (fixed 24h windows). */
+export const dayKey = (now) => Math.floor(now / DAY_MS);
+/** Today's battle winners ranked by total gifts sent in the battles they won today. */
+export function dailyWinners(rec, now = Date.now()) {
+  const k = dayKey(now); const by = new Map();
+  for (const r of rec?.results || []) {
+    if (!r.winner || dayKey(r.at) !== k) continue;
+    const gifts = r.winner === r.a ? r.aTotal : r.bTotal;
+    const cur = by.get(r.winner) || { name: r.winner, gifts: 0, wins: 0 };
+    cur.gifts += gifts; cur.wins += 1; by.set(r.winner, cur);
+  }
+  return [...by.values()].sort((x, y) => y.gifts - x.gifts || y.wins - x.wins || x.name.localeCompare(y.name)).map((x, i) => ({ rank: i + 1, ...x }));
+}
+export const stripWinners = (rec, now = Date.now()) => dailyWinners(rec, now).slice(0, STRIP_MAX);
+/** 5 columns x 2 rows, filled column-first: #1 (c1,r1), #2 (c1,r2), #3 (c2,r1)… */
+export function gridCell(rank) { const i = rank - 1; return { col: Math.floor(i / 2) + 1, row: (i % 2) + 1 }; }
+
+const STORE = 'pikk_gb_records_v1';
+export function loadRecords() { try { return JSON.parse(localStorage.getItem(STORE)) || emptyRecords(); } catch { return emptyRecords(); } }
+function saveRecords(r) { try { localStorage.setItem(STORE, JSON.stringify(r)); } catch {} }
+
 /* ---------- UI (compact, non-blocking) ---------- */
 const e = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+export function nameHtml(name, rec = loadRecords(), now = Date.now()) {
+  const badge = hasWinnerBadge(rec, name, now) ? ' <span class="pikk-gb-badge" title="Battle Winner · 24h · TEST MODE">🏆 Battle Winner</span>' : '';
+  return `<button type="button" class="pikk-gb-name" data-gb-name="${e(name)}">${e(name)}</button>${badge}`;
+}
+export function renderWinnersStrip(scope) {
+  return `<div class="pikk-gb-strip" data-gb-strip="${e(scope)}" hidden></div>`;
+}
+function stripHtml(rec, now) {
+  const top = stripWinners(rec, now); if (!top.length) return '';
+  const chips = top.map((x) => { const c = gridCell(x.rank); return `<button type="button" class="pikk-gb-wchip" data-gb-open-list style="grid-column:${c.col};grid-row:${c.row}" aria-label="#${x.rank} ${e(x.name)} ${x.gifts} gifts"><b>#${x.rank}</b> ${e(x.name)}${hasWinnerBadge(rec, x.name, now) ? ' 🏆' : ''} <small>${x.gifts}</small></button>`; }).join('');
+  const full = dailyWinners(rec, now).map((x) => `<li><b>#${x.rank}</b> ${nameHtml(x.name, rec, now)} · ${x.gifts} gifts (${x.wins} win${x.wins === 1 ? '' : 's'})</li>`).join('');
+  return `<div class="pikk-gb-strip-grid" role="list" aria-label="Today's Battle Winners · top ${STRIP_MAX}">${chips}</div>
+    <details class="pikk-gb-list"><summary>Today's Battle Winners · full list · TEST MODE (resets every 24h)</summary><ol class="list-plain">${full}</ol></details>`;
+}
+export function refreshWinnersStrips(root) {
+  const rec = loadRecords(), now = Date.now();
+  root.querySelectorAll('[data-gb-strip]').forEach((el) => { const h = stripHtml(rec, now); el.innerHTML = h; el.hidden = !h; });
+}
+/** Name taps anywhere under root → W-L record. */
+export function bindBattleNames(root, toast) {
+  if (root._gbNames) return; root._gbNames = true;
+  root.addEventListener('click', (ev) => {
+    const n = ev.target.closest('[data-gb-name]'); if (n) { const r = battleRecord(loadRecords(), n.dataset.gbName); toast(`${n.dataset.gbName} · Battle record ${r.w}-${r.l}${r.t ? `-${r.t}` : ''} (W-L${r.t ? '-T' : ''}) · TEST MODE`); return; }
+    if (ev.target.closest('[data-gb-open-list]')) { const d = ev.target.closest('[data-gb-strip]')?.querySelector('details'); if (d) d.open = true; }
+  });
+}
+
 const clock = (ms) => { const s = Math.ceil(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
 export function renderGiftForAllControls(scope) {
@@ -61,7 +132,7 @@ function challengeHtml(w, me, now) {
 }
 function battleHtml(b, me, now) {
   const tot = b.a.total + b.b.total; const pa = tot ? Math.round((b.a.total / tot) * 100) : 50; const over = isOver(b, now);
-  const side = (k) => b[k].name === me ? 'You' : e(b[k].name);
+  const side = (k) => nameHtml(b[k].name);
   const gifts = (k) => GB_GIFTS.map(([slug, pts]) => `<button type="button" class="chip pikk-chip pikk-gb-gift" data-gb-side="${k}" data-gb-pts="${pts}" aria-label="Gift +${pts} for ${e(b[k].name)} · TEST MODE">${getGiftSticker(slug, { className: 'gift-sticker gift-sticker--sm' }).html}<small>+${pts}</small></button>`).join('');
   const w = over ? computeWinner(b) : null;
   return `<div class="pikk-gb-head"><strong>⚔️ Gift Battle</strong> <span class="chip">TEST MODE · demo gifts · no charges</span><span class="pikk-gb-timer" data-gb-timer>${over ? 'Ended' : clock(timeLeftMs(b, now))}</span></div>
@@ -73,6 +144,7 @@ function battleHtml(b, me, now) {
 }
 
 export function bindGiftForAll(root, { me = 'You', toast = () => {} } = {}) {
+  bindBattleNames(root, toast); refreshWinnersStrips(root);
   root.querySelectorAll('[data-gb-slot]').forEach((slot) => {
     const ctr = root.querySelector(`[data-gb-controls="${slot.dataset.gbSlot}"]`); if (!ctr) return;
     const s = { w: null, b: null, t: null };
@@ -82,7 +154,7 @@ export function bindGiftForAll(root, { me = 'You', toast = () => {} } = {}) {
       else if (isWindowOpen(s.w, now)) slot.innerHTML = challengeHtml(s.w, me, now);
       else { slot.hidden = true; slot.innerHTML = ''; clearInterval(s.t); return; }
       slot.hidden = false;
-      if (s.b && isOver(s.b, now)) clearInterval(s.t);
+      if (s.b && isOver(s.b, now)) { clearInterval(s.t); if (!s.b.recorded) { s.b = { ...s.b, recorded: true }; saveRecords(recordResult(loadRecords(), s.b, now)); refreshWinnersStrips(root); slot.innerHTML = battleHtml(s.b, me, now); } }
     };
     const tick = () => { clearInterval(s.t); s.t = setInterval(() => (document.body.contains(slot) ? draw() : clearInterval(s.t)), 1000); };
     ctr.addEventListener('click', (ev) => {

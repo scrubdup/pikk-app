@@ -43,7 +43,7 @@ import { navigate, getRoute } from '../router.js';
 import { notifyLiveOpen, notifyLiveClosed } from '../player.js';
 import { giftStickerHtml, getGiftSticker } from '../gift-stickers.js';
 import { renderLiveDiscoveryDirectory, mountLiveDirectorySearch } from '../live-discovery.js';
-import { renderGiftForAllControls, bindGiftForAll } from '../live-gift-battle.js';
+import { renderGiftForAllControls, bindGiftForAll, renderWinnersStrip, nameHtml as gbNameHtml, hasWinnerBadge as gbHasBadge, loadRecords as gbLoad } from '../live-gift-battle.js';
 import { renderGoLiveCategoryFields, bindGoLiveCategoryFields, readGoLiveFields, renderGroupRoomsPanel, bindGroupRooms } from '../live-rooms.js';
 
 /** t197u discovery tabs — preserve ?tab= on soft refresh */
@@ -554,8 +554,8 @@ function renderStage(live) {
     .slice(-40)
     .map(
       (m) => `
-      <div class="live-chat-row ${m.support ? 'support' : ''}">
-        <strong>${esc(m.username)}</strong>
+      <div class="live-chat-row ${m.support ? 'support' : ''}${gbHasBadge(gbLoad(), m.username) ? ' pikk-gb-hl' : ''}">
+        <strong>${gbNameHtml(m.username)}</strong>
         <span>${esc(m.text)}</span>
       </div>`
     )
@@ -598,6 +598,7 @@ function renderStage(live) {
 
     <div class="card live-chat-card">
       <h3>Live chat</h3>
+      ${renderWinnersStrip('live')}
       <div class="live-chat" id="liveChat">${chat || '<p class="muted">No messages yet.</p>'}</div>
       ${
         live.endedAt
@@ -1182,7 +1183,7 @@ export function bindLive(root) {
   });
 
   bindGoLiveCategoryFields(root);
-  bindGroupRooms(root, { toast });
+  bindGroupRooms(root, { toast, me: getState().user?.username || 'You' });
   bindGiftForAll(root, { toast, me: getState().user?.username || 'You' });
   root.querySelector('#liveStart')?.addEventListener('click', () => {
     const title = root.querySelector('#liveTitle')?.value?.trim();

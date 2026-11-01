@@ -1,7 +1,7 @@
 // t397u — PIKK Live: Go Live category/permissions fields + Group Rooms TEST MODE shell.
 // No camera or microphone access anywhere. No invented audience numbers — counts are only this device's own demo actions.
 import { LIVE_DISCOVERY_GROUPS } from './live-discovery.js';
-import { renderGiftForAllControls } from './live-gift-battle.js';
+import { renderGiftForAllControls, renderWinnersStrip, nameHtml, hasWinnerBadge, loadRecords } from './live-gift-battle.js';
 
 export const GENERAL_LIVE = LIVE_DISCOVERY_GROUPS.find((g) => g.id === 'general').names;
 export const ROOM_GROUPS = LIVE_DISCOVERY_GROUPS.filter((g) => g.id !== 'general');
@@ -98,6 +98,7 @@ export function renderGroupRoomsPanel({ user, goalHtml = '' } = {}) {
           </div>
         </div>
         ${goalHtml}
+        ${renderWinnersStrip('room')}
         <div class="pikk-room-chat"><ul class="list-plain" id="roomChat" aria-label="Room chat"></ul>
           <form id="roomChatForm" class="row" style="gap:6px"><input id="roomChatInput" maxlength="200" placeholder="Message the room" style="flex:1" aria-label="Chat message" /><button class="btn" type="submit">Send</button></form></div>
         <button type="button" class="btn ghost" id="roomLeave">Leave Room</button>
@@ -106,12 +107,14 @@ export function renderGroupRoomsPanel({ user, goalHtml = '' } = {}) {
     </div>`;
 }
 
-export function bindGroupRooms(root, { toast = () => {} } = {}) {
+export function bindGroupRooms(root, { toast = () => {}, me = '' } = {}) {
   const panel = root.querySelector('#liveTabRooms'); if (!panel) return;
   const $ = (s) => panel.querySelector(s);
   const st = { mode: 'Video', msgs: 0, reacts: 0, hands: 0, queue: [], open: false, pinTimer: null };
   const activity = () => { $('#roomActivity').textContent = `Demo-only activity (this device): 1 participant (you) · ${st.msgs} messages · ${st.reacts} reactions · ${st.hands} hand raises`; };
-  const say = (who, text) => { const li = document.createElement('li'); li.innerHTML = `<strong>${e(who)}:</strong> ${e(text)}`; $('#roomChat').appendChild(li); };
+  const say = (who, text) => { const li = document.createElement('li'); const nm = who === 'You' ? (me || 'You') : who;
+    if (who !== 'System' && hasWinnerBadge(loadRecords(), nm)) li.className = 'pikk-gb-hl';
+    li.innerHTML = `<strong>${who === 'System' ? 'System' : nameHtml(nm)}:</strong> ${e(text)}`; $('#roomChat').appendChild(li); };
   const renderQueue = () => {
     $('#roomQueue').innerHTML = st.queue.length ? st.queue.map((q, i) => `<li class="row" style="gap:6px">✋ ${e(q)} <button type="button" class="chip pikk-chip" data-approve="${i}">Approve speaker</button></li>`).join('') : '<li class="muted small">No speaker requests yet.</li>';
     panel.querySelectorAll('[data-approve]').forEach((b) => b.addEventListener('click', () => { const who = st.queue.splice(+b.dataset.approve, 1)[0]; say('System', `${who} approved to speak (demo)`); renderQueue(); }));

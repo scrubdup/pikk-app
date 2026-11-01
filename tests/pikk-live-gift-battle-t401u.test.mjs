@@ -60,3 +60,41 @@ test('t402u: Gift Battles page = explainer of the flow linking into Live; no sig
   assert.match(gbPage, /if \(!user\) return shellPage\('Gift Battles', renderGiftBattleExplainer\(\)/);
   assert.ok(!/live-gift-battle/.test(roast));
 });
+import { recordResult, hasWinnerBadge, battleRecord, dailyWinners, stripWinners, gridCell, emptyRecords, BADGE_MS, DAY_MS, STRIP_MAX } from '../src/live-gift-battle.js';
+const battle = (a, at, b, bt, now) => { let x = startBattle(a, b, now); x = addGift(x, 'a', at, now); return addGift(x, 'b', bt, now); };
+const D0 = DAY_MS * 1000; // start of a 24h window
+test('t403u: winner badge lasts exactly 24h from the win; never end-of-day/3h', () => {
+  assert.equal(BADGE_MS, 24 * 3600000);
+  const rec = recordResult(emptyRecords(), battle('ann', 10, 'bob', 3, D0 + 5000), D0 + 5000);
+  assert.ok(hasWinnerBadge(rec, 'ann', D0 + 5000));
+  assert.ok(hasWinnerBadge(rec, 'ann', D0 + 5000 + BADGE_MS - 1));
+  assert.ok(!hasWinnerBadge(rec, 'ann', D0 + 5000 + BADGE_MS));
+  assert.ok(!hasWinnerBadge(rec, 'bob', D0 + 5000));
+  assert.ok(!/3h|3 hours|end of day|rest of (the )?day/i.test(mod));
+});
+test('t403u: battle record W-L (ties counted separately)', () => {
+  let rec = emptyRecords();
+  rec = recordResult(rec, battle('ann', 10, 'bob', 3, D0), D0);
+  rec = recordResult(rec, battle('ann', 1, 'bob', 3, D0), D0);
+  rec = recordResult(rec, battle('ann', 2, 'cat', 2, D0), D0);
+  assert.deepEqual(battleRecord(rec, 'ann'), { w: 1, l: 1, t: 1 });
+  assert.deepEqual(battleRecord(rec, 'bob'), { w: 1, l: 1, t: 0 });
+});
+test('t403u/t404u: daily winners ranked by gift total, top-10 cap, resets every 24h', () => {
+  let rec = emptyRecords();
+  for (let i = 1; i <= 12; i++) rec = recordResult(rec, battle('w' + i, i * 10, 'x', 0, D0 + i), D0 + i);
+  rec = recordResult(rec, battle('w1', 500, 'x', 0, D0 + 99), D0 + 99); // w1 total 510
+  const list = dailyWinners(rec, D0 + 1000);
+  assert.equal(list.length, 12);
+  assert.deepEqual(list.slice(0, 3).map((x) => [x.rank, x.name, x.gifts]), [[1, 'w1', 510], [2, 'w12', 120], [3, 'w11', 110]]);
+  assert.equal(STRIP_MAX, 10); assert.equal(stripWinners(rec, D0 + 1000).length, 10);
+  assert.equal(dailyWinners(rec, D0 + DAY_MS).length, 0, 'next 24h window starts empty');
+});
+test('t404u: strip grid is 5x2 filled column-first', () => {
+  assert.deepEqual([1, 2, 3, 4, 9, 10].map(gridCell), [{ col: 1, row: 1 }, { col: 1, row: 2 }, { col: 2, row: 1 }, { col: 2, row: 2 }, { col: 5, row: 1 }, { col: 5, row: 2 }]);
+  const css = rd('pikk-pages.css');
+  assert.match(css, /\.pikk-gb-strip-grid\{display:grid;grid-template-columns:repeat\(5,minmax\(0,1fr\)\);grid-template-rows:repeat\(2,auto\);grid-auto-flow:column/);
+  // just above the chat in Live and Rooms
+  assert.ok(live.indexOf("renderWinnersStrip('live')") < live.indexOf('id="liveChat"'));
+  assert.ok(rooms.indexOf("renderWinnersStrip('room')") < rooms.indexOf('class="pikk-room-chat"'));
+});

@@ -165,3 +165,13 @@ html.pikk-reduce-motion *{animation:none!important;transition:none!important}
 .pikk-gb-tab{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px}
 .pikk-gb-tab .pikk-gb-timer{margin-left:auto}
 .pikk-gb-bar{height:22px;margin:6px 0}
+/* t403u/t404u winners: badge, chat highlight, top-10 strip (5x2, column-first, small) */
+.pikk-gb-name{all:unset;cursor:pointer;font-weight:800;text-decoration:underline dotted rgba(47,107,255,.7)}
+.pikk-gb-badge{display:inline-block;font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;color:#fff;background:var(--pikk-chip-selected-bg);border:1px solid var(--pikk-blue);vertical-align:middle}
+.pikk-gb-hl{background:linear-gradient(90deg,rgba(255,49,55,.18),rgba(192,198,207,.10),rgba(47,107,255,.18));border-left:3px solid var(--pikk-red);border-radius:6px}
+.pikk-gb-strip[hidden]{display:none!important}
+.pikk-gb-strip{margin:6px 0}
+.pikk-gb-strip-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(2,auto);grid-auto-flow:column;gap:3px}
+.pikk-gb-wchip{all:unset;cursor:pointer;font-size:9.5px;line-height:1.2;padding:2px 4px;border-radius:8px;color:#fff;background:#07080c;border:1px solid var(--pikk-blue);box-shadow:inset 0 -1.5px 0 rgba(255,49,55,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pikk-gb-wchip small{color:#c0c6cf}
+.pikk-gb-list summary{font-size:11px;cursor:pointer;color:#c9ccd3;margin-top:3px}
