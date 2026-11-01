@@ -1,6 +1,7 @@
 // t397u — PIKK Live: Go Live category/permissions fields + Group Rooms TEST MODE shell.
 // No camera or microphone access anywhere. No invented audience numbers — counts are only this device's own demo actions.
 import { LIVE_DISCOVERY_GROUPS } from './live-discovery.js';
+import { renderGiftForAllControls } from './live-gift-battle.js';
 
 export const GENERAL_LIVE = LIVE_DISCOVERY_GROUPS.find((g) => g.id === 'general').names;
 export const ROOM_GROUPS = LIVE_DISCOVERY_GROUPS.filter((g) => g.id !== 'general');
@@ -76,6 +77,7 @@ export function renderGroupRoomsPanel({ user, goalHtml = '' } = {}) {
           <div class="pikk-room-seat" data-seat="guest"><span aria-hidden="true">?</span><small>Open seat · placeholder, not a real user</small></div>
         </div>
         <div class="pikk-room-pinned" id="roomPinned" hidden role="status"></div>
+        ${renderGiftForAllControls('room')}
         <p class="pikk-room-activity muted small" id="roomActivity" aria-live="polite">Demo-only activity (this device): 1 participant (you) · 0 messages · 0 reactions · 0 hand raises</p>
         <div class="row wrap" style="gap:6px">${reacts}
           <button type="button" class="chip pikk-chip" id="roomRaiseHand" aria-pressed="false">✋ Raise hand / Request to speak</button></div>
