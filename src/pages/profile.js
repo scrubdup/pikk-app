@@ -13,6 +13,7 @@ import {
 } from '../store.js';
 import { esc, toast, shellPage } from '../ui.js';
 import { navigate } from '../router.js';
+import { profileRouteHref } from '../profile-links.js';
 
 function refresh(path) {
   navigate(path || '#/profile');
@@ -31,8 +32,8 @@ function peopleList(title, people) {
     <ul class="list-plain">${people
       .map(
         (p) =>
-          `<li><a href="#/profile/${esc(p.id)}"><span>${esc(p.username)}</span></a>
-           <a class="chip" href="#/profile/${esc(p.id)}">View</a></li>`
+          `<li><a href="${esc(profileRouteHref(p.id))}"><span>${esc(p.username)}</span></a>
+           <a class="chip" href="${esc(profileRouteHref(p.id))}">View</a></li>`
       )
       .join('')}</ul></div>`;
 }
@@ -170,7 +171,7 @@ export function renderProfile(route) {
       </div>
       <div class="row wrap pikk-profile-shortcuts">
         <a class="btn" href="#/posts">New post</a>
-        <a class="btn" href="#/profile/${esc(user.id)}?view=public">Public view</a>
+        <a class="btn" href="${esc(profileRouteHref(user.id, 'public'))}">Public view</a>
         <a class="btn" href="#/profile-shop">Profile Shop</a>
         <a class="btn" href="#/messages">Messages</a>
         <button class="btn ghost" id="signoutBtn">Sign out</button>
@@ -258,7 +259,7 @@ export function bindProfile(root) {
     const r = on ? unfollowUser(uid) : followUser(uid);
     if (r.error) return toast('Sign in to follow');
     toast(on ? 'Unfollowed' : 'Following');
-    refresh('#/profile/' + uid);
+    refresh(profileRouteHref(uid));
   });
   root.querySelector('#toggleAdmin')?.addEventListener('click', () => {
     const on = !isAdmin();
