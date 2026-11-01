@@ -31,8 +31,14 @@ try{
     const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:innerWidth}));
     assert.ok(dims.scroll<=dims.viewport+3,name+' '+phase+' horizontal overflow '+JSON.stringify(dims));
     assert.deepEqual(errors,[],name+' '+phase+' browser errors');
-    await page.locator('#support-faq').screenshot({path:'visual-review/support-faq-'+name+'-'+phase+'-card.png',animations:'disabled'});
     await page.screenshot({path:'visual-review/support-faq-'+name+'-'+phase+'.png',fullPage:true,animations:'disabled'});
+    await page.evaluate(()=>{
+     const el=document.querySelector('#support-faq');
+     window.scrollTo(0,Math.max(0,el.getBoundingClientRect().top+window.scrollY-240));
+    });
+    const searchTop=await page.locator('#pikkSupportSearch').evaluate(el=>el.getBoundingClientRect().top);
+    assert.ok(searchTop>=180&&searchTop<500,name+' '+phase+' FAQ field visible below fixed header: '+searchTop);
+    await page.screenshot({path:'visual-review/support-faq-'+name+'-'+phase+'-focus.png',animations:'disabled'});
    };
    await page.goto(base+'#/support',{waitUntil:'domcontentloaded',timeout:30000});
    await page.locator('#pikkSupportSearch').waitFor({state:'visible',timeout:20000});
