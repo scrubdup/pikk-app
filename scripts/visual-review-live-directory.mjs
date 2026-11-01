@@ -40,6 +40,7 @@ try {
     assert.equal(await page.locator('.pikk-live-room-card:visible').count(), 1, device + ' exact matching topic visible');
     assert.equal(await page.locator('#liveRoomSearchStatus').textContent(), '1 matching topic · channel discovery only.');
     assert.equal(await page.locator('#pikk-live-group-coed').getAttribute('open'), '', 'matching folder expands');
+    assert.equal(await page.locator('#pikk-live-group-coed .pikk-live-directory-count').textContent(), '1 of 10 topics', 'folder count reflects filter');
     assert.equal(await page.locator('.pikk-live-room-card').count(), 78, 'filter does not delete categories');
     assert.ok((await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 3, device + ' filtered layout must not overflow');
     await page.locator('.pikk-live-room-search').evaluate(el => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
@@ -51,6 +52,7 @@ try {
     assert.equal(await search.inputValue(), '', device + ' clear resets search');
     assert.equal(await page.locator('#liveRoomSearchStatus').textContent(), 'Browse 78 topics · these filter channels, not hosted rooms.');
     assert.equal(await page.locator('#pikk-live-group-coed').getAttribute('open'), '', 'clear restores original open folder');
+    assert.equal(await page.locator('#pikk-live-group-coed .pikk-live-directory-count').textContent(), '10 rooms', 'clear restores original folder count');
     assert.equal(await page.locator('#pikk-live-group-women').getAttribute('open'), null, 'clear restores collapsed folder');
     assert.equal(await page.locator('#liveRoomSearchClear').isVisible(), false, 'clear button hides when empty');
     assert.equal(await search.evaluate(el => el === document.activeElement), true, 'clear returns keyboard focus');
