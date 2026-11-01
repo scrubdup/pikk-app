@@ -93,7 +93,14 @@ test('Escape clears a filtered Live room search and restores the previous folder
   };
   const status = { textContent: '' };
   const makeGroup = (topics, open) => {
-    const cards = topics.map(textContent => ({ textContent, style: { display: '' } }));
+    const cards = topics.map(textContent => ({
+      textContent: textContent + ' Browse channels', style: { display: '' },
+      querySelector(selector) {
+        if (selector === 'strong') return { textContent };
+        if (selector === 'p') return { textContent: 'Example description' };
+        return null;
+      },
+    }));
     const count = { textContent: '' };
     return {
       open, style: {},
@@ -123,6 +130,13 @@ test('Escape clears a filtered Live room search and restores the previous folder
   assert.equal(coed.cards[1].style.display, 'none');
   assert.equal(women.style.display, 'none');
   assert.equal(clear.hidden, false);
+
+  input.value = 'Browse channels';
+  listeners['input:input']();
+  assert.equal(status.textContent, '0 matching topics · channel discovery only.',
+    'shared action label must not make unrelated topics match');
+  assert.equal(coed.style.display, 'none');
+  assert.equal(women.style.display, 'none');
 
   let prevented = false;
   listeners['input:keydown']({
