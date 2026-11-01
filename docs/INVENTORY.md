@@ -42,3 +42,6 @@ Nothing qualifies as WORKING by the handoff's standard (real backend, persisted,
 ## Proposal: make `main` the default branch
 Pages builds from `main` (`.github/workflows/pages.yml`, `on.push.branches: [main]`), but the GitHub default branch is `master`. So PRs target `master` by default and miss the deploy path.
 Proposal (owner approval required, repo setting): `gh repo edit scrubdup/pikk-app --default-branch main`. Then retarget open PRs to `main`, and archive or delete `master` once it's confirmed fully merged into `main`. Not done by the audit.
+
+## Security note: client-side admin gate (must remove during frontend wiring)
+`#/admin?admin=1` and the Profile "Enable Admin · TEST MODE" toggle set `user.role='admin'` in localStorage (`src/pages/admin.js`, `src/pages/profile.js`, `store.js setAdminRole`). This is an unsafe demo gate. When the frontend is wired to the backend (`feature/backend-foundation`, server-side RBAC in `backend/src/permissions.js`), remove it and gate admin UI on server roles from `GET /auth/me`. The server never trusts client roles.
