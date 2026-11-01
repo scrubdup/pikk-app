@@ -12,7 +12,7 @@ export const SECTION_MENU_ITEMS = Object.freeze({
     { title: '24/7 Viral Live', href: '#/viral-live', detail: 'Rotating viral clips · preview', icon: '◉' },
     { title: 'Spotlight', href: '#/spotlight', detail: 'Featured creators · preview', icon: '✦' },
     { title: 'Clippers', href: '#/clippers', detail: 'Clip creators · TEST MODE', icon: '✂' },
-    { title: 'Stories', detail: '24-hour stories · Coming Soon', icon: '◌' },
+    { title: 'Stories', href: '#/story', detail: 'Share to Everyone or Inner Circle · TEST MODE', icon: '◌' },
     { title: 'Premieres', detail: 'Video premieres · Coming Soon', icon: '▶' },
   ],
   connect: [
@@ -20,6 +20,8 @@ export const SECTION_MENU_ITEMS = Object.freeze({
     { title: 'PIKK Communities', href: '#/communities', detail: 'Topic discussions, votes and replies · TEST MODE', icon: '#' },
     { title: 'Communities', href: '#/community', detail: 'Explore PIKK Lounge channel rooms', icon: '☷' },
     { title: 'Messages', href: '#/messages', detail: 'Open your messages', icon: '✉' },
+    { title: 'Inner Circle', href: '#/inner-circle', detail: 'Private story list · TEST MODE', icon: '◎' },
+    { title: 'Favorites', href: '#/favorites', detail: 'People who rank first · TEST MODE', icon: '★' },
     { title: 'Random Chat', href: '#/connect#connect-random-chat', detail: 'Preview only · real matching unavailable', icon: '◉' },
     { title: 'Multistream', href: '#/connect#connect-multistream', detail: 'Broadcast connection preview · TEST MODE', icon: '▹' },
     { title: 'Explore', href: '#/explore', detail: 'Search people, music, videos, live', icon: '⌕' },
