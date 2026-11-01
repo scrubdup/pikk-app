@@ -24,6 +24,12 @@ try {
     assert.equal(await page.locator('#tabbar a').count(), 7, 'seven bottom tabs preserved');
     assert.equal(await page.locator('.pikk-live-directory-group').count(), 8, 'eight organized sections');
     assert.equal(await page.locator('#pikk-live-group-coed').getAttribute('open'), '', 'coed open by default');
+    assert.equal(await page.locator('.pikk-live-directory-group').first().getAttribute('id'), 'pikk-live-group-general', 'General Live is first');
+    assert.equal(await page.locator('#pikk-live-group-general').getAttribute('open'), '', 'General Live opens by default');
+    assert.equal(await page.locator('#pikk-live-group-general .pikk-live-room-card:visible').count(), 17, 'all General Live categories visible');
+    assert.equal(await page.locator('#pikk-live-group-general').getByText('IRL', { exact: true }).isVisible(), true, 'IRL discoverable');
+    assert.equal(await page.locator('#pikk-live-group-general').getByText('Gaming', { exact: true }).isVisible(), true, 'Gaming discoverable');
+    await page.locator('#pikk-live-group-general').screenshot({ path: 'visual-review/pikk-live-' + device + '-general.png' });
     assert.equal(await page.locator('#pikk-live-group-coed .pikk-live-room-card').count(), 10);
     assert.equal(await page.locator('#pikk-live-group-women .pikk-live-room-card').count(), 15);
     assert.equal(await page.locator('#pikk-live-group-men .pikk-live-room-card').count(), 15);
