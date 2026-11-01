@@ -21,7 +21,7 @@
 .pikk-promote-tiers small{color:#c0c6cf;font-size:11px;border:1px solid #2a3140;border-radius:999px;padding:2px 8px}
 .pikk-promote-items li .btn{grid-row:1;grid-column:2}
 .pikk-promote-open{color:#5d8cff;font-weight:700;text-decoration:none}
-.pikk-explore-rail a.pikk-explore-promote{border-color:rgba(47,107,255,.78)!important;color:#ff3137!important;box-shadow:0 0 9px rgba(255,49,55,.3)}
+
 .pikk-home-filterbar a.pikk-home-promote{border:1px solid rgba(47,107,255,.78)!important;color:#ff3137!important;box-shadow:0 0 9px rgba(255,49,55,.3)}
 .sticky-player .sp-tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#ff3137;border:1px solid rgba(47,107,255,.78);border-radius:999px;padding:1px 6px;margin-bottom:2px}
 .pikk-home-circle .pikk-rail-tag{display:block;order:9;font-size:9px;font-weight:800;color:#ff3137;text-transform:uppercase;letter-spacing:.03em;margin-top:1px}

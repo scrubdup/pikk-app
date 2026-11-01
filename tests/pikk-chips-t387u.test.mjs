@@ -43,3 +43,17 @@ test('t387u: shared chip tokens + global selected rule exist and are loaded last
   const imports = [...main.matchAll(/import '\.\/([\w-]+\.css)'/g)].map((m) => m[1]);
   assert.equal(imports.at(-1), 'pikk-chips.css');
 });
+test('t394: explore rail uses shared tokens; no grey or custom gradient; active = glossy token', () => {
+  const chips = readFileSync(new URL('pikk-chips.css', dir), 'utf8');
+  assert.match(chips, /\.pikk-explore-rail a:not\(\[aria-current="page"\]\) \{[^}]*background: var\(--pikk-chip-bg\)[^}]*border: 1px solid var\(--pikk-chip-border\)/);
+  assert.match(chips, /\.pikk-explore-rail a\[aria-current="page"\] \{[^}]*background: var\(--pikk-chip-selected-bg\) !important/);
+  for (const f of files.filter((x) => x !== 'pikk-chips.css')) {
+    const css = strip(readFileSync(new URL(f, dir), 'utf8'));
+    for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (!/pikk-explore-(rail a|primary|promote)/.test(m[1])) continue;
+      assert.ok(!/#333342|#1b1924|#e9e8f1|linear-gradient/.test(m[2]), `${f}: ${m[1].trim()}`);
+    }
+  }
+  const main = readFileSync(new URL('main.js', dir), 'utf8');
+  assert.match(main, /\.pikk-explore-rail a[\s\S]{0,200}aria-current/);
+});

@@ -3917,14 +3917,10 @@ input:focus, select:focus, textarea:focus {
 .pikk-explore-rail::-webkit-scrollbar { display: none; }
 .pikk-explore-rail a {
   flex: 0 0 auto; padding: 5px 11px; border-radius: 999px;
-  font-size: 11px; font-weight: 750; background: #1b1924;
-  border: 1px solid #333342; color: #e9e8f1;
+  font-size: 11px; font-weight: 750; background: var(--pikk-chip-bg);
+  border: 1px solid var(--pikk-chip-border); color: var(--pikk-chip-text);
 }
-.pikk-explore-rail .pikk-explore-primary {
-  border-color: #5e77e5;
-  color: white; background: linear-gradient(125deg,#20244f,#081535);
-  box-shadow: 0 0 9px rgba(47,107,255,.18);
-}
+/* t394: Explore uses the same shared chip look (custom gradient removed) */
 .pikk-explore-rail a:focus-visible,
 .top#topBar .top-actions a:focus-visible,
 .top#topBar .top-actions button:focus-visible {

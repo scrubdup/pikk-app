@@ -30,3 +30,17 @@ html body :is(.chip, .pill, button, a, [role="tab"], [class*="-chip"], [class*="
 html body :is(.chip, .pill, button, a, [role="tab"], [class*="-chip"], [class*="-pill"], [class*="-tab"], [class*="-tag"]):is(.active, .is-active, .selected, .is-selected, .is-on, .on, .is-current, [aria-pressed="true"], [aria-selected="true"], [aria-current="page"]):not(#tabbar a) :is(span, small, strong, svg) {
   color: var(--pikk-chip-active-text) !important;
 }
+
+/* t394 — top quick-nav rail on the shared tokens (no grey, no custom gradients) */
+html body .pikk-explore-rail a:not([aria-current="page"]) {
+  background: var(--pikk-chip-bg) !important;
+  color: var(--pikk-chip-text) !important;
+  border: 1px solid var(--pikk-chip-border) !important;
+  box-shadow: inset 0 -1.5px 0 var(--pikk-chip-edge-red), 0 0 8px rgba(255, 49, 55, .22) !important;
+}
+html body .pikk-explore-rail a[aria-current="page"] {
+  background: var(--pikk-chip-selected-bg) !important;
+  color: var(--pikk-chip-active-text) !important;
+  border: 1px solid rgba(47, 107, 255, .9) !important;
+  box-shadow: var(--pikk-chip-selected-edge) !important;
+}
