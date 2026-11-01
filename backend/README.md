@@ -1,6 +1,6 @@
 # PIKK backend foundation — implementation gate
 
-This branch adds a **schema only**. It does not enable real accounts, messaging, streaming, purchases or payouts. No production database or credentials have been configured.
+This backend foundation now includes the Cloudflare Worker API, D1 migrations, authentication, safety/permissions, support tickets and ledger groundwork. The owner has provisioned the production D1 database (`pikk-db`), but the Worker API is not yet deployed and the production migrations have not yet been applied. Real accounts, messaging, streaming, purchases and payouts must not be marked live until deployed end-to-end verification passes.
 
 ## Implementation sequence
 1. **Accounts** — select and configure an identity provider; server-side validate tokens, enforce unique handles, account roles, blocked/suspended users, 18+ eligibility where applicable, and account deletion.
