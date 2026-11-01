@@ -863,7 +863,7 @@ export function removeCatalogItem(id) {
 
 
 /** §3 Live — demo session (no real media) */
-export function startLiveDemo(title) {
+export function startLiveDemo(title, extra = {}) {
   const user = state.user;
   if (!user) return { error: 'signin' };
   if (state.live && !state.live.endedAt) return { error: 'already_live', live: state.live };
@@ -872,6 +872,8 @@ export function startLiveDemo(title) {
     hostId: user.id,
     hostName: user.username,
     title: (title || 'DBS Live · TEST MODE').trim().slice(0, 80),
+    category: extra.category || '',
+    permissions: extra.permissions || null,
     startedAt: Date.now(),
     viewers: 3 + Math.floor(Math.random() * 18), // stub
     giftsTotal: 0,
