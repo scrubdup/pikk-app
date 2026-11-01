@@ -39,6 +39,10 @@ try {
     assert.ok(iconWidth >= 32, 'handshake icon retains its visible tile');
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     assert.ok(overflow <= 3, device + ' must not overflow viewport: ' + overflow);
+    // Element screenshots scroll the page. Reset before capturing the initial
+    // viewport so review shows the real header, search and first Live section.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(100);
     await page.screenshot({ path: 'visual-review/pikk-live-' + device + '-directory.png' });
 
     const search = page.getByRole('searchbox', { name: 'Find a Live topic' });
