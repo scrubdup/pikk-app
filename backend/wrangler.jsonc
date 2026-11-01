@@ -1,12 +1,11 @@
 {
-  // PIKK API Worker. LOCAL ONLY: not deployed. database_id is a placeholder until the owner
-  // provisions D1 on a permanent Cloudflare account.
+  // PIKK API Worker. D1 database provisioned by the owner; Worker itself is not yet deployed.
   "name": "pikk-api",
   "main": "src/index.js",
   "compatibility_date": "2026-10-25",
   "compatibility_flags": ["nodejs_compat"],
   "d1_databases": [
-    { "binding": "DB", "database_name": "pikk-db", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
+    { "binding": "DB", "database_name": "pikk-db", "database_id": "d545246b-49f7-4a0a-92b4-b18c570baef8", "migrations_dir": "migrations" }
   ],
   "vars": {
     "ALLOWED_ORIGIN": "https://scrubdup.github.io",
