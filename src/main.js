@@ -33,7 +33,7 @@ import {
 } from './player.js';
 import { getState, ensureDemoPosts, markSplash, shouldShowSplash, getUnreadMessageCount, ensureDemoUnreadMessages } from './store.js';
 import { startRouter, onRoute, getRoute } from './router.js';
-import { ICONS, esc, shellPage } from './ui.js';
+import { ICONS, esc, shellPage, toast } from './ui.js';
 import { asset, rewriteAssetUrls } from './asset.js';
 import { markActiveTab } from './tabbar-state.js';
 import { updateRouteIdentity } from './page-announcement.js';
@@ -534,3 +534,24 @@ function boot() {
 }
 
 boot();
+
+// Coming Soon / Planned tiles: tapping shows an honest "Coming Soon" toast instead of doing nothing.
+const COMING_SOON_SELECTOR = '.pikk-menu-planned, .pikk-create-tile-planned, .drawer-soon, .pikk-notif-planned, [data-coming-soon]';
+function comingSoonToast(el) {
+  const title = (el.querySelector('.pikk-menu-title, strong')?.textContent || el.firstChild?.textContent || '').trim();
+  toast(title ? `${title} · Coming Soon` : 'Coming Soon');
+}
+document.addEventListener('click', (e) => {
+  const el = e.target.closest?.(COMING_SOON_SELECTOR);
+  if (el) { e.preventDefault(); comingSoonToast(el); }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const el = e.target.closest?.(COMING_SOON_SELECTOR);
+  if (el) { e.preventDefault(); comingSoonToast(el); }
+});
+new MutationObserver(() => {
+  document.querySelectorAll(COMING_SOON_SELECTOR).forEach((el) => {
+    if (!el.hasAttribute('tabindex')) { el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button'); }
+  });
+}).observe(document.body, { childList: true, subtree: true });

@@ -4,4 +4,4 @@
 /* Drawer: last items must scroll clear of the bottom tab bar (incl. raised Create) */
 #sideNav.side { padding-bottom: calc(var(--tab-h, 64px) + 48px + env(safe-area-inset-bottom, 0px)); }
 /* Hero accent text ('Make it mutual.', 'Shop the culture.'): hard red → electric blue, no pink midpoint */
-.pikk-dating-hero h2 span, .pikk-shop-showcase h2 span { background: linear-gradient(100deg, var(--pikk-red) 15%, var(--pikk-blue) 80%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pikk-dating-hero h2 span, .pikk-shop-showcase h2 span { background: linear-gradient(100deg, var(--pikk-red) 15%, #c0c6cf, var(--pikk-blue) 80%); -webkit-background-clip: text; background-clip: text; color: transparent; }
