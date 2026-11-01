@@ -261,6 +261,15 @@ function ensureCreateMenu() {
   };
   // A route change must never leave the Create dialog covering the destination.
   window.addEventListener('hashchange', () => closeMenu());
+  // t394: mark the active quick-nav rail chip (shared glossy selected token)
+  const syncRail = () => {
+    const path = (location.hash.replace(/^#/, '') || '/home').split(/[?#]/)[0];
+    document.querySelectorAll('.pikk-explore-rail a').forEach((a) => {
+      const on = a.getAttribute('href').slice(1) === path;
+      if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+  };
+  window.addEventListener('hashchange', syncRail); syncRail();
   panel.addEventListener('click', (e) => {
     if (e.target === panel || e.target.closest('[data-create-close]')) closeMenu(true);
     else if (e.target.closest('.pikk-create-options a')) closeMenu();
