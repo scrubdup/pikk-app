@@ -1,3 +1,4 @@
+import { renderTwerkContest, bindTwerkContest } from './pages/contest.js';
 import './styles.css';
 import './pikk-mockup.css';
 import './pikk-pages.css';
@@ -131,6 +132,8 @@ const ROUTES = {
   '/pricing': { render: renderPricing, bind: bindPricing },
   '/admin': { render: renderAdmin, bind: bindAdmin },
   '/guidelines': { render: renderGuidelines },
+  '/contest': { render: renderTwerkContest, bind: bindTwerkContest }, // only contest today: #/contest/twerk
+  '/contest/twerk': { render: renderTwerkContest, bind: bindTwerkContest },
   '/community': { render: renderCommunity, bind: bindCommunity },
   '/communities': { render: renderCommunities, bind: bindCommunities },
   '/signup': { render: renderSignup },

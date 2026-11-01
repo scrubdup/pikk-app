@@ -14,8 +14,8 @@ const section = (id, title, seeAll, kicker, body, note = '') => `
   </section>`;
 const card = (href, media, title, sub, cls = '', badge = '') => `<a class="pikk-hs-card ${cls}" role="listitem" href="${href}"><span class="pikk-hs-media">${media}${badge ? `<span class="pikk-hs-badge">${esc(badge)}</span>` : ''}</span><strong>${esc(title)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</a>`;
 
-export const SHOWCASE_ORDER = ['music', 'posts', 'videos', 'live', 'connect', 'dating', 'games', 'battles', 'shop'];
-export const SHOWCASE_SEE_ALL = Object.freeze({ music: '#/music', posts: '#/posts', videos: '#/videos', live: '#/live', connect: '#/connect', dating: '#/dating', games: '#/games', battles: '#/giftbattles', shop: '#/shop' });
+export const SHOWCASE_ORDER = ['music', 'posts', 'videos', 'live', 'connect', 'dating', 'games', 'battles', 'contest', 'shop'];
+export const SHOWCASE_SEE_ALL = Object.freeze({ music: '#/music', posts: '#/posts', videos: '#/videos', live: '#/live', connect: '#/connect', dating: '#/dating', games: '#/games', battles: '#/giftbattles', contest: '#/contest/twerk', shop: '#/shop' });
 
 export function renderHomeShowcase() {
   const music = STREAMING_RELEASES.map((r) => card('#/music', img(r.cover, r.title), r.title, `${r.artist} · ${r.type === 'album' ? 'Album' : 'Single'}${r.year ? ' · ' + r.year : ''}`, 'is-square', r.type === 'album' ? 'Album' : 'Track')).join('');
@@ -33,6 +33,8 @@ export function renderHomeShowcase() {
     .map(([h, t, s]) => card(h, '<span class="hs-ph" aria-hidden="true">⚔</span>', t, s, 'is-chip')).join('');
   const shop = MERCH.slice(0, 8).map((m) => card('#/shop', img(m.image, m.name), m.name, `$${m.price} · Foreign X-Change`, 'is-square')).join('')
     + card('#/shop', '<span class="hs-ph" aria-hidden="true">⌂</span>', 'Foreign X-Change store', 'Official merch store · checkout on merchant site', 'is-chip');
+  // t356u — text-only Twerk Contest tile (no imagery), 18+ gated route.
+  const contest = `<div class="pikk-hs-contest" role="listitem"><strong class="pikk-contest-title">Twerk Contest</strong><span class="pikk-badge-18" aria-label="18 plus only">18+</span><a class="pikk-contest-enter" href="#/contest/twerk">Enter</a></div>`;
   const S = {
     music: section('music', 'Music', SHOWCASE_SEE_ALL.music, 'Tracks & albums', music),
     posts: section('posts', 'Posts', SHOWCASE_SEE_ALL.posts, 'Pictures · shorts · videos', posts, 'House samples from official releases.'),
@@ -42,6 +44,7 @@ export function renderHomeShowcase() {
     dating: section('dating', 'Dating', SHOWCASE_SEE_ALL.dating, '18+ · safety-gated', dating),
     games: section('games', 'Games', SHOWCASE_SEE_ALL.games, 'PIKK Arcade · all games', games, 'Concept previews · games are not playable yet.'),
     battles: section('battles', 'Battles & Roast', SHOWCASE_SEE_ALL.battles, 'Head-to-head', battles),
+    contest: section('contest', 'Contests', SHOWCASE_SEE_ALL.contest, '18+ · community', contest),
     shop: section('shop', 'Shop', SHOWCASE_SEE_ALL.shop, 'Featured products & stores', shop),
   };
   return `<div class="pikk-home-showcase" id="pikkHomeShowcase">${SHOWCASE_ORDER.map((k) => S[k]).join('')}</div>`;
