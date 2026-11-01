@@ -66,6 +66,18 @@ export const LIVE_DISCOVERY_GROUPS = Object.freeze([
   },
 ]);
 
+/**
+ * Preserve a selected channel category after demo actions re-render Live.
+ * Category links are public, route-local filters; this does not create a room.
+ */
+export function liveDiscoveryRefreshHref(tab, category = '') {
+  if (tab !== 'channels') return '#/live?tab=' + encodeURIComponent(tab);
+  const selected = String(category || '').trim();
+  return selected
+    ? '#/live?tab=channels&category=' + encodeURIComponent(selected)
+    : '#/live';
+}
+
 export function renderLiveDiscoveryDirectory(categories, escapeHtml) {
   const byName = new Map(categories.map(entry => [entry[0], entry]));
   const assigned = new Set();
