@@ -57,3 +57,17 @@ test('t394: explore rail uses shared tokens; no grey or custom gradient; active 
   const main = readFileSync(new URL('main.js', dir), 'utf8');
   assert.match(main, /\.pikk-explore-rail a[\s\S]{0,200}aria-current/);
 });
+test('t395: filter/segment chips never use btn primary/ghost as the selected state (Shop filters use shared chip + aria-pressed)', () => {
+  const shop = readFileSync(new URL('pages/pikk-shop.js', dir), 'utf8');
+  assert.match(shop, /class="chip pikk-chip pikk-shop-filter\$\{category === 'All' \? ' on' : ''\}"/);
+  assert.match(shop, /aria-pressed="\$\{category === 'All' \? 'true' : 'false'\}"/);
+  assert.ok(!/toggle\('primary'|toggle\('ghost'/.test(shop));
+  const pages = readdirSync(new URL('pages/', dir)).filter((f) => f.endsWith('.js'));
+  const bad = [];
+  for (const f of pages) {
+    const js = readFileSync(new URL('pages/' + f, dir), 'utf8');
+    for (const m of js.matchAll(/\?\s*'primary'\s*:\s*'ghost'/g)) bad.push(`${f}: ${js.slice(Math.max(0, m.index - 60), m.index + 20).replace(/\s+/g, ' ')}`);
+    if (/classList\.toggle\('primary'/.test(js)) bad.push(`${f}: classList.toggle('primary')`);
+  }
+  assert.deepEqual(bad, []);
+});

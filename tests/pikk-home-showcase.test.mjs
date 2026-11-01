@@ -36,3 +36,23 @@ test('t391u/t392u: showcase starts Live → Connect → Posts → Videos → Mus
   const h = renderHomeShowcase();
   assert.ok(h.indexOf('id="hs-posts"') < h.indexOf('id="hs-videos"') && h.indexOf('id="hs-videos"') < h.indexOf('id="hs-music"'));
 });
+test('t395: all 15 games render inside the single #homeArcade, Block Wars first with its preview', async () => {
+  const home = readFileSync(new URL('../src/pages/home.js', import.meta.url), 'utf8');
+  assert.equal((home.match(/id="homeArcade"/g) || []).length, 1);
+  const a = home.indexOf('id="homeArcade"'), b = home.indexOf('</section>', a);
+  const arcadeTpl = home.slice(a, b);
+  assert.match(arcadeTpl, /\$\{PIKK_GAMES\.map\(/);
+  assert.match(arcadeTpl, /data-game-slide="\$\{index\}"/);
+  assert.match(arcadeTpl, /GAME \$\{index\+1\} OF 15/);
+  assert.equal(PIKK_GAMES.length, 15);
+  assert.equal(PIKK_GAMES[0].name, 'Block Wars');
+  assert.ok(PIKK_GAMES[0].artwork, 'Block Wars preview art');
+  // render the slides exactly as Home does and check every game appears, Block Wars first
+  const esc = (x) => String(x);
+  const slides = PIKK_GAMES.map((g, i) => `<article data-game-slide="${i}"><h3>${esc(g.name)}</h3></article>`).join('');
+  const names = [...slides.matchAll(/<h3>([^<]+)<\/h3>/g)].map((m) => m[1]);
+  assert.equal(names.length, 15); assert.equal(names[0], 'Block Wars');
+  assert.match(home, /<h3>\$\{esc\(game\.name\)\}<\/h3>/);
+  assert.match(home, /arcadeArtSrc\(game\)/);
+  assert.ok(!home.slice(home.indexOf('const body = `'), home.indexOf("return shellPage('Home'")).includes('${bwPreview}'));
+});

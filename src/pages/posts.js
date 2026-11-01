@@ -132,8 +132,8 @@ export function renderPosts(route) {
 
   const tabs = `
     <div class="row wrap" style="margin-bottom:12px;gap:8px">
-      <a class="btn ${tab === 'discover' ? 'primary' : 'ghost'}" href="#/posts">Discover</a>
-      <a class="btn ${tab === 'following' ? 'primary' : 'ghost'}" href="#/posts?tab=following">Following</a>
+      <a class="chip pikk-chip${tab === 'discover' ? ' on' : ''}"${tab === 'discover' ? ' aria-current="page"' : ''} href="#/posts">Discover</a>
+      <a class="chip pikk-chip${tab === 'following' ? ' on' : ''}"${tab === 'following' ? ' aria-current="page"' : ''} href="#/posts?tab=following">Following</a>
       <a class="btn ghost" href="#/profile/dbs">@DatBoiSkeet</a>
     </div>`;
 

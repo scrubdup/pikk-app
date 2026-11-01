@@ -275,8 +275,8 @@ function renderSplit(session) {
       <h3>Gift split disclosure</h3>
       <p class="muted">Required before broadcast when multiple hosts/guests share gifts. Display-only · TEST MODE · not a real payout.</p>
       <div class="row wrap" style="gap:8px;margin:10px 0">
-        <button class="btn ${mode === 'equal' ? 'primary' : 'ghost'}" id="mgSplitEqual">Equal split</button>
-        <button class="btn ${mode === 'custom' ? 'primary' : 'ghost'}" id="mgSplitCustom">Custom %</button>
+        <button type="button" class="chip pikk-chip${mode === 'equal' ? ' on' : ''}" aria-pressed="${mode === 'equal'}" id="mgSplitEqual">Equal split</button>
+        <button type="button" class="chip pikk-chip${mode === 'custom' ? ' on' : ''}" aria-pressed="${mode === 'custom'}" id="mgSplitCustom">Custom %</button>
       </div>
       <ul class="mg-list">${rows}</ul>
       <p class="muted" style="margin:8px 0 0">Host share: <strong>${esc(shareLabel(session, session.hostId))}</strong>
