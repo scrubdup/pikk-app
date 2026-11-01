@@ -112,3 +112,14 @@ test('Explore search profile URLs encode special characters like the Following a
   assert.ok(peopleResults.includes('href: `#/profile/${encodeURIComponent(p.id)}`'));
   assert.doesNotMatch(peopleResults, /href: `#\/profile\/\$\{p\.id\}`/);
 });
+
+test('Explore search announces result counts and filter context without claiming live location data', () => {
+  assert.match(explore, /id="exploreSearchStatus" role="status" aria-live="polite" aria-atomic="true"/);
+  assert.match(explore, /const context = exploreResultContext\(res\)/);
+  assert.match(explore, /status\.textContent = res\.query/);
+  assert.match(explore, /total === 1 \? '' : 's'/);
+  assert.match(explore, /context \|\| 'across PIKK'/);
+  const clearHandler = explore.split('function clearSearch() {')[1]?.split("toast('Cleared')")[0];
+  assert.ok(clearHandler);
+  assert.match(clearHandler, /status\.textContent = 'Ready to search PIKK\.'/);
+});
