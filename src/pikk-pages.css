@@ -125,3 +125,17 @@ html.pikk-reduce-motion *{animation:none!important;transition:none!important}
 .pikk-mu-start{background:var(--pikk-red);border-color:var(--pikk-blue);box-shadow:0 0 10px rgba(47,107,255,.5)}
 .pikk-mu-test{border:1px solid var(--pikk-blue);color:#fff;background:rgba(255,43,43,.25)}
 .pikk-hs-card.is-soon{opacity:.75}
+
+/* t397u Group Rooms + Go Live category — black/red/blue/chrome; chips use shared tokens */
+.pikk-rooms-head{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.pikk-room-shell{border:1px solid var(--pikk-blue);border-radius:14px;padding:10px;margin-top:8px;box-shadow:inset 0 0 0 1px rgba(255,49,55,.3)}
+.pikk-room-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:8px}
+.pikk-room-stage{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pikk-room-seat{aspect-ratio:4/3;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;background:linear-gradient(160deg,#1a1c22,#000 60%);border:1.5px solid var(--pikk-blue);box-shadow:0 0 0 1px var(--pikk-red) inset}
+.pikk-room-seat span{font-size:28px;color:var(--pikk-blue);text-shadow:0 0 6px var(--pikk-red)}
+.pikk-room-seat small{font-size:11px;color:#d7dae0}
+.pikk-room-pinned{margin:8px 0;padding:8px 10px;border-radius:10px;border-left:3px solid var(--pikk-red);background:linear-gradient(90deg,rgba(47,107,255,.18),transparent)}
+.pikk-room-chat{margin:10px 0}
+.pikk-room-chat ul{max-height:180px;overflow:auto;margin:0 0 6px}
+.pikk-golive-cats legend,.pikk-golive-perms legend{font-weight:700}
+.pikk-golive-perms label{display:block;margin:6px 0}

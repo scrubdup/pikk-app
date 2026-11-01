@@ -44,12 +44,13 @@ import { navigate, getRoute } from '../router.js';
 import { notifyLiveOpen, notifyLiveClosed } from '../player.js';
 import { giftStickerHtml, getGiftSticker } from '../gift-stickers.js';
 import { renderLiveDiscoveryDirectory, mountLiveDirectorySearch } from '../live-discovery.js';
+import { renderGoLiveCategoryFields, bindGoLiveCategoryFields, readGoLiveFields, renderGroupRoomsPanel, bindGroupRooms } from '../live-rooms.js';
 
 /** t197u discovery tabs — preserve ?tab= on soft refresh */
 function getLiveDiscTab() {
   const q = (getRoute().query || {}).tab;
   if (q === 'live' || q === 'channels') return 'channels';
-  if (q === 'following' || q === 'categories') return q;
+  if (q === 'following' || q === 'categories' || q === 'rooms') return q;
   return 'channels';
 }
 
@@ -97,6 +98,7 @@ function renderLiveDiscoveryTabs(active = 'channels') {
     { id: 'clips', href: '#/shorts', label: 'Clips' },
     { id: 'channels', href: '#/live?tab=channels', label: 'Channels' },
     { id: 'categories', href: '#/live?tab=categories', label: 'Categories' },
+    { id: 'rooms', href: '#/live?tab=rooms', label: 'Group Rooms' },
   ];
   const btns = tabs
     .map((t) => {
@@ -728,6 +730,7 @@ function renderGoLiveForm(user) {
       <div class="field"><label>Stream title</label>
         <input id="liveTitle" maxlength="80" placeholder="e.g. Listening session · Long Story Short" value="PIKK Live · ${esc(user.username)}" />
       </div>
+      ${renderGoLiveCategoryFields()}
       <div class="field"><label>Today's goal name <span class="muted">(optional)</span></label>
         <input id="liveGoalNameGo" maxlength="80" placeholder="e.g. Studio session fund" />
       </div>
@@ -955,6 +958,7 @@ export function renderLive() {
   let tabPanel = channelsPanel;
   if (tab === 'following') tabPanel = renderFollowingPanel(user);
   else if (tab === 'categories') tabPanel = renderCategoriesPanel();
+  else if (tab === 'rooms') tabPanel = renderGroupRoomsPanel({ user, goalHtml: user && !active ? renderLiveDailyGoalCard({ hostId: user.id, hostName: user.username }, user) : (user ? '<p class="muted small">Your Live daily goal is shown above while you are live (TEST MODE).</p>' : '<p class="muted small">Sign in to set a room donation goal (reuses the Live daily goal · TEST MODE).</p>') });
 
   const body = `
     ${renderLiveDiscoveryTabs(tab)}
@@ -1178,9 +1182,13 @@ export function bindLive(root) {
     });
   });
 
+  bindGoLiveCategoryFields(root);
+  bindGroupRooms(root, { toast });
   root.querySelector('#liveStart')?.addEventListener('click', () => {
     const title = root.querySelector('#liveTitle')?.value?.trim();
-    const res = startLiveDemo(title);
+    const goFields = readGoLiveFields(root);
+    if (!goFields.category) return toast('Pick one Go Live category');
+    const res = startLiveDemo(title, goFields);
     if (res?.error === 'signin') return toast('Sign in first');
     if (res?.error === 'already_live') return toast('Already live');
     const gName = root.querySelector('#liveGoalNameGo')?.value?.trim();
