@@ -188,6 +188,6 @@ test('Live refresh preserves a selected channel filter without leaking it to oth
   assert.equal(liveDiscoveryRefreshHref('following', 'IRL'), '#/live?tab=following');
   assert.equal(liveDiscoveryRefreshHref('categories', 'IRL'), '#/live?tab=categories');
   assert.equal(liveDiscoveryRefreshHref('rooms', 'IRL'), '#/live?tab=rooms');
-  assert.match(live, /navigate\\(liveDiscoveryRefreshHref\\(tab, category\\)\\)/,
+  assert.match(live, /navigate\(liveDiscoveryRefreshHref\(tab, category\)\)/,
     'Live soft refresh uses the safe, category-preserving destination');
 });
