@@ -27,7 +27,7 @@ const UTILITY = [
   { id: 'profile', label: 'Profile / Sign in', href: '#/profile' },
   { id: 'messages', label: 'Messages', href: '#/messages' },
   { id: 'notifications', label: 'Notifications', href: '#/notifications' },
-  { id: 'settings', label: 'Settings', href: '#/profile?tab=settings' },
+  { id: 'settings', label: 'Settings', href: '#/settings' },
   { id: 'donate', label: 'Donate · PIKK goal', href: '#/donate' },
   { id: 'support', label: 'Support · Help & tickets', href: '#/support' },
 ];

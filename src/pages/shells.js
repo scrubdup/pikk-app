@@ -1,3 +1,4 @@
+import { getMembership, joinMembership, membershipStatus } from '../settings-store.js';
 import { renderStoriesAndPromotions } from '../featured-promos.js';
 import { getState, setState, setNotifPrefs, listCatalog, submitCreatorSellApp } from '../store.js';
 import { resolveMediaSrc } from '../media-db.js';
@@ -243,7 +244,7 @@ export { renderMissions, bindMissions } from './missions.js';
 
 export function renderPricing() {
   const tiers = MEMBERSHIPS.map(
-    (m) => `<li><span>${esc(m.name)}</span><strong>$${m.price}/mo</strong></li>`
+    (m) => `<li class="pikk-tier" data-tier="${esc(m.id)}"><span><strong>${esc(m.name)}</strong><br/><small class="muted">${esc(m.blurb || '')}</small></span><strong>$${m.price}/mo</strong><button type="button" class="btn primary pikk-join" data-join="${esc(m.id)}">${m.id === 'inner' ? 'Join' : 'Subscribe'}</button></li>`
   ).join('');
   const apps = getState().creatorSellApps || [];
   const appsList = apps.length
@@ -325,7 +326,7 @@ export function renderPricing() {
       ${appsList}
     </div>
 
-    <div class="card"><h3>Memberships</h3><ul class="list-plain">${tiers}</ul></div>
+    <div class="card" id="memberships"><h3>Memberships</h3><p class="pikk-member-status" data-member-status role="status">${esc(membershipStatus(getMembership()))}</p><ul class="list-plain">${tiers}</ul><div class="pikk-join-confirm" data-join-confirm hidden></div><p class="muted" style="font-size:12px">TEST MODE · no real charge. Billing starts when Stripe is live.</p></div>
      <div class="card"><h3>Music price ranges</h3>
        <ul class="list-plain">
          <li><span>Song</span><span>$0.99–$1.29</span></li>
@@ -339,6 +340,7 @@ export function renderPricing() {
 }
 
 export function bindPricing(root) {
+  bindMemberships(root || document);
   const focusSell =
     typeof location !== 'undefined' &&
     (location.hash.includes('focus=sell') || location.hash.includes('creator-sell'));
@@ -923,4 +925,15 @@ export function renderPhases() {
 
 export function renderNotFound(path) {
   return shellPage('Not found', `<div class="card"><p>No page for <code>${esc(path)}</code>.</p><a class="btn" href="#/home">Home</a></div>`);
+}
+
+export function bindMemberships(root) {
+  const box = root.querySelector('[data-join-confirm]'); if (!box) return;
+  root.querySelectorAll('[data-join]').forEach((b) => b.addEventListener('click', () => {
+    const t = MEMBERSHIPS.find((m) => m.id === b.dataset.join); if (!t) return;
+    box.hidden = false;
+    box.innerHTML = `<div role="dialog" aria-modal="false" aria-labelledby="joinH" class="pikk-join-dialog"><h4 id="joinH">Join ${esc(t.name)} · $${t.price}/mo</h4><p>TEST MODE: no card is charged. Your choice is saved on this device; billing starts when Stripe is live.</p><button type="button" class="btn primary" data-join-ok="${esc(t.id)}">Confirm ${esc(t.name)}</button> <button type="button" class="btn ghost" data-join-cancel>Cancel</button></div>`;
+    box.querySelector('[data-join-ok]').addEventListener('click', () => { const m = joinMembership(t); root.querySelector('[data-member-status]').textContent = membershipStatus(m); box.hidden = true; box.innerHTML = ''; });
+    box.querySelector('[data-join-cancel]').addEventListener('click', () => { box.hidden = true; box.innerHTML = ''; });
+  }));
 }

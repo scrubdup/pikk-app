@@ -36,3 +36,4 @@ export function rankByFavorites(items, favs = favorites.list(), key = (x) => x.a
   const idx = (x) => { const i = favs.indexOf(normalizeHandle(key(x))); return i < 0 ? Infinity : i; };
   return [...items].map((x, i) => [x, i]).sort((a, b) => idx(a[0]) - idx(b[0]) || (b[0].at || 0) - (a[0].at || 0) || a[1] - b[1]).map((p) => p[0]);
 }
+export const peopleLabel = (n) => `${n} ${n === 1 ? 'person' : 'people'}`;

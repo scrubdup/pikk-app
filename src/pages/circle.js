@@ -1,5 +1,5 @@
 import { esc, shellPage, toast } from '../ui.js';
-import { crew, favorites, addStory, listStories, removeStory, rankByFavorites, AUDIENCES } from '../circle-store.js';
+import { crew, favorites, addStory, listStories, removeStory, rankByFavorites, AUDIENCES, peopleLabel } from '../circle-store.js';
 
 const TEST = '<p class="pikk-ic-test">TEST MODE · Saved only on this device until PIKK accounts are live. No one is notified.</p>';
 const ring = (aud) => aud === 'crew' ? '<span class="pikk-ic-badge" title="Crew only">◎ Crew</span>' : '<span class="pikk-ic-everyone">Everyone</span>';
@@ -38,7 +38,7 @@ export function renderStory() {
       <textarea id="story-text" name="text" maxlength="280" rows="3" placeholder="What's happening?"></textarea>
       <fieldset class="pikk-audience"><legend>Who can see this?</legend>
         <label><input type="radio" name="audience" value="everyone" checked /> <span>${AUDIENCES.everyone}</span></label>
-        <label><input type="radio" name="audience" value="crew" /> <span class="pikk-ic-badge">◎ ${AUDIENCES.crew}</span> <small data-circle-count>(${crew.list().length} people)</small></label>
+        <label><input type="radio" name="audience" value="crew" /> <span class="pikk-ic-badge">◎ ${AUDIENCES.crew}</span> <small data-circle-count>(${peopleLabel(crew.list().length)})</small></label>
       </fieldset>
       <p class="muted pikk-aud-hint"><a href="#/crew">Edit Crew list</a></p>
       <button class="btn primary" type="submit">Share story</button>
