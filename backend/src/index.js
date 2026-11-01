@@ -1,11 +1,14 @@
 import { ApiError, json, errorResponse, corsHeaders, readJson, clientIp } from './http.js';
-import { signup, login, logout, verifyEmail, loadSession, requireAuth, requireVerified, requireRole } from './auth.js';
+import { signup, login, logout, verifyEmail, loadSession, requireAuth, requireVerified } from './auth.js';
+import { requirePermission, GRANTABLE_ROLES } from './permissions.js';
+import { assertNotBlocked, NOT_BLOCKED_SQL } from './blocks.js';
+import { safetyRoute, ageVerificationWebhook } from './safety.js';
 import { requireString, requirePositiveInt } from './validate.js';
 import { rateLimit } from './ratelimit.js';
 import { balance, transfer } from './ledger.js';
 import { stripeWebhook } from './webhook.js';
 import { newId } from './crypto.js';
-import { audit } from './audit.js';
+import { audit, auditStmt } from './audit.js';
 
 const HANDLE = /^[a-zA-Z0-9_]{3,30}$/;
 
@@ -21,6 +24,7 @@ async function route(req, env, ctx) {
   const ip = clientIp(req);
 
   if (m === 'POST' && p === '/webhooks/stripe') return stripeWebhook(env, req);
+  if (m === 'POST' && p === '/webhooks/age-verification') return ageVerificationWebhook(env, req);
 
   // CSRF: every state-changing browser request must come from the allowed origin.
   if (m !== 'GET' && m !== 'HEAD' && req.headers.get('Origin') !== env.ALLOWED_ORIGIN)
@@ -41,7 +45,10 @@ async function route(req, env, ctx) {
   if (m === 'GET' && p === '/auth/me') { const s = requireAuth(ctx); return json(200, { user: s.user, roles: s.roles }); }
 
   if (m === 'POST' && p === '/posts') {
-    const s = requireVerified(ctx); const b = await readJson(req);
+    const s = requireVerified(ctx);
+    if (s.status.muted_until) throw new ApiError(403, 'account_muted', 'Account is muted', { until: s.status.muted_until });
+    await rateLimit(env, `post:${s.user.id}`, 30, 3600);
+    const b = await readJson(req);
     const kind = b.kind === undefined ? 'text' : b.kind;
     if (!['text', 'link'].includes(kind)) throw new ApiError(422, 'validation_failed', 'Invalid input', { kind: 'text or link (media upload not yet supported)' });
     const body = requireString(b, 'body', { max: 5000 });
@@ -56,8 +63,7 @@ async function route(req, env, ctx) {
     if (target.id === s.user.id) throw new ApiError(422, 'validation_failed', 'Cannot target yourself');
     const t = new Date().toISOString();
     if (p === '/follows') {
-      const blocked = await env.DB.prepare(`SELECT 1 FROM blocks WHERE (blocker_id=?1 AND blocked_id=?2) OR (blocker_id=?2 AND blocked_id=?1)`).bind(s.user.id, target.id).first();
-      if (blocked) throw new ApiError(403, 'blocked', 'Cannot follow this user');
+      await assertNotBlocked(env, s.user.id, target.id);
       await env.DB.prepare(`INSERT OR IGNORE INTO follows(follower_id,followee_id,created_at) VALUES (?,?,?)`).bind(s.user.id, target.id, t).run();
     } else {
       await env.DB.batch([
@@ -67,6 +73,33 @@ async function route(req, env, ctx) {
       await audit(env, { actor: s.user.id, action: 'social.block', target: target.id, ip });
     }
     return json(200, { ok: true });
+  }
+
+  if (m === 'GET' && p === '/feed') {
+    const s = requireAuth(ctx);
+    const r = await env.DB.prepare(
+      `SELECT p.id, p.kind, p.body, p.created_at, u.handle AS author FROM posts p JOIN users u ON u.id = p.author_id
+        WHERE p.deleted_at IS NULL AND u.banned_at IS NULL
+          AND (p.author_id = ?1 OR p.author_id IN (SELECT followee_id FROM follows WHERE follower_id = ?1))
+          AND ${NOT_BLOCKED_SQL('p.author_id')}
+        ORDER BY p.created_at DESC LIMIT 50`).bind(s.user.id).all();
+    return json(200, { posts: r.results });
+  }
+  let mm;
+  if (m === 'GET' && (mm = p.match(/^\/posts\/([\w-]{1,64})$/))) {
+    const s = requireAuth(ctx);
+    const post = await env.DB.prepare(`SELECT p.id, p.kind, p.body, p.created_at, p.author_id, u.handle AS author FROM posts p JOIN users u ON u.id = p.author_id WHERE p.id = ? AND p.deleted_at IS NULL`).bind(mm[1]).first();
+    if (!post) throw new ApiError(404, 'not_found', 'Not found');
+    await assertNotBlocked(env, s.user.id, post.author_id, { silent: true });
+    const { author_id, ...pub } = post;
+    return json(200, { post: pub });
+  }
+  if (m === 'GET' && (mm = p.match(/^\/users\/([a-zA-Z0-9_]{3,30})$/))) {
+    const s = requireAuth(ctx);
+    const u = await env.DB.prepare(`SELECT id, handle, display_name, created_at FROM users WHERE handle = ? AND banned_at IS NULL AND disabled_at IS NULL`).bind(mm[1]).first();
+    if (!u) throw new ApiError(404, 'not_found', 'Not found');
+    await assertNotBlocked(env, s.user.id, u.id, { silent: true });
+    return json(200, { user: { handle: u.handle, display_name: u.display_name, created_at: u.created_at } });
   }
 
   if (m === 'GET' && p === '/ledger/balance') { const s = requireAuth(ctx); return json(200, { balance: await balance(env, s.user.id), currency: 'pikk_coin' }); }
@@ -79,20 +112,27 @@ async function route(req, env, ctx) {
     return json(200, await transfer(env, req, s.user, to, amount, memo));
   }
 
-  if (m === 'POST' && p === '/admin/roles') {
-    const s = requireRole(ctx, 'admin'); const b = await readJson(req);
+  if ((m === 'POST' || m === 'DELETE') && p === '/admin/roles') {
+    const s = requirePermission(ctx, 'roles.grant'); const b = await readJson(req);
     const target = await userByHandle(env, requireString(b, 'handle', { max: 30, pattern: HANDLE }));
     const role = requireString(b, 'role', { max: 20 });
-    if (!['creator', 'moderator', 'admin'].includes(role)) throw new ApiError(422, 'validation_failed', 'Invalid role');
-    await env.DB.prepare(`INSERT OR IGNORE INTO user_roles(user_id,role,granted_by,granted_at) VALUES (?,?,?,?)`).bind(target.id, role, s.user.id, new Date().toISOString()).run();
-    await audit(env, { actor: s.user.id, action: 'admin.grant_role', target: target.id, ip, meta: { role } });
+    if (!GRANTABLE_ROLES.includes(role)) throw new ApiError(422, 'validation_failed', 'Invalid role');
+    const reason = requireString(b, 'reason', { min: 3, max: 500 });
+    if (m === 'DELETE' && role === 'admin' && target.id === s.user.id) throw new ApiError(422, 'validation_failed', 'Cannot revoke your own admin role');
+    const stmt = m === 'POST'
+      ? env.DB.prepare(`INSERT OR IGNORE INTO user_roles(user_id,role,granted_by,granted_at) VALUES (?,?,?,?)`).bind(target.id, role, s.user.id, new Date().toISOString())
+      : env.DB.prepare(`DELETE FROM user_roles WHERE user_id = ? AND role = ?`).bind(target.id, role);
+    await env.DB.batch([stmt, auditStmt(env, { actor: s.user.id, action: m === 'POST' ? 'admin.grant_role' : 'admin.revoke_role', target: target.id, ip, meta: { role, reason } })]);
     return json(200, { ok: true });
   }
   if (m === 'GET' && p === '/admin/audit') {
-    requireRole(ctx, 'admin', 'moderator');
+    requirePermission(ctx, 'admin.access');
     const r = await env.DB.prepare(`SELECT id, actor_id, action, target, created_at FROM audit_log ORDER BY created_at DESC LIMIT 100`).all();
     return json(200, { entries: r.results });
   }
+
+  const safety = await safetyRoute(env, req, ctx, m, p);
+  if (safety) return safety;
 
   throw new ApiError(404, 'not_found', 'Route not found');
 }

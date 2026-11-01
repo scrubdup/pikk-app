@@ -42,7 +42,7 @@ describe('auth', () => {
     const ok = await call('POST', '/auth/login', { body: { email: u.email, password: u.password }, ip: freshIp() });
     expect(ok.status).toBe(200);
     const me = await call('GET', '/auth/me', { cookie: ok.cookie });
-    expect(me.status).toBe(200); expect(me.json.user.handle).toBe(u.handle); expect(me.json.roles).toEqual(['member']);
+    expect(me.status).toBe(200); expect(me.json.user.handle).toBe(u.handle); expect(me.json.roles).toEqual(['user']);
     expect(me.json.user.email_verified).toBe(true);
     const out = await call('POST', '/auth/logout', { cookie: ok.cookie });
     expect(out.status).toBe(200); expect(out.res.headers.get('Set-Cookie')).toMatch(/Max-Age=0/);

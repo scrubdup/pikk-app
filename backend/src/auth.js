@@ -36,16 +36,36 @@ export async function loadSession(env, req) {
   if (!token || token.length > 100) return null;
   const idHash = await sha256Hex(token);
   const row = await env.DB.prepare(
-    `SELECT s.id_hash, u.id, u.handle, u.display_name, u.disabled_at, c.email, c.email_verified_at
+    `SELECT s.id_hash, u.id, u.handle, u.display_name, u.disabled_at, u.muted_until, u.suspended_until, u.banned_at,
+            u.age_verified_18, u.age_verification_method, u.age_verified_at, c.email, c.email_verified_at
        FROM sessions s JOIN users u ON u.id = s.user_id JOIN credentials c ON c.user_id = u.id
       WHERE s.id_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ?`).bind(idHash, nowIso()).first();
   if (!row || row.disabled_at) return null;
   const roles = await env.DB.prepare(`SELECT role FROM user_roles WHERE user_id = ? ORDER BY role`).bind(row.id).all();
   return {
     sessionIdHash: idHash,
-    user: { id: row.id, handle: row.handle, display_name: row.display_name, email: row.email, email_verified: !!row.email_verified_at },
+    user: { id: row.id, handle: row.handle, display_name: row.display_name, email: row.email, email_verified: !!row.email_verified_at,
+      age_verified_18: row.age_verified_18 === 1, age_verified_at: row.age_verified_at, age_verification_method: row.age_verification_method },
+    status: accountStatus(row),
     roles: roles.results.map(r => r.role),
   };
+}
+
+function accountStatus(row) {
+  const now = nowIso();
+  return {
+    banned: !!row.banned_at,
+    suspended_until: row.suspended_until && row.suspended_until > now ? row.suspended_until : null,
+    muted_until: row.muted_until && row.muted_until > now ? row.muted_until : null,
+  };
+}
+
+/** Signed in AND not banned/suspended. Appeals and /auth/me use requireAuth so restricted users can still appeal. */
+export function requireActive(ctx) {
+  const s = requireAuth(ctx);
+  if (s.status.banned) throw new ApiError(403, 'account_banned', 'Account is banned');
+  if (s.status.suspended_until) throw new ApiError(403, 'account_suspended', 'Account is suspended', { until: s.status.suspended_until });
+  return s;
 }
 
 export function requireAuth(ctx) {
@@ -53,7 +73,7 @@ export function requireAuth(ctx) {
   return ctx.session;
 }
 export function requireVerified(ctx) {
-  const s = requireAuth(ctx);
+  const s = requireActive(ctx);
   if (!s.user.email_verified) throw new ApiError(403, 'email_unverified', 'Verify your email first');
   return s;
 }
@@ -75,7 +95,7 @@ export async function signup(env, req, body) {
     await env.DB.batch([
       env.DB.prepare(`INSERT INTO users(id,auth_subject,handle,display_name,account_type,created_at) VALUES (?,?,?,?, 'member', ?)`).bind(id, `local:${id}`, v.handle, v.display_name, t),
       env.DB.prepare(`INSERT INTO credentials(user_id,email,password_hash,password_salt,password_iterations,updated_at) VALUES (?,?,?,?,?,?)`).bind(id, v.email, pw.hash, pw.salt, pw.iterations, t),
-      env.DB.prepare(`INSERT INTO user_roles(user_id,role,granted_at) VALUES (?, 'member', ?)`).bind(id, t),
+      env.DB.prepare(`INSERT INTO user_roles(user_id,role,granted_at) VALUES (?, 'user', ?)`).bind(id, t),
       env.DB.prepare(`INSERT INTO ledger_accounts(id,kind,user_id,created_at) VALUES (?, 'user', ?, ?)`).bind(`acct_${id}`, id, t),
       env.DB.prepare(`INSERT INTO email_verifications(token_hash,user_id,expires_at) VALUES (?,?,?)`).bind(await sha256Hex(verifyToken), id, new Date(Date.now() + 86400_000).toISOString()),
     ]);
@@ -90,7 +110,7 @@ export async function signup(env, req, body) {
   const verification = env.EXPOSE_VERIFY_TOKEN === 'true'
     ? { delivery: 'exposed_for_local_testing', token: verifyToken }
     : { delivery: 'email_provider_not_configured' };
-  return { status: 201, cookie, body: { user: { id, handle: v.handle, display_name: v.display_name, email: v.email, email_verified: false }, roles: ['member'], verification } };
+  return { status: 201, cookie, body: { user: { id, handle: v.handle, display_name: v.display_name, email: v.email, email_verified: false }, roles: ['user'], verification } };
 }
 
 export async function login(env, req, body) {

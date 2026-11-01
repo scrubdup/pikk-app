@@ -14,15 +14,15 @@ describe('permissions', () => {
 
   it('admin routes require a DB-loaded admin role', async () => {
     const member = await newUser(); const other = await newUser();
-    const denied = await call('POST', '/admin/roles', { cookie: member.cookie, body: { handle: other.handle, role: 'admin' } });
+    const denied = await call('POST', '/admin/roles', { cookie: member.cookie, body: { handle: other.handle, role: 'admin', reason: 'test' } });
     expect(denied.status).toBe(403); expect(denied.json.error.code).toBe('forbidden');
     expect((await call('GET', '/admin/audit', { cookie: member.cookie })).status).toBe(403);
     await makeAdmin(member.id); // role change in DB takes effect on next request (no client trust)
-    const granted = await call('POST', '/admin/roles', { cookie: member.cookie, body: { handle: other.handle, role: 'moderator' } });
+    const granted = await call('POST', '/admin/roles', { cookie: member.cookie, body: { handle: other.handle, role: 'moderator', reason: 'staffing' } });
     expect(granted.status).toBe(200);
     const me = await call('GET', '/auth/me', { cookie: other.cookie });
-    expect(me.json.roles).toEqual(['member', 'moderator']);
-    const audit = await call('GET', '/admin/audit', { cookie: other.cookie });
+    expect(me.json.roles).toEqual(['moderator', 'user']);
+    const audit = await call('GET', '/admin/audit', { cookie: member.cookie });
     expect(audit.status).toBe(200);
     expect(audit.json.entries.some(e => e.action === 'admin.grant_role' && e.target === other.id)).toBe(true);
   });

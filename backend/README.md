@@ -33,3 +33,25 @@ Development meter stays **35% estimated** until completed deployed functionality
 
 Run: `cd backend && npm ci && npm test` (Miniflare via @cloudflare/vitest-plugin).
 Email delivery is NOT configured. Verification tokens are only echoed when `EXPOSE_VERIFY_TOKEN=true` (tests).
+
+## Safety permissions (migration 0003, per `docs/safety.md`)
+Roles: `user` (base, replaces `member`), `creator`, plus staff roles `moderator`, `support_agent`, `admin` and `dmca`. Only admins can grant or revoke roles (`POST`/`DELETE /admin/roles`, `reason` required), and every grant or revoke is audited. Roles are read from D1 on every request. The permission map is in `src/permissions.js`.
+
+| Permission | Who | Endpoint(s) |
+|---|---|---|
+| admin.access | admin | `GET /admin/audit` |
+| reports.create | any signed-in user (10/h per user, 30/h per IP) | `POST /reports` |
+| reports.view / reports.resolve | moderator, admin | `GET /reports`, `POST /reports/:id/resolve` |
+| moderation.action | moderator, admin | `POST /moderation/actions` (remove_content, mute, suspend, ban) |
+| ban.permanent | admin | `POST /moderation/actions` with `action: ban_permanent` |
+| appeals.review | admin, or a moderator who isn't the original actor | `POST /appeals` (target user, allowed while suspended), `POST /appeals/:id/decide` |
+| dating.access | `age_verified_18 = 1`, set only by the signed vendor hook | `GET /dating/eligibility`, `POST /webhooks/age-verification` (stub, HMAC `X-Signature`) |
+| roast/battle invite | both sides send `consent_accepted: true` | `POST /roast/invites`, `/roast/invites/:id/accept\|decline` |
+| tickets.create | any signed-in user (5/h per user, 20/h per IP) | `POST /tickets`, `GET /tickets/mine` |
+| tickets.view / tickets.reply | support_agent, admin | `GET /tickets`, `POST /tickets/:id/reply` |
+| copyright.takedown.review | admin, dmca | `POST /takedowns` (anyone, 5/h per IP), `GET /takedowns`, `POST /takedowns/:id/decide` |
+
+Moderation actions are append-only and record actor, target, reason and timestamp. They're also written to `audit_log`. Blocks are enforced by `src/blocks.js` (`isBlocked`, `assertNotBlocked`, `NOT_BLOCKED_SQL`) on follows, the feed, `GET /posts/:id`, `GET /users/:handle`, ledger transfers and roast invites. That module is exported for DMs, profile, live, rooms and dating once those routes exist.
+Age verification stores only `age_verified_18`, `age_verification_method` and `age_verified_at`, never ID images. No client endpoint can set it, and a DB trigger requires both method and date.
+
+**Frontend wiring TODO (required):** remove the client-side `?admin=1` / Profile "Enable Admin · TEST MODE" gate (`src/pages/admin.js`, `src/pages/profile.js`, `setAdminRole` in `src/store.js`). Gate admin UI on `GET /auth/me` roles instead. Never trust a client role.

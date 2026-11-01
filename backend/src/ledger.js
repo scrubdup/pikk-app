@@ -1,6 +1,7 @@
 import { ApiError, clientIp } from './http.js';
 import { newId } from './crypto.js';
 import { auditStmt } from './audit.js';
+import { assertNotBlocked } from './blocks.js';
 
 export async function balance(env, userId) {
   const r = await env.DB.prepare(`SELECT COALESCE(SUM(e.amount),0) AS bal FROM ledger_entries e WHERE e.account_id = ?`).bind(`acct_${userId}`).first();
@@ -12,8 +13,7 @@ export async function transfer(env, req, fromUser, toHandle, amount, memo) {
   const to = await env.DB.prepare(`SELECT id FROM users WHERE handle = ? AND disabled_at IS NULL`).bind(toHandle).first();
   if (!to) throw new ApiError(404, 'not_found', 'Recipient not found');
   if (to.id === fromUser.id) throw new ApiError(422, 'validation_failed', 'Cannot transfer to yourself');
-  const blocked = await env.DB.prepare(`SELECT 1 FROM blocks WHERE (blocker_id=?1 AND blocked_id=?2) OR (blocker_id=?2 AND blocked_id=?1)`).bind(fromUser.id, to.id).first();
-  if (blocked) throw new ApiError(403, 'blocked', 'Transfer not allowed');
+  await assertNotBlocked(env, fromUser.id, to.id);
   const txn = newId('txn'); const t = new Date().toISOString();
   try {
     await env.DB.batch([

@@ -3,7 +3,7 @@ export const ORIGIN = 'https://scrubdup.github.io';
 let ipSeq = 0;
 export const freshIp = () => `10.0.${Math.floor(++ipSeq / 250)}.${ipSeq % 250}`;
 
-export async function call(method, path, { body, cookie, ip = '10.9.9.9', origin = ORIGIN, headers = {} } = {}) {
+export async function call(method, path, { body, cookie, ip = `10.200.${Math.floor(Math.random()*250)}.${Math.floor(Math.random()*250)}`, origin = ORIGIN, headers = {} } = {}) {
   const h = { 'CF-Connecting-IP': ip, ...headers };
   if (origin) h.Origin = origin;
   if (cookie) h.Cookie = cookie;
@@ -30,4 +30,14 @@ export async function newUser({ verify = true } = {}) {
 
 export async function makeAdmin(userId) {
   await env.DB.prepare(`INSERT OR IGNORE INTO user_roles(user_id, role, granted_at) VALUES (?, 'admin', ?)`).bind(userId, new Date().toISOString()).run();
+}
+
+export async function grantRole(userId, role) {
+  await env.DB.prepare(`INSERT OR IGNORE INTO user_roles(user_id, role, granted_at) VALUES (?, ?, ?)`).bind(userId, role, new Date().toISOString()).run();
+}
+export async function staff(role) { const u = await newUser(); await grantRole(u.id, role); return u; }
+export async function post(u, body = 'hello') {
+  const r = await call('POST', '/posts', { cookie: u.cookie, body: { body } });
+  if (r.status !== 201) throw new Error(`post failed ${r.status} ${JSON.stringify(r.json)}`);
+  return r.json.post.id;
 }
