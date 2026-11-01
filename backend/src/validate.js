@@ -37,3 +37,12 @@ export function requirePositiveInt(b, field, max = 1_000_000_00) {
     throw new ApiError(422, 'validation_failed', 'Invalid input', { [field]: 'positive integer' });
   return v;
 }
+
+// PR #110 approved signup roles (multi-select, same account). Declarations only; never permissions.
+export const SIGNUP_ROLES = ['member', 'creator', 'artist', 'streamer', 'publisher', 'producer', 'seller', 'advertiser', 'clipper'];
+export function validateSignupRoles(v, { required = false } = {}) {
+  if (v === undefined && !required) return ['member'];
+  if (!Array.isArray(v) || v.length > SIGNUP_ROLES.length || !v.every(r => SIGNUP_ROLES.includes(r)))
+    throw new ApiError(422, 'validation_failed', 'Invalid input', { signup_roles: `subset of ${SIGNUP_ROLES.join(', ')}` });
+  return [...new Set(['member', ...v])];
+}

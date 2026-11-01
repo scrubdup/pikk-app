@@ -55,3 +55,17 @@ Moderation actions are append-only and record actor, target, reason and timestam
 Age verification stores only `age_verified_18`, `age_verification_method` and `age_verified_at`, never ID images. No client endpoint can set it, and a DB trigger requires both method and date.
 
 **Frontend wiring TODO (required):** remove the client-side `?admin=1` / Profile "Enable Admin · TEST MODE" gate (`src/pages/admin.js`, `src/pages/profile.js`, `setAdminRole` in `src/store.js`). Gate admin UI on `GET /auth/me` roles instead. Never trust a client role.
+
+## Reconciliation with other open PRs (2026-10-31, local)
+To avoid duplicating parallel work on scrubdup/pikk-app:
+- **#169** (backend schema): **reused.** Merged as `0001_core.sql`; `payment_events` was rebuilt in 0002 to add dedupe and signature fields.
+- **#25** (auth readiness contract): **superseded.** The same `src/auth/readiness.js` already landed on `main` via #27.
+- **#29** (forged browser auth flags): **reused.** Cherry-picked (`-x`) so a client `verifiedByServer` flag never authenticates. The backend mirrors this: signup ignores client `roles`, `email_verified`, `verifiedByServer` and `age_verified_18` (tests in `signup-roles.test.js`).
+- **#110** (multi-role signup): **aligned.** Its nine approved roles are stored in `user_signup_roles` (migration 0004) as *declared* capabilities, editable via `POST /account/signup-roles`, with `member` permanent. They are **not** permissions (per #110: "Role selection is not approval or permission to monetize"). The UI (`shells.js`) stays on #110.
+- **#111** (production readiness plan): **aligned by reference, not copied.** This branch covers these P0 items from `PIKK_PRODUCTION_INTEGRATIONS_MASTER_PLAN.md`:
+  - **Partly done:** auth (email + sessions), with no password reset, MFA or deletion yet.
+  - **Done:** roles and admin RBAC; schema for users, roles, follows, posts, messages, reports and moderation; ledger and webhook idempotency.
+  - **Not yet:** age assurance, which is only a vendor hook stub.
+  - Not covered: storage, queues, media, realtime, payouts, KYC and tax.
+  The milestone ledger stays on #111. This branch doesn't change the meter.
+- **#28** (signup copy + supervisor audit doc): **not folded.** It's frontend copy that overlaps `shells.js` with #110 and needs to be resolved there.

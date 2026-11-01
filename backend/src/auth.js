@@ -1,6 +1,6 @@
 import { ApiError, clientIp } from './http.js';
 import { hashPassword, verifyPassword, randomToken, sha256Hex, newId } from './crypto.js';
-import { validateSignup, validateLogin, requireString } from './validate.js';
+import { validateSignup, validateLogin, requireString, validateSignupRoles } from './validate.js';
 import { audit } from './audit.js';
 
 export const SESSION_COOKIE = '__Host-pikk_session';
@@ -41,13 +41,17 @@ export async function loadSession(env, req) {
        FROM sessions s JOIN users u ON u.id = s.user_id JOIN credentials c ON c.user_id = u.id
       WHERE s.id_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ?`).bind(idHash, nowIso()).first();
   if (!row || row.disabled_at) return null;
-  const roles = await env.DB.prepare(`SELECT role FROM user_roles WHERE user_id = ? ORDER BY role`).bind(row.id).all();
+  const [roles, sroles] = await env.DB.batch([
+    env.DB.prepare(`SELECT role FROM user_roles WHERE user_id = ? ORDER BY role`).bind(row.id),
+    env.DB.prepare(`SELECT role, status FROM user_signup_roles WHERE user_id = ? ORDER BY role`).bind(row.id),
+  ]);
   return {
     sessionIdHash: idHash,
     user: { id: row.id, handle: row.handle, display_name: row.display_name, email: row.email, email_verified: !!row.email_verified_at,
       age_verified_18: row.age_verified_18 === 1, age_verified_at: row.age_verified_at, age_verification_method: row.age_verification_method },
     status: accountStatus(row),
     roles: roles.results.map(r => r.role),
+    signupRoles: sroles.results,
   };
 }
 
@@ -85,6 +89,8 @@ export function requireRole(ctx, ...roles) {
 
 export async function signup(env, req, body) {
   const v = validateSignup(body);
+  // Only whitelisted fields are read; client-supplied roles/email_verified/age_verified_18/session flags are ignored (cf. PR #29).
+  const signupRoles = validateSignupRoles(body.signup_roles);
   const exists = await env.DB.prepare(`SELECT 1 FROM credentials WHERE email = ? UNION ALL SELECT 1 FROM users WHERE handle = ?`).bind(v.email, v.handle).first();
   if (exists) throw new ApiError(409, 'account_exists', 'Email or handle already registered');
   const id = newId('usr');
@@ -96,6 +102,7 @@ export async function signup(env, req, body) {
       env.DB.prepare(`INSERT INTO users(id,auth_subject,handle,display_name,account_type,created_at) VALUES (?,?,?,?, 'member', ?)`).bind(id, `local:${id}`, v.handle, v.display_name, t),
       env.DB.prepare(`INSERT INTO credentials(user_id,email,password_hash,password_salt,password_iterations,updated_at) VALUES (?,?,?,?,?,?)`).bind(id, v.email, pw.hash, pw.salt, pw.iterations, t),
       env.DB.prepare(`INSERT INTO user_roles(user_id,role,granted_at) VALUES (?, 'user', ?)`).bind(id, t),
+      ...signupRoles.map(r => env.DB.prepare(`INSERT INTO user_signup_roles(user_id,role,declared_at) VALUES (?,?,?)`).bind(id, r, t)),
       env.DB.prepare(`INSERT INTO ledger_accounts(id,kind,user_id,created_at) VALUES (?, 'user', ?, ?)`).bind(`acct_${id}`, id, t),
       env.DB.prepare(`INSERT INTO email_verifications(token_hash,user_id,expires_at) VALUES (?,?,?)`).bind(await sha256Hex(verifyToken), id, new Date(Date.now() + 86400_000).toISOString()),
     ]);
@@ -110,7 +117,7 @@ export async function signup(env, req, body) {
   const verification = env.EXPOSE_VERIFY_TOKEN === 'true'
     ? { delivery: 'exposed_for_local_testing', token: verifyToken }
     : { delivery: 'email_provider_not_configured' };
-  return { status: 201, cookie, body: { user: { id, handle: v.handle, display_name: v.display_name, email: v.email, email_verified: false }, roles: ['user'], verification } };
+  return { status: 201, cookie, body: { user: { id, handle: v.handle, display_name: v.display_name, email: v.email, email_verified: false }, roles: ['user'], signup_roles: signupRoles, verification } };
 }
 
 export async function login(env, req, body) {

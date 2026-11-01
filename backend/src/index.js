@@ -1,9 +1,9 @@
 import { ApiError, json, errorResponse, corsHeaders, readJson, clientIp } from './http.js';
-import { signup, login, logout, verifyEmail, loadSession, requireAuth, requireVerified } from './auth.js';
+import { signup, login, logout, verifyEmail, loadSession, requireAuth, requireVerified, requireActive } from './auth.js';
 import { requirePermission, GRANTABLE_ROLES } from './permissions.js';
 import { assertNotBlocked, NOT_BLOCKED_SQL } from './blocks.js';
 import { safetyRoute, ageVerificationWebhook } from './safety.js';
-import { requireString, requirePositiveInt } from './validate.js';
+import { requireString, requirePositiveInt, validateSignupRoles } from './validate.js';
 import { rateLimit } from './ratelimit.js';
 import { balance, transfer } from './ledger.js';
 import { stripeWebhook } from './webhook.js';
@@ -42,7 +42,20 @@ async function route(req, env, ctx) {
   if (m === 'POST' && p === '/auth/login') return withCookie(await login(env, req, await readJson(req)));
   if (m === 'POST' && p === '/auth/logout') return withCookie(await logout(env, req, ctx));
   if (m === 'POST' && p === '/auth/verify') return json(200, await verifyEmail(env, req, await readJson(req)));
-  if (m === 'GET' && p === '/auth/me') { const s = requireAuth(ctx); return json(200, { user: s.user, roles: s.roles }); }
+  if (m === 'GET' && p === '/auth/me') { const s = requireAuth(ctx); return json(200, { user: s.user, roles: s.roles, signup_roles: s.signupRoles }); }
+  if (m === 'POST' && p === '/account/signup-roles') {
+    // PR #110: roles can be added or changed later. Declarations only; approval/monetization handled separately.
+    const s = requireActive(ctx); const b = await readJson(req);
+    const wanted = validateSignupRoles(b.signup_roles, { required: true });
+    const t = new Date().toISOString();
+    const placeholders = wanted.map(() => '?').join(',');
+    await env.DB.batch([
+      env.DB.prepare(`DELETE FROM user_signup_roles WHERE user_id = ? AND role NOT IN (${placeholders})`).bind(s.user.id, ...wanted),
+      ...wanted.map(r => env.DB.prepare(`INSERT OR IGNORE INTO user_signup_roles(user_id,role,declared_at) VALUES (?,?,?)`).bind(s.user.id, r, t)),
+      auditStmt(env, { actor: s.user.id, action: 'account.signup_roles', target: s.user.id, ip, meta: { signup_roles: wanted } }),
+    ]);
+    return json(200, { signup_roles: wanted });
+  }
 
   if (m === 'POST' && p === '/posts') {
     const s = requireVerified(ctx);
