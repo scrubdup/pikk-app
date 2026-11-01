@@ -43,7 +43,7 @@ import { esc, toast, shellPage, timeAgo, ytEmbedSrc } from '../ui.js';
 import { navigate, getRoute } from '../router.js';
 import { notifyLiveOpen, notifyLiveClosed } from '../player.js';
 import { giftStickerHtml, getGiftSticker } from '../gift-stickers.js';
-import { renderLiveDiscoveryDirectory } from '../live-discovery.js';
+import { renderLiveDiscoveryDirectory, mountLiveDirectorySearch } from '../live-discovery.js';
 
 /** t197u discovery tabs — preserve ?tab= on soft refresh */
 function getLiveDiscTab() {
@@ -1149,6 +1149,7 @@ function mountSongRequestForm(root) {
 }
 
 export function bindLive(root) {
+  mountLiveDirectorySearch(root);
   root.querySelectorAll('.hot-live-watch').forEach((btn) => {
     btn.addEventListener('click', () => {
       notifyLiveOpen();
