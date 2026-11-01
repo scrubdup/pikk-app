@@ -39,6 +39,7 @@ test('Live room discovery keeps all 78 approved categories in exactly one folder
 test('directory renders accessible collapsible groups with real channel filters', () => {
   const html = renderLiveDiscoveryDirectory(names.map(name => [name, 'Example description', '💬']), escapeHtml);
   assert.equal((html.match(/class="pikk-live-directory-group"/g) || []).length, 8);
+  assert.match(html, /class="pikk-live-directory" role="region" aria-label="Live category groups"/, 'directory landmark has an accessible name');
   assert.equal((html.match(/class="live-cat-card pikk-live-room-card"/g) || []).length, 78);
   assert.equal((html.match(/class="pikk-live-directory-summary"/g) || []).length, 8);
   assert.match(html, /id="pikk-live-group-coed" open/);

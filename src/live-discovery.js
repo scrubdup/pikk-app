@@ -104,5 +104,5 @@ export function renderLiveDiscoveryDirectory(categories, escapeHtml) {
       '<span class="pikk-live-directory-chevron" aria-hidden="true">⌄</span></summary>' +
       '<div class="live-cat-cards pikk-live-directory-cards">' + extra.map(card).join('') + '</div></details>');
   }
-  return '<div class="pikk-live-directory" aria-label="Live category groups">' + groups.join('') + '</div>';
+  return '<div class="pikk-live-directory" role="region" aria-label="Live category groups">' + groups.join('') + '</div>';
 }
