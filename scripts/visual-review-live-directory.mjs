@@ -151,6 +151,8 @@ try {
     await page.locator('#liveTabFollowing').waitFor({ state: 'visible' });
     const followedCreator = page.locator('#liveTabFollowing a.chip[href="#/profile/dbs"]');
     assert.equal(await followedCreator.count(), 1, device + ' followed creator has their own profile deep link');
+    await followedCreator.scrollIntoViewIfNeeded();
+    assert.equal(await followedCreator.isVisible(), true, device + ' followed creator chip is actually visible');
     await page.screenshot({ path: 'visual-review/pikk-live-' + device + '-following-profile-link.png' });
     await followedCreator.click();
     await page.locator('.pikk-profile-cover').waitFor({ state: 'visible' });
