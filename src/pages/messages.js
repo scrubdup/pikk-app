@@ -95,7 +95,7 @@ function renderInbox(user) {
       <p id="pikkMsgResultCount" class="muted" role="status" aria-live="polite" aria-atomic="true" style="margin:8px 0 0;font-size:.875rem">${messageResultSummary(threads.length, threads.length)}</p>
     </div>
     <div class="card msg-team-card">
-      <h3>DatBoiSkeet · Team inbox</h3>
+      <h3>Artist inbox · DatBoiSkeet</h3>
       <p class="muted" style="margin:0 0 10px">Free inquiry or <strong>Priority $2.99 TEST MODE</strong> (not charged). Priority = faster review, not a guaranteed personal reply.</p>
       <button type="button" class="btn primary" id="msgOpenTeam">Open team chat</button>
     </div>
@@ -175,10 +175,10 @@ function renderNewChat() {
 
 function renderTeamIntro() {
   return `
-    <section class="pikk-msg-flow-hero" aria-label="DatBoiSkeet team inbox">
+    <section class="pikk-msg-flow-hero" aria-label="DatBoiSkeet artist team inbox">
       <span class="pikk-msg-flow-kicker">PIKK CONNECT · CREATOR TEAM</span>
       <h2>Reach the team. <em>One inbox.</em></h2>
-      <p>Send a local demo inquiry to the DatBoiSkeet team. Priority is a test-mode flag, never a charge.</p>
+      <p>Send a local demo inquiry to the DatBoiSkeet artist team. Priority is a test-mode flag, never a charge.</p>
       <span class="chip">TEST MODE · No real delivery</span>
     </section>
     <div class="card msg-team-card pikk-msg-flow-panel">
