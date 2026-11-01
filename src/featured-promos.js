@@ -1,10 +1,7 @@
 // Owner-approved introductory inventory, shown for information only.
 // No booking or payment endpoint is connected yet.
-export const PIKK_FEATURED_RATES = Object.freeze([
-  { tier: 'spotlight', name: 'Premium Spotlight', slots: 1, day: 199, week: 999 },
-  { tier: 'featured', name: 'Featured Box', slots: 2, day: 99, week: 499 },
-  { tier: 'promo', name: 'Promo Box', slots: 3, day: 49, week: 249 },
-]);
+import { PIKK_FEATURED_RATES } from './promote-pricing.js';
+export { PIKK_FEATURED_RATES };
 
 function promoCard(tier, number) {
   return `<article class="pikk-ad-slot pikk-ad-${tier.tier}" data-promo-tier="${tier.tier}" aria-label="${tier.name} slot ${number}, pricing preview">

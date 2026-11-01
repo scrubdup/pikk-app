@@ -1,12 +1,12 @@
 import { esc, shellPage, toast } from '../ui.js';
-import { PROMOTE_SECTIONS } from '../promote-data.js';
-import { PIKK_FEATURED_RATES, renderPromotionInventory } from '../featured-promos.js';
+import { PROMOTE_SECTIONS, priceLabels } from '../promote-pricing.js';
+import { renderPromotionInventory } from '../featured-promos.js';
 
 export function renderPromote() {
   const groups = PROMOTE_SECTIONS.map((s) => `
     <section class="pikk-promote-group" id="promote-${s.id}" data-promote-section="${s.id}" aria-labelledby="promote-${s.id}-h">
       <div class="pikk-promote-head"><h3 id="promote-${s.id}-h">${esc(s.title)}</h3>${s.gate ? `<span class="chip pikk-promote-gate">${esc(s.gate)}</span>` : ''}</div>
-      <ul class="pikk-promote-items">${s.items.map((i) => `<li><span>${esc(i)}</span><span class="pikk-promote-tiers">${PIKK_FEATURED_RATES.map((t) => `<small>${esc(t.name)} $${t.day}/24h</small>`).join('')}</span><button type="button" class="btn ghost" data-promote-book="${esc(s.title)} · ${esc(i)}" aria-label="Promote ${esc(i)} (coming soon)">Promote</button></li>`).join('')}</ul>
+      <ul class="pikk-promote-items">${s.items.map((i) => `<li data-promote-option><span>${esc(i.name)}</span><span class="pikk-promote-tiers">${priceLabels(i).map((l) => `<small data-price>${esc(l)}</small>`).join('')}</span><button type="button" class="btn ghost" data-promote-book="${esc(i.name)}" aria-label="Promote ${esc(i.name)} (coming soon)">Promote</button></li>`).join('')}</ul>
       <a class="pikk-promote-open" href="${s.link}">Open ${esc(s.title)} →</a>
     </section>`).join('');
   return shellPage('Promote on PIKK', `

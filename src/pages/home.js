@@ -5,6 +5,7 @@ import { esc, shellPage, ytEmbedSrc, toast } from '../ui.js';
 import { resolveMediaSrc } from '../media-db.js';
 import { PIKK_GAMES, arcadeArtSrc } from '../games/arcade-catalog.js';
 import { renderStoriesAndPromotions } from '../featured-promos.js';
+import { placementTag } from '../promote-data.js';
 
 const SECTION_ICONS = {
   Explore: '🧭',
@@ -592,6 +593,7 @@ export function renderHome() {
     <a class="pikk-home-circle" href="${c.href}" aria-label="Open ${esc(c.label)}">
       <span class="pikk-home-circle-ring">${storyArt[i] ? `<img src="${esc(storyArt[i])}" alt="" loading="lazy" decoding="async"/>` : '<span aria-hidden="true">●</span>'}</span>
       <span>${esc(c.label)}</span>
+      <small class="pikk-rail-tag">${esc(placementTag(c))}</small>
     </a>`).join('');
   const visualFeed = `
     <section class="pikk-home-visual" id="pikkHomeVisual" aria-labelledby="pikkHomeVisualTitle">
