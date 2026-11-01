@@ -92,6 +92,7 @@ function renderInbox(user) {
       <input id="pikkMsgSearch" type="search" placeholder="Search names or latest messages..." autocomplete="off" aria-controls="msgInbox" />
       <label class="row" style="gap:8px;align-items:center;margin-top:8px" for="pikkMsgUnreadOnly"><input id="pikkMsgUnreadOnly" type="checkbox" aria-controls="msgInbox" /> Unread only (${unreadThreads.length})</label>
       <div class="pikk-msg-tool-actions"><button type="button" class="btn ghost" id="pikkMsgClearFilters" aria-controls="msgInbox" hidden>Clear filters</button><button type="button" class="btn primary" id="pikkNewChatTop">+ New chat</button><button type="button" class="btn ghost" id="pikkGroupTop">Group chat</button></div>
+      <p id="pikkMsgResultCount" class="muted" role="status" aria-live="polite" aria-atomic="true" style="margin:8px 0 0;font-size:.875rem">${threads.length} conversation${threads.length === 1 ? '' : 's'}</p>
     </div>
     <div class="card msg-team-card">
       <h3>DatBoiSkeet · Team inbox</h3>
@@ -328,6 +329,11 @@ export function bindMessages(root) {
       row.hidden = !(matchesSearch && matchesUnread);
       if (!row.hidden) shown++;
     });
+    const total = root.querySelectorAll('#msgInbox [data-open-thread]').length;
+    const resultCount = root.querySelector('#pikkMsgResultCount');
+    if (resultCount) resultCount.textContent = query || unreadOnly
+      ? `Showing ${shown} of ${total} conversation${total === 1 ? '' : 's'}`
+      : `${total} conversation${total === 1 ? '' : 's'}`;
     const empty = root.querySelector('#pikkMsgNoResults');
     if (empty) {
       empty.textContent = unreadOnly
