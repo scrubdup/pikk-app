@@ -16,7 +16,8 @@ test('owner-approved rates are exact and inventory contains six slots per page',
     {tier:'promo',slots:3,day:49,week:249},
   ]);
   assert.equal(PIKK_FEATURED_RATES.reduce((sum,item)=>sum+item.slots*item.day,0),544);
-  for(const page of ['home','videos']) {
+  assert.doesNotMatch(renderStoriesAndPromotions('home'),/pikk-ad-slot|Sponsored placements/,'Home feed has no sponsored placements (moved to #/promote)');
+  for(const page of ['videos']) {
     const html=renderStoriesAndPromotions(page);
     assert.equal((html.match(/class="pikk-ad-slot /g)||[]).length,6,page);
     assert.equal((html.match(/data-promo-tier="spotlight"/g)||[]).length,1);

@@ -45,6 +45,7 @@ import { renderHome, bindHome } from './pages/home.js';
 import { renderUpdates, bindUpdates } from './pages/updates.js';
 import { renderAdmin, bindAdmin } from './pages/admin.js';
 import { renderPosts, bindPosts } from './pages/posts.js';
+import { renderPromote, bindPromote } from './pages/promote.js';
 import { renderMusic, bindMusic } from './pages/music.js';
 import { renderAIArtists, bindAIArtists } from './pages/ai-artists.js';
 import { renderShield, bindShield } from './pages/shield.js';
@@ -102,6 +103,7 @@ function renderCreatePage() {
 const ROUTES = {
   '/home': { render: renderHome, bind: bindHome },
   '/create': { render: renderCreatePage },
+  '/promote': { render: renderPromote, bind: bindPromote },
   '/updates': { render: renderUpdates, bind: bindUpdates },
   '/posts': { render: renderPosts, bind: bindPosts },
   '/music': { render: renderMusic, bind: bindMusic },

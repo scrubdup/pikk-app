@@ -614,6 +614,7 @@ export function renderHome() {
         <a href="#/live">Live</a>
         <a href="#/shop">Shop</a>
         <a href="#/dating">Dating</a>
+        <a class="pikk-home-promote" href="#/promote">Promote</a>
       </nav>
       <div class="pikk-home-media-grid" aria-label="Official DatBoiSkeet video selections">
         ${mediaFeatureItems}

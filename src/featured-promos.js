@@ -18,6 +18,20 @@ function promoCard(tier, number) {
 
 // Shared visual presentation on Home and Videos. Stories are a clearly marked
 // preview, not fabricated user posts or a misleading working uploader.
+export function renderPromotionInventory() {
+  return `<section class="pikk-featured-inventory" aria-label="Featured on PIKK sponsored placement pricing">
+      <div class="pikk-featured-heading"><div><p class="kicker">Creator &amp; brand visibility</p><h2>Featured on PIKK</h2></div><span class="pikk-featured-sponsored">Sponsored placements</span></div>
+      <p class="pikk-featured-intro">Six premium advertising positions on each page. Preview pricing below; booking and checkout are not active yet.</p>
+      <div class="pikk-featured-rows">
+        <div class="pikk-featured-row pikk-featured-row-hero">${promoCard(PIKK_FEATURED_RATES[0], 1)}</div>
+        <div class="pikk-featured-row pikk-featured-row-two">${[1, 2].map(i => promoCard(PIKK_FEATURED_RATES[1], i)).join('')}</div>
+        <div class="pikk-featured-row pikk-featured-row-three">${[1, 2, 3].map(i => promoCard(PIKK_FEATURED_RATES[2], i)).join('')}</div>
+      </div>
+      <p class="pikk-featured-footnote">Home and Videos placements are priced separately. Rates are introductory proposals; no paid placement or guaranteed views are currently offered.</p>
+    </section>`;
+}
+
+// Home shows Stories only (t336u: sponsored placements moved to #/promote).
 export function renderStoriesAndPromotions(page) {
   const context = page === 'videos' ? 'videos' : 'home';
   return `<div class="pikk-stories-promotions" data-featured-context="${context}">
@@ -28,15 +42,6 @@ export function renderStoriesAndPromotions(page) {
         <p>Share moments with your followers. Stories will disappear after 24 hours once publishing launches.</p>
       </div>
     </section>
-    <section class="pikk-featured-inventory" aria-label="Featured on PIKK sponsored placement pricing">
-      <div class="pikk-featured-heading"><div><p class="kicker">Creator &amp; brand visibility</p><h2>Featured on PIKK</h2></div><span class="pikk-featured-sponsored">Sponsored placements</span></div>
-      <p class="pikk-featured-intro">Six premium advertising positions on each page. Preview pricing below; booking and checkout are not active yet.</p>
-      <div class="pikk-featured-rows">
-        <div class="pikk-featured-row pikk-featured-row-hero">${promoCard(PIKK_FEATURED_RATES[0], 1)}</div>
-        <div class="pikk-featured-row pikk-featured-row-two">${[1, 2].map(i => promoCard(PIKK_FEATURED_RATES[1], i)).join('')}</div>
-        <div class="pikk-featured-row pikk-featured-row-three">${[1, 2, 3].map(i => promoCard(PIKK_FEATURED_RATES[2], i)).join('')}</div>
-      </div>
-      <p class="pikk-featured-footnote">Home and Videos placements are priced separately. Rates are introductory proposals; no paid placement or guaranteed views are currently offered.</p>
-    </section>
+    ${context === 'home' ? '' : renderPromotionInventory()}
   </div>`;
 }

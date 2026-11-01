@@ -5,3 +5,21 @@
 #sideNav.side { padding-bottom: calc(var(--tab-h, 64px) + 48px + env(safe-area-inset-bottom, 0px)); }
 /* Hero accent text ('Make it mutual.', 'Shop the culture.'): hard red → electric blue, no pink midpoint */
 .pikk-dating-hero h2 span, .pikk-shop-showcase h2 span { background: linear-gradient(100deg, var(--pikk-red) 15%, #c0c6cf, var(--pikk-blue) 80%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+/* Promote page (t336u): red + blue duotone, chrome/black base */
+.pikk-promote-intro{color:#c0c6cf}
+.pikk-promote-jump{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 16px}
+.pikk-promote-jump .chip{border:1px solid rgba(47,107,255,.78);color:#fff;box-shadow:0 0 9px rgba(255,49,55,.3);text-decoration:none}
+.pikk-promote-groups{display:grid;gap:14px;margin-top:16px}
+.pikk-promote-group{scroll-margin-top:230px;padding:14px;border-radius:16px;background:#0b0d13;border:1px solid rgba(47,107,255,.55);box-shadow:inset 3px 0 0 #ff3137}
+.pikk-promote-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.pikk-promote-head h3{margin:0;color:#fff}
+.pikk-promote-gate{font-size:11px;color:#ff3137}
+.pikk-promote-items{list-style:none;padding:0;margin:10px 0;display:grid;gap:8px}
+.pikk-promote-items li{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding:10px;border-radius:12px;background:#10131b}
+.pikk-promote-items li>span:first-child{font-weight:800;color:#fff}
+.pikk-promote-tiers{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px}
+.pikk-promote-tiers small{color:#c0c6cf;font-size:11px;border:1px solid #2a3140;border-radius:999px;padding:2px 8px}
+.pikk-promote-items li .btn{grid-row:1;grid-column:2}
+.pikk-promote-open{color:#5d8cff;font-weight:700;text-decoration:none}
+.pikk-explore-rail a.pikk-explore-promote{border-color:rgba(47,107,255,.78)!important;color:#ff3137!important;box-shadow:0 0 9px rgba(255,49,55,.3)}
+.pikk-home-filterbar a.pikk-home-promote{border:1px solid rgba(47,107,255,.78)!important;color:#ff3137!important;box-shadow:0 0 9px rgba(255,49,55,.3)}

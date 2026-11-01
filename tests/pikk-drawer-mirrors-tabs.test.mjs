@@ -11,7 +11,8 @@ test('drawer: Home first, then the 7 tab groups in exact tab order, then utiliti
   const g = drawerGroups();
   assert.equal(g[0].label, 'Home'); assert.equal(g[0].href, '#/home');
   assert.deepEqual(g.slice(1, 8).map((x) => x.label), TABBAR.map((t) => t.label));
-  assert.deepEqual(g.slice(8, 13).map((x) => x.label), ['Explore', 'Profile / Sign in', 'Messages', 'Notifications', 'Settings']);
+  assert.equal(g[8].label, 'Promote');
+  assert.deepEqual(g.slice(9, 14).map((x) => x.label), ['Explore', 'Profile / Sign in', 'Messages', 'Notifications', 'Settings']);
   assert.ok(!g.some((x) => x.id === 'social'), 'old mixed Social group removed');
 });
 test('drawer groups share the tab-sheet data source (same items, same order)', () => {
