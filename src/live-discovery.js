@@ -70,15 +70,19 @@ export function renderLiveDiscoveryDirectory(categories, escapeHtml) {
   const byName = new Map(categories.map(entry => [entry[0], entry]));
   const assigned = new Set();
   const card = ([name, description, emoji]) => {
-    const href = name === 'Comedy & Roast Battles'
+    const isRoastPreview = name === 'Comedy & Roast Battles';
+    const href = isRoastPreview
       ? '#/roast-arena'
       : '#/live?tab=channels&category=' + encodeURIComponent(name);
+    // Roast Arena is a Coming Soon preview, not a live channel filter.
+    const action = isRoastPreview ? 'Preview Roast Arena' : 'Browse channels';
+    const destination = isRoastPreview ? 'preview Roast Arena (coming soon)' : 'browse channels';
     return '<a class="live-cat-card pikk-live-room-card" href="' + href +
-      '" aria-label="' + escapeHtml(name) + ': browse channels">' +
+      '" aria-label="' + escapeHtml(name) + ': ' + destination + '">' +
       '<span class="pikk-live-room-emoji" aria-hidden="true">' + escapeHtml(emoji) + '</span>' +
       '<strong>' + escapeHtml(name) + '</strong>' +
       '<p class="muted">' + escapeHtml(description) + '</p>' +
-      '<span class="pikk-live-room-action">Browse channels <span aria-hidden="true">›</span></span></a>';
+      '<span class="pikk-live-room-action">' + action + ' <span aria-hidden="true">›</span></span></a>';
   };
   const groups = [...LIVE_DISCOVERY_GROUPS]
     // General livestream choices (IRL, Gaming, Music, etc.) should be visible
