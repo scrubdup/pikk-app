@@ -3,6 +3,7 @@
 import { STREAMING_RELEASES, VIDEOS, MERCH } from './data.js';
 import { PIKK_GAMES, arcadeArtSrc } from './games/arcade-catalog.js';
 import { esc } from './ui.js';
+import { renderHomeMatchUp } from './home-matchup.js';
 
 const ytId = (u) => (String(u || '').match(/(?:v=|embed\/|youtu\.be\/)([\w-]{6,})/) || [])[1] || '';
 const thumb = (u) => { const id = ytId(u); return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : ''; };
@@ -14,8 +15,32 @@ const section = (id, title, seeAll, kicker, body, note = '') => `
   </section>`;
 const card = (href, media, title, sub, cls = '', badge = '') => `<a class="pikk-hs-card ${cls}" role="listitem" href="${href}"><span class="pikk-hs-media">${media}${badge ? `<span class="pikk-hs-badge">${esc(badge)}</span>` : ''}</span><strong>${esc(title)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</a>`;
 
-export const SHOWCASE_ORDER = ['music', 'posts', 'videos', 'live', 'connect', 'dating', 'contest', 'games', 'battles', 'shop'];
+export const SHOWCASE_ORDER = ['music', 'posts', 'videos', 'live', 'connect', 'dating', 'matchup', 'contest', 'games', 'battles', 'shop', 'more'];
 export const SHOWCASE_SEE_ALL = Object.freeze({ music: '#/music', posts: '#/posts', videos: '#/videos', live: '#/live', connect: '#/connect', dating: '#/dating', games: '#/games', battles: '#/giftbattles', contest: '#/contest/twerk', shop: '#/shop' });
+
+// t384u — compact cards for every feature that had no Home spot yet.
+export const HOME_MORE = Object.freeze([
+  ['#/clips', 'Clips', 'Short clips feed'],
+  ['#/openmic', 'Open Mic', '24/7 category · TEST MODE'],
+  ['#/spotlight', 'Spotlight', 'Request a feature · TEST MODE'],
+  ['#/multiguest', 'Multi-guest Live', 'Coming soon'],
+  ['#/fanclubs', 'Fan clubs', 'Coming soon'],
+  ['', 'Events', 'Coming soon · no page yet'],
+  ['#/crew', 'PIKK Crew', 'Private story list'],
+  ['#/story', 'Stories', 'Post a story'],
+  ['#/favorites', 'Favorites', 'Saved on this device'],
+  ['#/payments', '$ Payments', 'Hub · TEST MODE · not live'],
+  ['#/wallet', 'Wallet', 'Coins · TEST MODE'],
+  ['#/earnings', 'Earnings', 'Creator payouts · TEST MODE'],
+  ['#/loyalty', 'Loyalty', 'Rewards · Coming soon'],
+  ['#/refer', 'Refer a friend', 'Invite link'],
+  ['#/ai-artists', 'AI Artists', 'Coming soon'],
+  ['#/vault', 'Vault', 'Exclusive drops · Coming soon'],
+  ['#/shield', 'PIKK Shield', 'Safety tools'],
+  ['#/support', 'Support', 'Help & contact'],
+  ['#/settings', 'Settings', 'Your preferences'],
+  ['#/updates', 'Updates', 'What’s new'],
+]);
 
 export function renderHomeShowcase() {
   const music = STREAMING_RELEASES.map((r) => card('#/music', img(r.cover, r.title), r.title, `${r.artist} · ${r.type === 'album' ? 'Album' : 'Single'}${r.year ? ' · ' + r.year : ''}`, 'is-square', r.type === 'album' ? 'Album' : 'Track')).join('');
@@ -45,6 +70,8 @@ export function renderHomeShowcase() {
     games: section('games', 'Games', SHOWCASE_SEE_ALL.games, 'PIKK Arcade · all games', games, 'Concept previews · games are not playable yet.'),
     battles: section('battles', 'Battles & Roast', SHOWCASE_SEE_ALL.battles, 'Head-to-head', battles),
     contest: section('contest', 'Contests', SHOWCASE_SEE_ALL.contest, '18+ · community', contest),
+    matchup: renderHomeMatchUp(),
+    more: section('more', 'More on PIKK', '#/explore', 'Every feature · one tap', HOME_MORE.map(([h, t, sub]) => h ? card(h, '<span class="hs-ph" aria-hidden="true">◆</span>', t, sub, 'is-chip') : `<div class="pikk-hs-card is-chip is-soon" role="listitem"><span class="pikk-hs-media"><span class="hs-ph" aria-hidden="true">◆</span></span><strong>${esc(t)}</strong><small>${esc(sub)}</small></div>`).join('')),
     shop: section('shop', 'Shop', SHOWCASE_SEE_ALL.shop, 'Featured products & stores', shop),
   };
   return `<div class="pikk-home-showcase" id="pikkHomeShowcase">${SHOWCASE_ORDER.map((k) => S[k]).join('')}</div>`;
