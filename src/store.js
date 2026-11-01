@@ -875,7 +875,7 @@ export function startLiveDemo(title, extra = {}) {
     category: extra.category || '',
     permissions: extra.permissions || null,
     startedAt: Date.now(),
-    viewers: 3 + Math.floor(Math.random() * 18), // stub
+    viewers: 0, // t397u: demo stream has no real viewers — never invent a count
     giftsTotal: 0,
     tipsTotal: 0,
     giftLog: [],
@@ -906,12 +906,8 @@ export function endLiveDemo() {
 
 export function bumpLiveViewers() {
   if (!state.live || state.live.endedAt) return state.live;
-  const delta = Math.floor(Math.random() * 5) - 1; // -1..3
-  const viewers = Math.max(1, (state.live.viewers || 1) + delta);
-  const live = { ...state.live, viewers };
-  state = { ...state, live };
-  save(state);
-  return live;
+  // t397u: no random viewer bumps — a demo stream has no real viewers.
+  return state.live;
 }
 
 export function sendLiveChat(text) {

@@ -67,6 +67,10 @@ export function renderGroupRoomsPanel({ user, goalHtml = '' } = {}) {
           <strong id="roomTitle">Room</strong> <span class="chip" id="roomModeChip">Video</span> <span class="chip">TEST MODE</span>
           <label class="row" style="gap:4px;margin-left:auto">View as <select id="roomRole"><option value="host">Host</option><option value="member">Member</option></select></label>
         </div>
+        <div class="pikk-room-voice" id="roomVoice" hidden aria-label="Voice seats (demo)">
+          <div class="pikk-room-avatar"><span aria-hidden="true">●</span><small>You · 🎙️ mic off (demo)</small></div>
+          <div class="pikk-room-avatar"><span aria-hidden="true">○</span><small>Open seat · 🔇 placeholder, not a real user</small></div>
+        </div>
         <div class="pikk-room-stage" id="roomStage">
           <div class="pikk-room-seat" data-seat="you"><span aria-hidden="true">◉</span><small>You · camera &amp; mic off (demo)</small></div>
           <div class="pikk-room-seat" data-seat="guest"><span aria-hidden="true">?</span><small>Open seat · placeholder, not a real user</small></div>
@@ -117,7 +121,8 @@ export function bindGroupRooms(root, { toast = () => {} } = {}) {
   $('#roomStart').addEventListener('click', () => {
     const topic = $('#roomTopic').value; if (!topic) return toast('Pick a topic first');
     $('#roomTitle').textContent = topic; $('#roomModeChip').textContent = st.mode + (st.mode === 'Text' ? ' chat' : ' (demo · no camera/mic)');
-    $('#roomStage').hidden = st.mode === 'Text';
+    $('#roomStage').hidden = st.mode !== 'Video';
+    $('#roomVoice').hidden = st.mode !== 'Voice';
     $('#roomSetup').hidden = true; $('#roomShell').hidden = false;
     say('System', `${st.mode} session started in ${topic} · TEST MODE`);
   });
