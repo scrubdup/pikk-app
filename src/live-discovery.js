@@ -104,5 +104,67 @@ export function renderLiveDiscoveryDirectory(categories, escapeHtml) {
       '<span class="pikk-live-directory-chevron" aria-hidden="true">⌄</span></summary>' +
       '<div class="live-cat-cards pikk-live-directory-cards">' + extra.map(card).join('') + '</div></details>');
   }
-  return '<div class="pikk-live-directory" role="region" aria-label="Live category groups">' + groups.join('') + '</div>';
+  const search = '<div class="card pikk-live-room-search" style="margin-bottom:4px">' +
+    '<label for="liveRoomSearch"><strong>Find a Live topic</strong></label>' +
+    '<div class="row wrap" style="gap:8px;margin-top:8px">' +
+    '<input id="liveRoomSearch" type="search" autocomplete="off" placeholder="Search ' + categories.length +
+    ' topics" aria-describedby="liveRoomSearchStatus" style="width:auto;flex:1 1 220px;min-width:0">' +
+    '<button type="button" id="liveRoomSearchClear" class="btn ghost" hidden style="display:none">Clear</button>' +
+    '</div><p class="muted small" id="liveRoomSearchStatus" role="status" aria-live="polite">' +
+    'Browse ' + categories.length + ' topics · these filter channels, not hosted rooms.</p></div>';
+  return '<div class="pikk-live-directory" role="region" aria-label="Live category groups">' +
+    search + groups.join('') + '</div>';
+}
+
+
+/** Local discovery only: never implies a hosted room or live audience. */
+export function matchesLiveRoomSearch(text, query) {
+  return String(text).toLocaleLowerCase().includes(String(query).trim().toLocaleLowerCase());
+}
+
+export function mountLiveDirectorySearch(root) {
+  const input = root.querySelector('#liveRoomSearch');
+  const clear = root.querySelector('#liveRoomSearchClear');
+  const status = root.querySelector('#liveRoomSearchStatus');
+  const groups = [...root.querySelectorAll('.pikk-live-directory-group')];
+  if (!input || !clear || !status || !groups.length) return;
+
+  let previousOpen = null;
+  const update = () => {
+    const query = input.value.trim();
+    if (query && previousOpen === null) previousOpen = groups.map(group => group.open);
+    let visible = 0;
+    for (const group of groups) {
+      let groupMatches = 0;
+      group.querySelectorAll('.pikk-live-room-card').forEach(card => {
+        const matches = matchesLiveRoomSearch(card.textContent, query);
+        card.style.display = matches ? '' : 'none';
+        if (matches) groupMatches++;
+      });
+      group.style.display = !query || groupMatches ? '' : 'none';
+      const count = group.querySelector('.pikk-live-directory-count');
+      if (count) {
+        const total = group.querySelectorAll('.pikk-live-room-card').length;
+        count.textContent = query ? groupMatches + ' of ' + total + ' topics' : total + ' rooms';
+      }
+      if (query && groupMatches) group.open = true;
+      visible += groupMatches;
+    }
+    if (!query && previousOpen !== null) {
+      groups.forEach((group, index) => { group.open = previousOpen[index]; });
+      previousOpen = null;
+    }
+    clear.hidden = !query;
+    clear.style.display = query ? '' : 'none';
+    status.textContent = query
+      ? visible + ' matching topic' + (visible === 1 ? '' : 's') + ' · channel discovery only.'
+      : 'Browse ' + visible + ' topics · these filter channels, not hosted rooms.';
+  };
+  input.addEventListener('input', update);
+  clear.addEventListener('click', () => {
+    input.value = '';
+    update();
+    input.focus();
+  });
+  update();
 }

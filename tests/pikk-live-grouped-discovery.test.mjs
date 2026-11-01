@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { LIVE_DISCOVERY_GROUPS, renderLiveDiscoveryDirectory } from '../src/live-discovery.js';
+import { LIVE_DISCOVERY_GROUPS, renderLiveDiscoveryDirectory, matchesLiveRoomSearch } from '../src/live-discovery.js';
 
 const live = readFileSync(new URL('../src/pages/live.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
@@ -62,4 +62,19 @@ test('Live still preserves original stages and route-based discovery tabs', () =
   assert.match(css, /pikk-live-directory-cards/);
   assert.match(css, /@media \(max-width: 720px\)/);
   assert.match(css, /pikk-live-directory-summary:focus-visible/);
+});
+
+
+test('Live room search is accessible, matches topic text and preserves all original links', () => {
+  const html = renderLiveDiscoveryDirectory(names.map(name => [name, 'Browse topic', '💬']), escapeHtml);
+  assert.match(html, /<label for="liveRoomSearch">/);
+  assert.match(html, /id="liveRoomSearch" type="search"/);
+  assert.match(html, /id="liveRoomSearchStatus" role="status" aria-live="polite"/);
+  assert.match(html, /id="liveRoomSearchClear"/);
+  assert.match(live, /mountLiveDirectorySearch\(root\)/);
+  assert.equal((html.match(/class="live-cat-card pikk-live-room-card"/g) || []).length, 78);
+  assert.equal(matchesLiveRoomSearch('Couples Corner · Browse channels', '  COUPLES  '), true);
+  assert.equal(matchesLiveRoomSearch('Business Connect & Wealth Academy', 'wealth'), true);
+  assert.equal(matchesLiveRoomSearch('City Connect', 'couples'), false);
+  assert.equal(matchesLiveRoomSearch('City Connect', ''), true);
 });
