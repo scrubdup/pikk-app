@@ -12,7 +12,7 @@ test('Explore lives outside Social as a standalone pinned discovery entry', () =
   assert.ok(DRAWER_GROUPS.some(g => g.id === 'explore' && g.href === '#/explore'));
   assert.match(html, /class="pikk-explore-rail"/);
   assert.match(html, /href="#\/explore">⌕ Explore/);
-  for (const route of ['#/posts', '#/videos', '#/live', '#/community']) assert.ok(html.includes('href="' + route + '"'));
+  for (const route of ['#/posts', '#/videos', '#/live', '#/communities']) assert.ok(html.includes('href="' + route + '"'));
 });
 
 test('official PIKK logo and compact header precede and preserve sticky music player', () => {

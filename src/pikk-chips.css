@@ -44,3 +44,10 @@ html body .pikk-explore-rail a[aria-current="page"] {
   border: 1px solid rgba(47, 107, 255, .9) !important;
   box-shadow: var(--pikk-chip-selected-edge) !important;
 }
+/* t397u polish — drawer current item uses the shared glossy selected token */
+html body .side .drawer-link:is(.on, .active, .is-active, [aria-current="page"]) {
+  background: var(--pikk-chip-selected-bg) !important;
+  color: var(--pikk-chip-active-text) !important;
+  border-color: rgba(47, 107, 255, .9) !important;
+  box-shadow: var(--pikk-chip-selected-edge) !important;
+}
