@@ -14,5 +14,6 @@
     "SESSION_TTL_HOURS": "720",
     "EXPOSE_VERIFY_TOKEN": "false"
   }
-  // Secret (set via `wrangler secret put`, never committed): STRIPE_WEBHOOK_SECRET
+  // Secrets (set via `wrangler secret put`, never committed): STRIPE_WEBHOOK_SECRET,
+  // OWNER_BOOTSTRAP_TOKEN (optional, >=32 chars, one-time owner bootstrap; delete after use)
 }

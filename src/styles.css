@@ -4964,3 +4964,10 @@ html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary > span:last
   font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
+
+/* PIKK Master Mind (phase 1, read-only) — uses existing PIKK card/chip tokens */
+.mastermind-head img { border-radius: 10px; }
+.mastermind-detail { list-style: none; margin: .4rem 0 0; padding: 0; display: grid; gap: .2rem; }
+.mastermind-status-healthy { outline: 1px solid currentColor; }
+.mastermind-status-down, .mastermind-status-degraded, .mastermind-status-stale { font-weight: 700; }
+.mastermind-status-unknown, .mastermind-status-demo { opacity: .75; font-style: italic; }
