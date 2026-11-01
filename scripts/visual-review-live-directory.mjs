@@ -140,6 +140,23 @@ try {
     assert.ok(goalGeometry.inputReachable, device+' donation message covered by another element: '+JSON.stringify(goalGeometry));
     await page.screenshot({path:'visual-review/pikk-live-'+device+'-goal-full.png'});
     await page.locator('#liveDailyGoal').screenshot({path:'visual-review/pikk-live-'+device+'-goal-message.png'});
+    // Following creator chips must lead to the creator's public profile, not the viewer's own profile.
+    await page.evaluate(() => {
+      const state = JSON.parse(localStorage.getItem('dbs_v1') || '{}');
+      state.user.following = ['dbs'];
+      localStorage.setItem('dbs_v1', JSON.stringify(state));
+    });
+    await page.goto('http://127.0.0.1:5173/#/live?tab=following', { waitUntil: 'domcontentloaded' });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('#liveTabFollowing').waitFor({ state: 'visible' });
+    const followedCreator = page.locator('#liveTabFollowing a.chip[href="#/profile/dbs"]');
+    assert.equal(await followedCreator.count(), 1, device + ' followed creator has their own profile deep link');
+    await page.screenshot({ path: 'visual-review/pikk-live-' + device + '-following-profile-link.png' });
+    await followedCreator.click();
+    await page.locator('.pikk-profile-cover').waitFor({ state: 'visible' });
+    assert.ok(page.url().endsWith('#/profile/dbs'), device + ' followed creator opens public profile');
+    assert.equal(await page.locator('.pikk-profile-cover h2').textContent(), 'DatBoiSkeet ✓');
+    await page.screenshot({ path: 'visual-review/pikk-live-' + device + '-followed-creator-profile.png' });
     assert.deepEqual(errors, [], device + ' browser errors');
     await context.close();
   }
