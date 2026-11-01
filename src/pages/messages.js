@@ -36,7 +36,7 @@ function renderSignIn() {
     `<section class="pikk-msg-flow-hero" aria-label="PIKK messages sign-in">
       <span class="pikk-msg-flow-kicker">PIKK CONNECT · PRIVATE MESSAGES</span>
       <h2>Your conversations. <em>Your circle.</em></h2>
-      <p>Try DMs, group conversations and the DatBoiSkeet team inbox with a local demo account.</p>
+      <p>Try DMs, group conversations and the PIKK team inbox with a local demo account.</p>
       <span class="chip">TEST MODE · No server messaging</span>
     </section>
     <div class="card pikk-msg-flow-panel">
@@ -84,7 +84,7 @@ function renderInbox(user) {
 
   return `
     <section class="pikk-messages-hero" aria-label="PIKK inbox">
-      <div><p class="kicker">PIKK CONNECT · MESSAGES</p><h2>Your conversations.</h2><p>Stay connected with people, groups, and the DatBoiSkeet team.</p></div>
+      <div><p class="kicker">PIKK CONNECT · MESSAGES</p><h2>Your conversations.</h2><p>Stay connected with people, groups, and the PIKK community.</p></div>
       <span class="pikk-messages-hero-mark" aria-hidden="true">✉</span>
     </section>
     <div class="pikk-msg-tools">
