@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "dev": "wrangler dev",
-    "migrate:local": "wrangler d1 migrations apply pikk-db --local"
+    "migrate:local": "wrangler d1 migrations apply pikk-db --local",
+    "db:tables:remote": "wrangler d1 execute pikk-db --remote --command \"SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;\""
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.4.11",
