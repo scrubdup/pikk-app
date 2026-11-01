@@ -176,9 +176,9 @@ function renderFollowingPanel(user) {
       .map((live) => {
         return `
         <article class="hot-live-card${live.house ? ' is-house' : ''}" data-live-id="${esc(live.id)}">
-          <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching">
+          <div class="live-hoodie" aria-label="Live · Demo · no real viewers">
             <span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span>
-            <span class="live-hoodie-viewers">${esc(fmtCount(live.viewers))}</span>
+            <span class="live-hoodie-viewers">Demo · no real viewers</span>
           </div>
           <div class="hot-live-body">
             <div class="hot-live-host">@${esc(live.hostName)}</div>
@@ -322,15 +322,15 @@ function renderHotLivesRail(category = '') {
       const hot = recentlySpiked(live);
       return `
       <article class="hot-live-card${hot ? ' is-hot' : ''}${live.house ? ' is-house' : ''}" data-live-id="${esc(live.id)}">
-        <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching">
+        <div class="live-hoodie" aria-label="Live · Demo · no real viewers">
           <span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span>
-          <span class="live-hoodie-viewers" title="${esc(fmtCount(live.viewers))} watching">${esc(fmtCount(live.viewers))}</span>
+          <span class="live-hoodie-viewers" title="TEST MODE">Demo · no real viewers</span>
         </div>
         <div class="hot-live-body">
           <div class="hot-live-host">@${esc(live.hostName)}</div>
           <div class="hot-live-title">${esc(live.title)}</div>
           <div class="hot-live-chips">
-            <span class="chip">${esc(fmtCount(live.viewers))} watching</span>
+            <span class="chip">Demo · no real viewers</span>
             ${live.house ? '<span class="chip chip-ok">House</span>' : ''}
             ${hot ? '<span class="chip live-chip"><span class="dot" aria-hidden="true"></span> HOT</span>' : ''}
           </div>
@@ -347,7 +347,7 @@ function renderHotLivesRail(category = '') {
     <div class="card hot-lives-rail" id="hotLivesRail">
       <div class="row wrap" style="justify-content:space-between;align-items:baseline;gap:8px">
         <h3 style="margin:0">Hot lives · Top streamers</h3>
-        <span class="chip">score · viewers + engagement</span>
+        <span class="chip">score · gifts + engagement (no viewer counts)</span>
       </div>
       <p class="muted" style="margin:6px 0 10px;font-size:12px">TEST MODE · seeded demo · not third-party scrape · house + community</p>
       <div class="hot-lives-track">

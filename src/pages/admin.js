@@ -326,7 +326,7 @@ function engagementAlertsHtml(overview) {
           const kindChip = a.kind === 'live' ? '<span class="chip">live</span>' : '<span class="chip">post</span>';
           const extra =
             a.kind === 'live'
-              ? ` · viewers ${a.viewers ?? '—'} · gifts ${a.gifts ?? '—'}`
+              ? ` · gifts ${a.gifts ?? '—'}`
               : ` · score ${a.score ?? 0}`;
           const actions =
             a.kind === 'post'

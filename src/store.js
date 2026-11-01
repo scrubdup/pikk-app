@@ -6828,7 +6828,8 @@ function normalizeHotLive(raw) {
   if (!id) return null;
   const hostId = String(raw.hostId || raw.userId || '');
   const hostName = String(raw.hostName || raw.username || raw.handle || 'Creator');
-  const viewers = Math.max(0, Number(raw.viewers) || 0);
+  // t409: no seeded or stored viewer numbers — demo lives have no real viewers.
+  const viewers = 0;
   const giftsTotal = Math.max(0, Number(raw.giftsTotal ?? raw.gifts) || 0);
   const score =
     raw.score != null && Number.isFinite(Number(raw.score))
@@ -6861,7 +6862,6 @@ export function ensureHotLivesSeeded({ force = false } = {}) {
       hostId: 'dbs',
       hostName: 'DatBoiSkeet',
       title: 'DBS Live · Listening Session',
-      viewers: 8420,
       giftsTotal: 186,
       house: true,
     },
@@ -6870,7 +6870,6 @@ export function ensureHotLivesSeeded({ force = false } = {}) {
       hostId: 'dbs',
       hostName: 'DatBoiSkeet',
       title: 'Vault Drop Afterparty · House',
-      viewers: 3210,
       giftsTotal: 94,
       house: true,
     },
@@ -6879,7 +6878,6 @@ export function ensureHotLivesSeeded({ force = false } = {}) {
       hostId: 'u_skeetfanatl',
       hostName: 'SkeetFanATL',
       title: 'ATL reacts · Long Story Short',
-      viewers: 1540,
       giftsTotal: 42,
       house: false,
     },
@@ -6888,7 +6886,6 @@ export function ensureHotLivesSeeded({ force = false } = {}) {
       hostId: 'u_vaultwatcher',
       hostName: 'VaultWatcher',
       title: 'Vault deep cut night',
-      viewers: 980,
       giftsTotal: 61,
       house: false,
     },
@@ -6897,7 +6894,6 @@ export function ensureHotLivesSeeded({ force = false } = {}) {
       hostId: 'u_fxclipper',
       hostName: 'FXClipper',
       title: 'Foreign X-Change clips live',
-      viewers: 2210,
       giftsTotal: 28,
       house: false,
     },
@@ -6906,7 +6902,6 @@ export function ensureHotLivesSeeded({ force = false } = {}) {
       hostId: 'u_nightowldbs',
       hostName: 'NightOwlDBS',
       title: 'Late night lounge · chill',
-      viewers: 412,
       giftsTotal: 15,
       house: false,
     },
@@ -6915,7 +6910,6 @@ export function ensureHotLivesSeeded({ force = false } = {}) {
       hostId: 'u_longstorylistener',
       hostName: 'LongStoryListener',
       title: 'LSS theory hour',
-      viewers: 128,
       giftsTotal: 7,
       house: false,
     },
@@ -6924,7 +6918,6 @@ export function ensureHotLivesSeeded({ force = false } = {}) {
       hostId: 'u_ladiesonlyfan',
       hostName: 'LadiesOnlyFan',
       title: 'Ladies Only countdown',
-      viewers: 67,
       giftsTotal: 3,
       house: false,
     },
@@ -6964,10 +6957,9 @@ export function simulateLiveSpike(liveId) {
   const lives = (bucket.lives || []).map((raw) => {
     const live = normalizeHotLive(raw);
     if (!live || live.id !== id) return raw;
-    const bumpViewers = 180 + Math.floor(Math.random() * 920);
-    const bumpGifts = 4 + Math.floor(Math.random() * 28);
-    const viewers = live.viewers + bumpViewers;
-    const giftsTotal = live.giftsTotal + bumpGifts;
+    // t409: a spike only marks the live as hot; it never invents viewers or gifts.
+    const viewers = 0;
+    const giftsTotal = live.giftsTotal;
     const score = liveHotScore(viewers, giftsTotal);
     found = {
       ...live,
@@ -7025,7 +7017,7 @@ export function listRisingStreamers() {
     house: !!l.house,
     score: l.score,
     spikedAt: l.spikedAt || null,
-    playbacksToday: l.playbacksToday != null ? l.playbacksToday : Math.max(1, Math.round((l.viewers || 0) / 40)),
+    playbacksToday: l.playbacksToday != null ? l.playbacksToday : null,
   }));
 }
 
