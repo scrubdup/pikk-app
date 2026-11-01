@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SPLASH_HOLD_MS, SPLASH_FADE_MS } from '../src/splash-config.js';
-test('splash holds a full 3s, uses official master logo, chime kept', () => {
-  assert.equal(SPLASH_HOLD_MS, 3000); assert.equal(SPLASH_FADE_MS, 500);
+test('splash holds a full 5s (t393u), uses official master logo, chime kept', () => {
+  assert.equal(SPLASH_HOLD_MS, 5000); assert.equal(SPLASH_FADE_MS, 500);
   const m = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(m, /setTimeout\(ready, SPLASH_HOLD_MS\)/); assert.match(m, /playSplashChime\(\)/);
   const h = readFileSync(new URL('../index.html', import.meta.url), 'utf8');

@@ -544,7 +544,7 @@ function boot() {
   onRoute(render);
   startRouter();
 
-  // Splash §19 t178u: official logo + tuning fork · hold ~3s when shown.
+  // Splash §19 t178u: official logo + tuning fork · hold 5s (t393u) when shown.
   // Subsequent visits skip via shouldShowSplash(); ?holdSplash=1 for evidence.
   applyAppearance();
   if ((!shouldShowSplash() || !getSettings().showSplash) && !new URLSearchParams(location.search).has('holdSplash')) {
@@ -558,7 +558,7 @@ function boot() {
       done = true;
       hideSplash();
     };
-    // Fixed 3s hold from boot (user ask t178u); same as safety max.
+    // Fixed 5s hold (t393u) from boot (user ask t178u); same as safety max.
     setTimeout(ready, SPLASH_HOLD_MS);
   }
 }
