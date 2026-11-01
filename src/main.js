@@ -52,6 +52,8 @@ import { renderPromote, bindPromote } from './pages/promote.js';
 import { renderDonate, bindDonate } from './pages/donate.js';
 import { renderPayments, bindPayments } from './pages/payments.js';
 import { decoratePlayCounts, recordPlay } from './play-counter.js';
+import { renderStory, bindStory, renderCrew, bindCrew, renderFavorites, bindFavorites } from './pages/circle.js';
+import './circle.css';
 import { renderMusic, bindMusic } from './pages/music.js';
 import { renderAIArtists, bindAIArtists } from './pages/ai-artists.js';
 import { renderShield, bindShield } from './pages/shield.js';
@@ -113,6 +115,9 @@ const ROUTES = {
   '/promote': { render: renderPromote, bind: bindPromote },
   '/donate': { render: renderDonate, bind: bindDonate },
   '/payments': { render: renderPayments, bind: bindPayments },
+  '/story': { render: renderStory, bind: bindStory },
+  '/crew': { render: renderCrew, bind: bindCrew },
+  '/favorites': { render: renderFavorites, bind: bindFavorites },
   '/updates': { render: renderUpdates, bind: bindUpdates },
   '/posts': { render: renderPosts, bind: bindPosts },
   '/music': { render: renderMusic, bind: bindMusic },
