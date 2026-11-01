@@ -1,0 +1,25 @@
+/* t335u — app-wide duotone rule: every control combines PIKK red AND electric blue (black/chrome base).
+   Shared tokens; no purple midpoints (red and blue never blend directly). */
+:root {
+  --pikk-duo-edge: rgba(47, 107, 255, .78);          /* electric blue edge */
+  --pikk-duo-glow: 0 0 9px rgba(255, 49, 55, .30);    /* red neon glow */
+  --pikk-duo-glow-blue: 0 0 10px rgba(47, 107, 255, .45);
+}
+/* Buttons, chips, pills, header controls, sheet rows, drawer items: blue edge + red neon glow. */
+html body :is(.btn, button, .chip, [class*="chip"], .pill, .icon-btn, .drawer-link, .pikk-create-tile, .pikk-menu-cancel):not(#tabbar a):not(.tab-primary) {
+  border-color: var(--pikk-duo-edge) !important;
+  box-shadow: 0 0 0 1px var(--pikk-duo-edge), var(--pikk-duo-glow) !important;
+}
+/* Red-filled controls (primary / active): blue edge + blue glow so they are never red-only. */
+html body :is(.btn.primary, .btn-primary, button.on, .on.chip, [class*="chip"].on, [aria-pressed="true"], [aria-selected="true"]):not(#tabbar a) {
+  border-color: var(--pikk-duo-edge) !important;
+  box-shadow: 0 0 0 1px var(--pikk-duo-edge), var(--pikk-duo-glow-blue), var(--pikk-duo-glow) !important;
+}
+/* Glyphs inside controls: red glyph inside the blue edge (like the header search). */
+html body :is(.btn, button, .pill, .icon-btn, .pikk-create-tile, .drawer-link) svg :is(path, circle, rect, line, polyline, polygon)[stroke]:not([stroke="none"]),
+html body :is(.pill, .icon-btn) svg { stroke: var(--pikk-red); }
+html body .pikk-menu-icon { color: var(--pikk-red) !important; filter: drop-shadow(0 0 4px rgba(47, 107, 255, .65)); }
+/* Bottom tab bar: red duotone glyph with a blue glow; label stays white. Create keeps its own badge. */
+html body #tabbar > a:not(.tab-primary) .tab-ico svg { stroke: var(--pikk-red); color: var(--pikk-red); filter: drop-shadow(0 0 3px rgba(47, 107, 255, .8)); }
+/* Focus stays visible and duotone. */
+html body :is(.btn, button, .chip, .pill, .icon-btn, .drawer-link, .pikk-create-tile, #tabbar > a):focus-visible { outline: 2px solid var(--pikk-blue); outline-offset: 2px; }
