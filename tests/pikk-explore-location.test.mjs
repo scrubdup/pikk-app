@@ -72,6 +72,16 @@ test('Mirrored signed-in profile cannot bypass separate Explore location consent
   assert.deepEqual(search().map(profile => profile.id), ['me', 'neighbor'],
     'double opt-in includes the mirrored profile once, not twice');
 
+  data.user.private = true;
+  assert.deepEqual(search().map(profile => profile.id), ['neighbor'],
+    'private signed-in user stays hidden even when their mirrored copy appears public');
+  data.user.private = false;
+
+  data.user.locationDiscoverable = false;
+  assert.deepEqual(search().map(profile => profile.id), ['neighbor'],
+    'mirrored location consent cannot override the account location opt-in');
+  data.user.locationDiscoverable = true;
+
   delete data.profiles.me;
   assert.deepEqual(search().map(profile => profile.id), ['neighbor', 'me'],
     'double opt-in also works without a mirrored profile');
