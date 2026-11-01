@@ -15,7 +15,7 @@ const section = (id, title, seeAll, kicker, body, note = '') => `
   </section>`;
 const card = (href, media, title, sub, cls = '', badge = '') => `<a class="pikk-hs-card ${cls}" role="listitem" href="${href}"><span class="pikk-hs-media">${media}${badge ? `<span class="pikk-hs-badge">${esc(badge)}</span>` : ''}</span><strong>${esc(title)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</a>`;
 
-export const SHOWCASE_ORDER = ['music', 'posts', 'videos', 'live', 'connect', 'dating', 'matchup', 'contest', 'games', 'battles', 'shop', 'more'];
+export const SHOWCASE_ORDER = ['posts', 'videos', 'music', 'live', 'connect', 'dating', 'contest', 'matchup', 'games', 'battles', 'shop', 'more'];
 export const SHOWCASE_SEE_ALL = Object.freeze({ music: '#/music', posts: '#/posts', videos: '#/videos', live: '#/live', connect: '#/connect', dating: '#/dating', games: '#/games', battles: '#/giftbattles', contest: '#/contest/twerk', shop: '#/shop' });
 
 // t384u — compact cards for every feature that had no Home spot yet.

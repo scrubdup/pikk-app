@@ -482,7 +482,7 @@ export const POST_IMAGE_PRESETS = [
 export const HOME_SECTIONS = [
   { route: '/explore', title: 'Explore', blurb: 'Discover DatBoiSkeet · creators · drops' },
   { route: '/music', title: 'Music', blurb: 'Long Story Short · Ladies Only · Vault' },
-  { route: '/videos', title: 'Videos', blurb: 'Official DatBoiSkeet MVs' },
+  { route: '/videos', title: 'Videos', blurb: 'Official music videos' },
   { route: '/posts', title: 'Posts', blurb: 'Text · Picture · Short · Video' },
   { route: '/shorts', title: 'Shorts', blurb: 'Under Posts · quick clips' },
   { route: '/live', title: 'Live', blurb: 'Go live · TEST MODE demo' },

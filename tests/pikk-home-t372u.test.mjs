@@ -21,6 +21,7 @@ test('t372u order: stage → sell promo higher → arcade → hub (Party Line, b
   assert.match(hub, /href="#\/community"/);
   assert.match(renderHomeMediaSlideshow(), /href="#\/posts".*href="#\/shorts".*href="#\/videos"/s);
 });
-test('t372u style: chips selected solid red no ring; goal bar red+blue edge; Create ring blue+red blue interior', () => {
+test('t372u style: chips selected = shared glossy red+blue token (t388u); goal bar red+blue edge; Create ring blue+red blue interior', () => {
   assert.match(css, /t372u chips/); assert.match(css, /t372u goal/); assert.match(css, /t372u create/);
+  assert.match(css, /pikk-home-filterbar a\.is-current[^{]*\{ background: var\(--pikk-chip-selected-bg\) !important/);
 });

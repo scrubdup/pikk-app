@@ -9,7 +9,7 @@ test('showcase sections render in owner order', () => {
   const order = [...html.matchAll(/data-hs="([\w-]+)"/g)].map((m) => m[1]);
   assert.deepEqual(order, SHOWCASE_ORDER);
   const core = order.filter((k) => !['live', 'battles', 'contest', 'matchup', 'more'].includes(k));
-  assert.deepEqual(core, ['music', 'posts', 'videos', 'connect', 'dating', 'games', 'shop']);
+  assert.deepEqual(core, ['posts', 'videos', 'music', 'connect', 'dating', 'games', 'shop']);
 });
 test('every See all and every card link resolves to a real route', () => {
   for (const [k, h] of Object.entries(SHOWCASE_SEE_ALL)) assert.ok(routeExists(h), `${k} ${h}`);
@@ -25,4 +25,9 @@ test('Games: all 15, Block Wars first, Coming Soon; Dating 18+; lazy images; no 
 });
 test("Home renders visual feed, then ranked stage (t385u), then showcase", () => {
   assert.match(readFileSync(new URL("../src/pages/home.js", import.meta.url), "utf8"), /\$\{visualFeed\}\n    \$\{stageBlock\}\n    \$\{renderHomeShowcase\(\)\}/);
+});
+test('t391u: showcase starts Posts → Videos → Music', () => {
+  assert.deepEqual(SHOWCASE_ORDER.slice(0, 3), ['posts', 'videos', 'music']);
+  const h = renderHomeShowcase();
+  assert.ok(h.indexOf('id="hs-posts"') < h.indexOf('id="hs-videos"') && h.indexOf('id="hs-videos"') < h.indexOf('id="hs-music"'));
 });

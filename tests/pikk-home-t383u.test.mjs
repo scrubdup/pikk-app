@@ -21,15 +21,16 @@ test('t383u: PIKK Match Up has every element, TEST MODE, 18+', () => {
 test('t383u: no camera access anywhere on Home', () => {
   for (const s of [mu, home, rd('home-showcase.js')]) assert.ok(!/getUserMedia|mediaDevices/.test(s));
 });
-test('t383u: palette — no pink/magenta/purple in Match Up CSS; selected chip solid red', () => {
+test('t383u: palette — no pink/magenta/purple in Match Up CSS; selected chip uses shared glossy token (t388u)', () => {
   const block = css.slice(css.indexOf('/* t383u Match Up'));
   assert.ok(!/pink|magenta|purple|#ff00ff|#f0f/i.test(block));
-  assert.match(block, /aria-pressed="true"\]\{background:var\(--pikk-red\);color:#fff/);
+  assert.match(block, /aria-pressed="true"\]\{background:var\(--pikk-chip-selected-bg\);color:#fff/);
 });
-test('t384u: Match Up directly after Dating', () => {
-  assert.equal(SHOWCASE_ORDER[SHOWCASE_ORDER.indexOf('dating') + 1], 'matchup');
+test('t384u/t389u: Dating → Twerk Contest → Match Up', () => {
+  const i = SHOWCASE_ORDER.indexOf('dating');
+  assert.deepEqual(SHOWCASE_ORDER.slice(i, i + 3), ['dating', 'contest', 'matchup']);
   const h = renderHomeShowcase();
-  assert.ok(h.indexOf('id="hs-dating"') < h.indexOf('id="homeMatchUp"'));
+  assert.ok(h.indexOf('id="hs-dating"') < h.indexOf('id="hs-contest"') && h.indexOf('id="hs-contest"') < h.indexOf('id="homeMatchUp"'));
 });
 test('t384u: every missing feature has a Home card linking to a real route; no dupes', () => {
   const h = renderHomeShowcase();
@@ -52,4 +53,8 @@ test('t385u: ranked feed stage comes immediately after the official-video grid (
   assert.equal(body.slice(v + '${visualFeed}'.length, st).trim(), '');
   for (const k of ['${renderHomeShowcase()}', '${sellPromo}', 'id="homeArcade"']) assert.ok(body.indexOf(k) > st, k);
   assert.ok(home.indexOf('View all videos') < home.indexOf('id="homeFeaturedStage"') || body.indexOf('${visualFeed}') < st);
+});
+test('t389u: no leftover "Official DatBoiSkeet MVs" text on Home', () => {
+  const data = rd('data.js');
+  for (const s of [home, rd('home-showcase.js'), rd('home-hub.js'), data, renderHomeShowcase()]) assert.ok(!s.includes('Official DatBoiSkeet MVs'));
 });

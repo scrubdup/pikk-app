@@ -62,8 +62,8 @@ html body #dbs-sticky-player input#spVol::-moz-range-thumb { width: 12px; height
 
 /* t340u — Home filter chips: inactive = blue border + white text; All stays the red active chip. */
 html body .pikk-home-filterbar a:not(.is-current) { border: 1px solid var(--pikk-blue) !important; color: #fff !important; background: #0b0d13 !important; }
-/* t372u chips: selected = solid red, white text, no ring (all chips); unselected blue outline */
-html body .pikk-home-filterbar a.is-current, html body .pikk-home-filterbar a[aria-current="page"], html body .pikk-home-filterbar a:active { background: var(--pikk-red) !important; color: #fff !important; border: 1px solid var(--pikk-red) !important; box-shadow: none !important; outline: none; }
+/* t372u chips → t388u: selected = shared glossy red+blue token, white text; unselected blue outline */
+html body .pikk-home-filterbar a.is-current, html body .pikk-home-filterbar a[aria-current="page"], html body .pikk-home-filterbar a:active { background: var(--pikk-chip-selected-bg) !important; color: #fff !important; border: 1px solid rgba(47, 107, 255, .9) !important; box-shadow: var(--pikk-chip-selected-edge) !important; outline: none; }
 /* t372u goal: same red+chrome+blue edge as the player card, no white */
 html body .home-goal-slim { border: 1.5px solid transparent !important; background: linear-gradient(#0b0d13, #0b0d13) padding-box, linear-gradient(90deg, #ff3137, #c0c6cf, #2f6bff) border-box !important; box-shadow: 0 0 14px rgba(255, 49, 55, .22), 0 0 14px rgba(47, 107, 255, .22) !important; }
 /* t372u create: blue+red ring, blue interior */
