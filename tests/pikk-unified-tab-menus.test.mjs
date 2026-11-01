@@ -19,7 +19,7 @@ test('seven approved tabs stay in owner-approved order', () => {
 test('every non-Create bottom tab has real menu choices and a consistent card grid', () => {
   for(const tab of ['videos','connect','dating','games','shop']) {
     assert.ok(SECTION_MENU_ITEMS[tab]?.length > 0, tab);
-    assert.ok(SECTION_MENU_ITEMS[tab].every(item => item.title && item.detail && (item.href?.startsWith('#/') || item.detail.toLowerCase().includes('planned'))), tab);
+    assert.ok(SECTION_MENU_ITEMS[tab].every(item => item.title && item.detail && (item.href?.startsWith('#/') || /planned|coming soon/i.test(item.detail))), tab);
   }
   assert.ok(MUSIC_MENU_ITEMS.length > 0);
   assert.doesNotMatch(main, /if \(name === 'games'\) continue/);
@@ -43,13 +43,13 @@ test('modal controls retain keyboard escape, focus trapping, and route close', (
 
 test('Games menu includes all approved titles without linking unbuilt games to unrelated pages', () => {
   const games = SECTION_MENU_ITEMS.games;
-  assert.equal(games.length, 16, 'Arcade hub plus all 15 approved games');
+  assert.equal(games.length, 20, 'Arcade hub, all 15 approved games, plus Roast Arena, Gift Battles, Missions, Loyalty');
   for (const title of ['PIKK Arcade','PIKK Speed','PIKK Blackjack','PIKK Slots','PIKK Poker','PIKK Spades','PIKK Dominoes','PIKK Chess','PIKK Clash','PIKK Knockout','PIKK Playground','PIKK Bowling','PIKK Pickleball','PIKK Pool','PIKK Cup Pong','Block Wars']) {
     assert.ok(games.some(item => item.title === title), title);
   }
   assert.equal(games.find(item => item.title === 'PIKK Arcade').href, '#/games');
   assert.equal(games.find(item => item.title === 'Block Wars').href, '#/blockwars');
-  for (const item of games.filter(item => !['PIKK Arcade','Block Wars'].includes(item.title))) {
+  for (const item of games.slice(1, 16).filter(item => item.title !== 'Block Wars')) {
     assert.equal(item.href, undefined, item.title + ' must not masquerade as a playable route');
     assert.match(item.detail, /planned/i);
   }

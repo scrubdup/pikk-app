@@ -1,5 +1,6 @@
 import './styles.css';
 import './pikk-mockup.css';
+import './pikk-pages.css';
 import './skip-content.css';
 import './page-announcement.css';
 import './featured-promos.css';
@@ -19,6 +20,7 @@ import './dating-premium.css';
 import { SECTION_MENU_ITEMS, closeSectionMenus, toggleSectionMenu } from './section-menus.js';
 import { CREATE_MENU_GROUPS } from './create-menu.js';
 import { DRAWER_GROUPS, TABBAR } from './data.js';
+import { drawerGroups } from './nav-sections.js';
 import {
   initDbsPlayer,
   onRouteForPlayer,
@@ -170,7 +172,7 @@ function buildTabbar() {
     const pathOnly = '/' + raw.replace(/^\//, '').split(/[?#]/)[0];
     const label = esc(t.label);
     const primaryClass = t.primary ? ' class="tab-primary"' : '';
-    return `<a${primaryClass} href="${t.href}" data-path="${pathOnly}" aria-label="${label}"${t.href === '#/create' ? ' aria-haspopup="dialog" aria-controls="pikkCreateMenu" aria-expanded="false"' : t.href === '#/music' ? ' aria-haspopup="dialog" aria-controls="pikkMusicMenu" aria-expanded="false"' : SECTION_MENU_ITEMS[pathOnly.slice(1)] ? ` aria-haspopup="dialog" aria-controls="pikk${label}Menu" aria-expanded="false"` : ''}><span class="tab-ico">${t.href === '#/create' ? '<svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><path d="M9 5 L25 16 L9 27 Z" fill="currentColor"/><path class="pikk-create-cursor" d="M15 12 L15 27 L18.6 23.6 L21.2 29 L23.6 27.9 L21 22.6 L26 22.4 Z" fill="#d7dbe3" stroke="#0a0a0a" stroke-width="1.2" stroke-linejoin="round"/></svg>' : (ICONS[t.icon] || '')}</span><span>${label}</span></a>`;
+    return `<a${primaryClass} href="${t.href}" data-path="${pathOnly}" aria-label="${label}"${t.href === '#/create' ? ' aria-haspopup="dialog" aria-controls="pikkCreateMenu" aria-expanded="false"' : t.href === '#/music' ? ' aria-haspopup="dialog" aria-controls="pikkMusicMenu" aria-expanded="false"' : SECTION_MENU_ITEMS[pathOnly.slice(1)] ? ` aria-haspopup="dialog" aria-controls="pikk${label}Menu" aria-expanded="false"` : ''}><span class="tab-ico">${t.href === '#/create' ? `<img class="pikk-create-logo-icon" src="${asset('/brand/pikk-create-play-cursor.png')}" alt="" width="40" height="29" decoding="async" />` : (ICONS[t.icon] || '')}</span><span>${label}</span></a>`;
   }).join('');
   for (const name of Object.keys(SECTION_MENU_ITEMS)) {
     el.querySelector(`a[href="#/${name}"]`)?.addEventListener('click', event => {
@@ -278,7 +280,7 @@ function buildDrawer() {
   const activeHash = '#' + (route.raw || route.path);
   const activePath = '#' + route.path;
 
-  const groupsHtml = DRAWER_GROUPS.map((g) => {
+  const groupsHtml = drawerGroups().map((g) => {
     if (g.href) {
       const on = g.href === activePath || g.href === activeHash ? ' on' : '';
       return `<a class="drawer-direct${on}" href="${g.href}">${esc(g.label)}</a>`;
@@ -289,6 +291,7 @@ function buildDrawer() {
     const activeCls = hasActive ? ' has-active' : '';
     const children = links
       .map((l) => {
+        if (!l.href) return `<span class="drawer-link drawer-soon" aria-disabled="true">${esc(l.label)} <small>· ${esc(/planned/i.test(l.detail || '') ? 'Planned' : 'Coming Soon')}</small></span>`;
         const on = l.href === activePath || l.href === activeHash ? ' on' : '';
         return `<a class="drawer-link${on}" href="${l.href}">${esc(l.label)}</a>`;
       })
@@ -304,7 +307,7 @@ function buildDrawer() {
     );
   }).join('');
 
-  el.innerHTML = `<h2>PIKK Network</h2>${groupsHtml}<a class="drawer-direct" href="#/updates">What's New · App Updates</a>`;
+  el.innerHTML = `<h2>PIKK Network</h2>${groupsHtml}`;
 }
 
 function setDrawer(open, restoreFocus = false) {

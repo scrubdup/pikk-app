@@ -16,8 +16,7 @@ test('all five remaining bottom sections have honest, verified menu destinations
     for (const { title, href, detail } of items) {
       assert.ok(title && detail, section);
       if (!href) {
-        assert.equal(section, 'games', title + ': only upcoming games may omit routes');
-        assert.match(detail, /planned/i, title + ': disabled card must disclose planned status');
+        assert.match(detail, /planned|coming soon/i, title + ': disabled card must disclose planned / Coming Soon status');
         continue;
       }
       assert.ok(href.startsWith('#/'), title + ': invalid route');
@@ -53,7 +52,7 @@ test('menus retain fail-safe disclosure and protect player and branding', () => 
 test('Games tab shows all 15 games in approved order without fake playable links', () => {
   const games = SECTION_MENU_ITEMS.games;
   assert.equal(games[0].title, 'PIKK Arcade');
-  const tiles = games.slice(1);
+  const tiles = games.slice(1, 16);
   assert.equal(tiles.length, 15);
   assert.deepEqual(tiles.map(item => item.title), PIKK_GAMES.map(game => game.name));
   assert.equal(tiles[0].title, 'Block Wars');

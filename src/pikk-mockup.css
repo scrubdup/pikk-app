@@ -135,3 +135,9 @@ html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary > span:last
 /* Focus: strong ring on player buttons, visible ring on Play next */
 .sp-btn:focus-visible, .sp-btn.sp-play:focus-visible { outline: 3px solid var(--pikk-blue); outline-offset: 3px; box-shadow: 0 0 0 2px var(--pikk-chrome), 0 0 16px var(--pikk-blue-glow); }
 .sp-play-next:focus-visible { outline: 2px solid var(--pikk-blue) !important; outline-offset: 2px; }
+/* Create icon = exact crop of the logo's red play button + cursor */
+html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary .tab-ico {
+  width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; overflow: hidden;
+  background: #050506; box-shadow: 0 0 0 3px #0a0a0a, 0 0 0 5px var(--pikk-chrome), -6px 0 20px var(--pikk-red-glow), 6px 0 20px var(--pikk-blue-glow);
+}
+.pikk-create-logo-icon { width: 40px; height: auto; display: block; border-radius: 6px; }
