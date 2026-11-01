@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { LIVE_DISCOVERY_GROUPS, renderLiveDiscoveryDirectory, matchesLiveRoomSearch } from '../src/live-discovery.js';
+import { LIVE_DISCOVERY_GROUPS, renderLiveDiscoveryDirectory, matchesLiveRoomSearch, mountLiveDirectorySearch } from '../src/live-discovery.js';
 
 const live = readFileSync(new URL('../src/pages/live.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
@@ -77,4 +77,72 @@ test('Live room search is accessible, matches topic text and preserves all origi
   assert.equal(matchesLiveRoomSearch('Business Connect & Wealth Academy', 'wealth'), true);
   assert.equal(matchesLiveRoomSearch('City Connect', 'couples'), false);
   assert.equal(matchesLiveRoomSearch('City Connect', ''), true);
+});
+
+test('Escape clears a filtered Live room search and restores the previous folder state', () => {
+  const listeners = {};
+  let focused = false;
+  const input = {
+    value: '',
+    addEventListener(type, callback) { listeners['input:' + type] = callback; },
+    focus() { focused = true; },
+  };
+  const clear = {
+    hidden: true, style: {},
+    addEventListener(type, callback) { listeners['clear:' + type] = callback; },
+  };
+  const status = { textContent: '' };
+  const makeGroup = (topics, open) => {
+    const cards = topics.map(textContent => ({ textContent, style: { display: '' } }));
+    const count = { textContent: '' };
+    return {
+      open, style: {},
+      cards, count,
+      querySelectorAll(selector) { return selector === '.pikk-live-room-card' ? cards : []; },
+      querySelector(selector) { return selector === '.pikk-live-directory-count' ? count : null; },
+    };
+  };
+  const coed = makeGroup(['Couples Corner', 'City Connect'], true);
+  const women = makeGroup(['Girl Talk'], false);
+  const groups = [coed, women];
+  const elements = {
+    '#liveRoomSearch': input,
+    '#liveRoomSearchClear': clear,
+    '#liveRoomSearchStatus': status,
+  };
+  const root = {
+    querySelector(selector) { return elements[selector] ?? null; },
+    querySelectorAll(selector) { return selector === '.pikk-live-directory-group' ? groups : []; },
+  };
+  mountLiveDirectorySearch(root);
+  assert.equal(status.textContent, 'Browse 3 topics · these filter channels, not hosted rooms.');
+
+  input.value = 'couples';
+  listeners['input:input']();
+  assert.equal(coed.count.textContent, '1 of 2 topics');
+  assert.equal(coed.cards[1].style.display, 'none');
+  assert.equal(women.style.display, 'none');
+  assert.equal(clear.hidden, false);
+
+  let prevented = false;
+  listeners['input:keydown']({
+    key: 'Escape',
+    preventDefault() { prevented = true; },
+  });
+  assert.equal(prevented, true, 'Escape prevents the browser from swallowing the clear');
+  assert.equal(input.value, '');
+  assert.equal(focused, true, 'keyboard focus stays in search');
+  assert.equal(coed.open, true, 'original open folder restored');
+  assert.equal(women.open, false, 'original closed folder restored');
+  assert.equal(women.style.display, '');
+  assert.equal(coed.cards[1].style.display, '');
+  assert.equal(clear.hidden, true);
+  assert.equal(status.textContent, 'Browse 3 topics · these filter channels, not hosted rooms.');
+
+  prevented = false;
+  listeners['input:keydown']({
+    key: 'Escape',
+    preventDefault() { prevented = true; },
+  });
+  assert.equal(prevented, false, 'empty search does not hijack Escape');
 });
