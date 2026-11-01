@@ -52,8 +52,12 @@ try {
       await page.locator('#exploreCity').fill('Houston');
       await page.locator('#exploreState').fill('TX');
       await page.locator('#exploreGo').click();
-      assert.match(await page.locator('#exploreResultsWrap').innerText(), /No results for.*City & State.*Houston, TX/);
+      assert.match(await page.locator('#exploreResultsWrap').innerText(), /No results in Houston, TX/);
       await capture('city-state-no-optin');
+      await page.locator('#exploreQ').fill('music');
+      await page.locator('#exploreGo').click();
+      assert.match(await page.locator('#exploreResultsWrap').innerText(), /No results for “music” in Houston, TX/);
+      await capture('keyword-city-state-no-optin');
       // Escape from a location input clears keyword + both location filters,
       // cancels any pending search and leaves focus in the same input.
       await page.locator('#exploreCity').focus();
