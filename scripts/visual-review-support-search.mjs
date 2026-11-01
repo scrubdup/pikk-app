@@ -31,6 +31,7 @@ try{
     const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:innerWidth}));
     assert.ok(dims.scroll<=dims.viewport+3,name+' '+phase+' horizontal overflow '+JSON.stringify(dims));
     assert.deepEqual(errors,[],name+' '+phase+' browser errors');
+    await page.locator('#support-faq').screenshot({path:'visual-review/support-faq-'+name+'-'+phase+'-card.png',animations:'disabled'});
     await page.screenshot({path:'visual-review/support-faq-'+name+'-'+phase+'.png',fullPage:true,animations:'disabled'});
    };
    await page.goto(base+'#/support',{waitUntil:'domcontentloaded',timeout:30000});
