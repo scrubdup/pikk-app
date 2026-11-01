@@ -23,7 +23,10 @@ function readCookie(req, name) {
 
 async function createSession(env, req, userId) {
   const token = randomToken(32);
-  const ttl = Math.max(1, Number(env.SESSION_TTL_HOURS || 720)) * 3600;
+  // Keep session lifetime finite and bounded even when deployment configuration is malformed.
+  const configuredHours = Number(env.SESSION_TTL_HOURS ?? 720);
+  const hours = Number.isFinite(configuredHours) ? Math.min(720, Math.max(1, configuredHours)) : 720;
+  const ttl = Math.floor(hours * 3600);
   await env.DB.prepare(`INSERT INTO sessions(id_hash,user_id,created_at,expires_at,ip,user_agent) VALUES (?,?,?,?,?,?)`)
     .bind(await sha256Hex(token), userId, nowIso(), new Date(Date.now() + ttl * 1000).toISOString(), clientIp(req), (req.headers.get('User-Agent') || '').slice(0, 200))
     .run();

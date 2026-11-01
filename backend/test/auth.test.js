@@ -88,4 +88,12 @@ describe('auth', () => {
     const r = await call('GET', '/nope');
     expect(r.status).toBe(404); expect(r.json.error.code).toBe('not_found');
   });
+  it('session lifetime never exceeds 30 days', async () => {
+    const u = await newUser();
+    const row = await env.DB.prepare('SELECT created_at, expires_at FROM sessions WHERE user_id = ?').bind(u.id).first();
+    const duration = Date.parse(row.expires_at) - Date.parse(row.created_at);
+    expect(duration).toBeGreaterThan(0);
+    expect(duration).toBeLessThanOrEqual(720 * 3600 * 1000);
+  });
+
 });
