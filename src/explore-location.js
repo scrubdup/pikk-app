@@ -9,6 +9,15 @@ const includesQuery = (item, q) => !q || [
   item.username, item.bio, item.title, item.text, item.hostName, item.artist, item.type,
 ].some(value => clean(value).includes(q));
 
+// Describe the active search without mistaking a location-only search for a
+// literal keyword search for "City & State". The caller HTML-escapes this text.
+export function exploreResultContext({ query = '', keywordQuery, locationLabel = '' } = {}) {
+  const keyword = String(keywordQuery === undefined ? query : keywordQuery).trim();
+  const location = String(locationLabel || '').trim();
+  return [keyword ? 'for “' + keyword + '”' : '', location ? 'in ' + location : '']
+    .filter(Boolean).join(' ');
+}
+
 export function matchesOptInLocation(item, { city = '', state = '' } = {}) {
   if (!item || item.locationDiscoverable !== true || item.private === true || item.isPrivate === true) return false;
   const declared = item.location && typeof item.location === 'object' ? item.location : item;
@@ -32,6 +41,7 @@ export function searchOptInLocations(data, { city = '', state = '', query = '' }
   const history = (data.liveHistory || []).filter(eligible).map(item => ({ ...item, status: 'ended' }));
   return {
     query: String(query || '').trim() || 'City & State',
+    keywordQuery: String(query || '').trim(),
     locationLabel: [city, state].map(v => String(v || '').trim()).filter(Boolean).join(', '),
     profiles, posts,
     music: catalog.filter(item => item.type === 'song' || item.type === 'album'),
