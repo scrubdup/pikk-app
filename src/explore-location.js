@@ -30,7 +30,11 @@ export function matchesOptInLocation(item, { city = '', state = '' } = {}) {
 export function searchOptInLocations(data, { city = '', state = '', query = '' } = {}) {
   const q = clean(query);
   const eligible = item => matchesOptInLocation(item, { city, state }) && includesQuery(item, q);
-  const profiles = Object.values(data.profiles || {}).filter(eligible);
+  // The signed-in user is also mirrored in profiles. Never let that copy bypass
+  // the separate Explore discoverability opt-in required for their own profile.
+  const profiles = Object.values(data.profiles || {}).filter(item =>
+    (data.user?.id == null || item.id !== data.user.id || data.exploreDiscoverable === true) && eligible(item)
+  );
   // Discoverability of the signed-in user requires BOTH profile and Explore consent.
   if (data.exploreDiscoverable === true && eligible(data.user) && !profiles.some(p => p.id === data.user.id)) {
     profiles.push(data.user);

@@ -52,6 +52,35 @@ test('Keyword and location filters both apply; signed-in user needs double conse
   assert.equal(searchOptInLocations(data, { state: 'Texas', query: 'other' }).profiles.length, 0);
 });
 
+
+test('Mirrored signed-in profile cannot bypass separate Explore location consent', () => {
+  const opt = { city: 'Houston', state: 'TX', locationDiscoverable: true };
+  const user = { id: 'me', username: 'My Private Location', ...opt };
+  const data = {
+    user,
+    exploreDiscoverable: false,
+    profiles: {
+      me: { ...user, username: 'Mirrored Profile' },
+      neighbor: { id: 'neighbor', username: 'Public Neighbor', ...opt },
+    },
+  };
+  const search = () => searchOptInLocations(data, { city: 'Houston', state: 'TX' }).profiles;
+  assert.deepEqual(search().map(profile => profile.id), ['neighbor'],
+    'mirrored own profile stays out of location results when Explore consent is off');
+
+  data.exploreDiscoverable = true;
+  assert.deepEqual(search().map(profile => profile.id), ['me', 'neighbor'],
+    'double opt-in includes the mirrored profile once, not twice');
+
+  delete data.profiles.me;
+  assert.deepEqual(search().map(profile => profile.id), ['neighbor', 'me'],
+    'double opt-in also works without a mirrored profile');
+
+  data.user.private = true;
+  assert.deepEqual(search().map(profile => profile.id), ['neighbor'],
+    'private own profiles never become discoverable even with both opt-ins');
+});
+
 test('Explore exposes city/state inputs, clears them, and preserves them across tabs', () => {
   const source = readFileSync(new URL('../src/pages/explore.js', import.meta.url), 'utf8');
   assert.match(source, /id="exploreCity"/);
@@ -62,4 +91,5 @@ test('Explore exposes city/state inputs, clears them, and preserves them across 
   assert.match(source, /nextCity.value = city/);
   assert.match(source, /nextState.value = region/);
   assert.match(source, /No GPS, precise addresses, real-time presence or backend/);
+  assert.match(source, /Your own profile needs both location and Explore discoverability enabled/);
 });
