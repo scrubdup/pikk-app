@@ -16,6 +16,7 @@ import {
 } from '../store.js';
 import { esc, toast, shellPage, timeAgo } from '../ui.js';
 import { navigate } from '../router.js';
+import { messageSearchText } from '../message-search.js';
 
 function refresh(hash) {
   navigate(hash || '#/messages');
@@ -69,7 +70,7 @@ function renderInbox(user) {
         ? `<span class="chip msg-unread-chip" aria-label="${unreadN} unread">${unreadN}</span>`
         : '';
       return `
-      <button type="button" class="msg-thread-row${unreadN ? ' has-unread' : ''}" data-search="${esc(String(t.peerName || t.peerId).toLowerCase())}" data-unread="${unreadN > 0}" data-open-thread="${esc(t.id)}">
+      <button type="button" class="msg-thread-row${unreadN ? ' has-unread' : ''}" data-search="${esc(messageSearchText(t))}" data-unread="${unreadN > 0}" data-open-thread="${esc(t.id)}">
         <div class="pikk-msg-avatar" aria-hidden="true">${esc(String(t.peerName || t.peerId || "?").slice(0,1).toUpperCase())}</div>
         <div class="pikk-msg-thread-body"><div class="msg-thread-top">
           <strong>${esc(t.peerName || t.peerId)}</strong>
@@ -88,7 +89,7 @@ function renderInbox(user) {
     </section>
     <div class="pikk-msg-tools">
       <label for="pikkMsgSearch">Search conversations</label>
-      <input id="pikkMsgSearch" type="search" placeholder="Search messages..." autocomplete="off" aria-controls="msgInbox" />
+      <input id="pikkMsgSearch" type="search" placeholder="Search names or latest messages..." autocomplete="off" aria-controls="msgInbox" />
       <label class="row" style="gap:8px;align-items:center;margin-top:8px" for="pikkMsgUnreadOnly"><input id="pikkMsgUnreadOnly" type="checkbox" aria-controls="msgInbox" /> Unread only (${unreadThreads.length})</label>
       <div class="pikk-msg-tool-actions"><button type="button" class="btn ghost" id="pikkMsgClearFilters" aria-controls="msgInbox" hidden>Clear filters</button><button type="button" class="btn primary" id="pikkNewChatTop">+ New chat</button><button type="button" class="btn ghost" id="pikkGroupTop">Group chat</button></div>
     </div>
