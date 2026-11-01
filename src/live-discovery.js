@@ -142,6 +142,11 @@ export function mountLiveDirectorySearch(root) {
         if (matches) groupMatches++;
       });
       group.style.display = !query || groupMatches ? '' : 'none';
+      const count = group.querySelector('.pikk-live-directory-count');
+      if (count) {
+        const total = group.querySelectorAll('.pikk-live-room-card').length;
+        count.textContent = query ? groupMatches + ' of ' + total + ' topics' : total + ' rooms';
+      }
       if (query && groupMatches) group.open = true;
       visible += groupMatches;
     }
