@@ -46,7 +46,7 @@ test('directory renders accessible collapsible groups with real channel filters'
   assert.match(html, /id="pikk-live-group-general" open/, 'IRL and Gaming section starts expanded');
   assert.ok(html.indexOf('id="pikk-live-group-general"') < html.indexOf('id="pikk-live-group-women"'), 'General Live is the first folder');
   assert.match(html, /17 topics/, 'all 17 General Live topics retained');
-  assert.doesNotMatch(html, /class="pikk-live-directory-count">\\d+ rooms/, 'discovery must not imply hosted rooms');
+  assert.doesNotMatch(html, /class="pikk-live-directory-count">\d+ rooms/, 'discovery must not imply hosted rooms');
   assert.match(html, /15 topics/);
   assert.ok(html.includes('<span class="pikk-live-directory-icon" aria-hidden="true">🫱🏻‍🫲🏿</span>'), 'Men\'s Rooms shows mixed-tone handshake in rendered directory');
   assert.match(html, /10 topics/);
