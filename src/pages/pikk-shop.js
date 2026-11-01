@@ -50,7 +50,7 @@ function merchCard(item) {
 
 export function renderPikkShop() {
   const chips = CATEGORIES.map((category) =>
-    `<button type="button" class="btn ${category === 'All' ? 'primary' : 'ghost'} pikk-shop-filter"
+    `<button type="button" class="chip pikk-chip pikk-shop-filter${category === 'All' ? ' on' : ''}"
       data-category="${esc(category)}" aria-pressed="${category === 'All' ? 'true' : 'false'}">${esc(category)}</button>`
   ).join('');
   const future = FUTURE_DEPARTMENTS.map((category) =>
@@ -161,10 +161,6 @@ export function bindPikkShop(root) {
     for (const button of buttons) {
       const active = button.dataset.category === category;
       button.setAttribute('aria-pressed', String(active));
-      if (button.classList.contains('pikk-shop-filter')) {
-        button.classList.toggle('primary', active);
-        button.classList.toggle('ghost', !active);
-      }
       button.classList.toggle('on', active);
     }
   }
