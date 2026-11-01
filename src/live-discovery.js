@@ -160,11 +160,18 @@ export function mountLiveDirectorySearch(root) {
       ? visible + ' matching topic' + (visible === 1 ? '' : 's') + ' · channel discovery only.'
       : 'Browse ' + visible + ' topics · these filter channels, not hosted rooms.';
   };
-  input.addEventListener('input', update);
-  clear.addEventListener('click', () => {
+  const clearSearch = () => {
     input.value = '';
     update();
     input.focus();
+  };
+  input.addEventListener('input', update);
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && input.value) {
+      event.preventDefault();
+      clearSearch();
+    }
   });
+  clear.addEventListener('click', clearSearch);
   update();
 }
