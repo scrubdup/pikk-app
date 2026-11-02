@@ -472,6 +472,37 @@ export function signOut() {
   state = { ...state, user: null };
   save(state);
 }
+export function syncRemoteAuthUser(remoteUser) {
+  if (!remoteUser?.id || !remoteUser?.handle) return null;
+  const previous = state.user && state.user.id === remoteUser.id ? state.user : {};
+  const user = {
+    ...previous,
+    id: remoteUser.id,
+    username: remoteUser.display_name || remoteUser.handle,
+    handle: remoteUser.handle,
+    email: remoteUser.email || '',
+    emailVerified: !!remoteUser.email_verified,
+    authSource: 'backend',
+    bio: previous.bio || '',
+    avatar: previous.avatar || '',
+    followers: previous.followers || [],
+    following: previous.following || [],
+    membership: previous.membership ?? null,
+    memberships: previous.memberships || { skeetPlus: false, backstage: false, innerCircle: false },
+    purchasedTracks: previous.purchasedTracks || [],
+    createdAt: previous.createdAt || Date.now(),
+  };
+  state = { ...state, user };
+  syncUserProfile(user);
+  save(state);
+  return user;
+}
+
+export function clearAuthenticatedUser() {
+  state = { ...state, user: null };
+  save(state);
+}
+
 
 export function updateProfile({ bio, avatar, username }) {
   const user = state.user;

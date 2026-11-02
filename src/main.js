@@ -38,7 +38,7 @@ import {
   notifyLiveOpen,
   notifyLiveClosed,
 } from './player.js';
-import { getState, ensureDemoPosts, markSplash, shouldShowSplash, getUnreadMessageCount, ensureDemoUnreadMessages } from './store.js';
+import { getState, ensureDemoPosts, markSplash, shouldShowSplash, getUnreadMessageCount, ensureDemoUnreadMessages, syncRemoteAuthUser, clearAuthenticatedUser } from './store.js';
 import { startRouter, onRoute, getRoute } from './router.js';
 import { ICONS, esc, shellPage, toast } from './ui.js';
 import { asset, rewriteAssetUrls } from './asset.js';
@@ -46,6 +46,7 @@ import { markActiveTab } from './tabbar-state.js';
 import { updateRouteIdentity } from './page-announcement.js';
 import { applyDrawerState } from './drawer-state.js';
 import { toggleMusicMenu, closeMusicMenu } from './music-menu.js';
+import { authApi, isPikkApiConfigured } from './api/auth-client.js';
 
 import { renderHome, bindHome } from './pages/home.js';
 import { renderUpdates, bindUpdates } from './pages/updates.js';
@@ -65,6 +66,7 @@ import { renderShield, bindShield } from './pages/shield.js';
 import { renderSupport, bindSupport } from './pages/support.js';
 import { renderMerch, bindMerch } from './pages/merch.js';
 import { renderProfile, bindProfile } from './pages/profile.js';
+import { renderVerifyEmail, bindVerifyEmail } from './pages/verify-email.js';
 import { renderClippers, bindClippers } from './pages/clippers.js';
 import { renderLive, bindLive } from './pages/live.js';
 import { renderViralLive, bindViralLive } from './pages/viral-live.js';
@@ -132,6 +134,7 @@ const ROUTES = {
   '/vault': { render: renderMusic, bind: bindMusic },
   '/merch': { render: renderMerch, bind: bindMerch },
   '/profile': { render: renderProfile, bind: bindProfile },
+  '/verify-email': { render: renderVerifyEmail, bind: bindVerifyEmail },
   '/clippers': { render: renderClippers, bind: bindClippers },
   '/videos': { render: renderVideos, bind: bindVideos },
   '/live': { render: renderLive, bind: bindLive },
@@ -512,7 +515,23 @@ function wireMessagesUnreadBadge() {
   });
 }
 
-function boot() {
+async function restoreBackendSession() {
+  if (!isPikkApiConfigured()) return;
+  const cached = getState().user;
+  if (cached && cached.authSource !== 'backend') clearAuthenticatedUser();
+  try {
+    const session = await authApi.me();
+    if (session?.user) syncRemoteAuthUser(session.user);
+  } catch (err) {
+    if (err?.status === 401) {
+      if (getState().user?.authSource === 'backend') clearAuthenticatedUser();
+      return;
+    }
+    console.warn('PIKK startup session check failed', err);
+  }
+}
+
+async function boot() {
   // Do not use a #app anchor: PIKK uses the URL hash for routing.
   document.getElementById('pikkSkipContent')?.addEventListener('click', () => {
     document.getElementById('app')?.focus();
@@ -552,6 +571,7 @@ function boot() {
     location.hash = '/notifications';
   });
 
+  await restoreBackendSession();
   onRoute(render);
   startRouter();
 

@@ -11,6 +11,7 @@ test('real auth client uses credentialed Cloudflare session requests', () => {
   assert.match(src, /'\/auth\/logout'/);
   assert.match(src, /'\/auth\/me'/);
   assert.match(src, /'\/auth\/verify'/);
+  assert.match(src, /'\/auth\/resend-verification'/);
 });
 
 test('real auth client does not hardcode an unverified Worker hostname', () => {
@@ -21,4 +22,10 @@ test('real auth client does not hardcode an unverified Worker hostname', () => {
 
 test('signup payload matches backend field names', () => {
   for (const field of ['email', 'handle', 'display_name', 'password', 'signup_roles']) assert.ok(src.includes(field), field);
+});
+
+
+test('Pages build receives the configured Worker API base', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /VITE_PIKK_API_BASE:\s*\$\{\{ vars\.PIKK_API_BASE \}\}/);
 });

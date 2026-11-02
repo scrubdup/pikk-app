@@ -9,9 +9,21 @@ try {
     const page = await browser.newPage({ viewport: { width, height }, reducedMotion: 'reduce' });
     const errors = [];
     page.on('pageerror', e => errors.push(String(e)));
-    await page.goto('http://127.0.0.1:5173/#/profile', { waitUntil: 'domcontentloaded' });
-    await page.locator('#signinName').fill('PIKK QA');
-    await page.locator('#signinBtn').click();
+    await page.addInitScript(() => {
+      localStorage.setItem('dbs_v1', JSON.stringify({
+        user: {
+          id: 'qa_user',
+          username: 'PIKK QA',
+          bio: '',
+          avatar: '',
+          followers: [],
+          following: [],
+          memberships: { skeetPlus: false, backstage: false, innerCircle: false },
+          purchasedTracks: [],
+          createdAt: Date.now(),
+        },
+      }));
+    });
     await page.goto('http://127.0.0.1:5173/#/communities', { waitUntil: 'domcontentloaded' });
     await page.locator('#pikkForum').waitFor();
     if (width >= 1100) {

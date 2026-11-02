@@ -29,6 +29,7 @@ jobs:
         env:
           VITE_BASE: /pikk-app/
           VITE_BUILD_SHA: ${{ github.sha }}
+          VITE_PIKK_API_BASE: ${{ vars.PIKK_API_BASE }}
       - name: SPA fallback 404.html
         run: cp dist/index.html dist/404.html
       - name: Publish built app to existing gh-pages branch
