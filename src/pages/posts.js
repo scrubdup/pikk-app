@@ -261,6 +261,25 @@ export function renderPosts(route) {
 }
 
 export function bindPosts(root) {
+  const remote = isPostsApiConfigured();
+  const persistentHost = root.querySelector('#pikkPersistentPosts');
+  const loadPersistentPosts = async () => {
+    if (!remote || !persistentHost) return;
+    try {
+      const following = typeof location !== 'undefined' && location.hash.includes('tab=following');
+      const data = following ? await postsApi.following() : await postsApi.discover();
+      persistentHost.innerHTML = renderPersistentPosts(data.posts || [], {
+        focusId: new URLSearchParams((location.hash.split('?')[1] || '').split('#')[0]).get('focus') || '',
+        currentHandle: getState().user?.handle || '',
+      });
+    } catch (err) {
+      persistentHost.innerHTML = err?.status === 401
+        ? '<div class="card muted">Sign in from <a href="#/profile">Profile</a> to load persistent PIKK posts.</div>'
+        : `<div class="card muted">Could not load persistent posts: ${esc(err?.message || 'Unknown error')}</div>`;
+    }
+  };
+  loadPersistentPosts();
+
   const focus = root.querySelector('.post-focus');
   if (focus) {
     try {
@@ -312,11 +331,24 @@ export function bindPosts(root) {
     });
   });
 
-  root.querySelector('#postSubmit')?.addEventListener('click', () => {
+  root.querySelector('#postSubmit')?.addEventListener('click', async () => {
     try {
       const text = root.querySelector('#postText')?.value;
       const mediaType = typeInput?.value || 'picture';
       const media = (root.querySelector('#postImg')?.value || '').trim();
+
+      if (remote) {
+        if (mediaType !== 'text') {
+          return toast('Persistent Picture/Short/Video uploads are not connected yet');
+        }
+        if (!text?.trim()) return toast('Write some words for a Text post');
+        await postsApi.createText(text.trim());
+        toast('Text post saved to PIKK');
+        await loadPersistentPosts();
+        if (root.querySelector('#postText')) root.querySelector('#postText').value = '';
+        return;
+      }
+
       if (mediaType === 'text') {
         if (!text?.trim()) return toast('Write some words for a Text post');
         createPost({ text: text.trim(), mediaType: 'text' });
@@ -337,6 +369,7 @@ export function bindPosts(root) {
       toast(mediaType.charAt(0).toUpperCase() + mediaType.slice(1) + ' posted');
       refresh();
     } catch (e) {
+      if (e?.code === 'email_unverified') return toast('Verify your email before posting');
       toast(e.message || 'Could not post');
     }
   });
@@ -383,6 +416,18 @@ export function bindPosts(root) {
       }
       refresh();
     });
+  });
+
+  root.addEventListener('click', async (event) => {
+    const btn = event.target.closest?.('.persistent-follow');
+    if (!btn || !remote) return;
+    try {
+      await postsApi.follow(btn.dataset.handle);
+      toast('Following @' + btn.dataset.handle);
+      await loadPersistentPosts();
+    } catch (err) {
+      toast(err?.code === 'email_unverified' ? 'Verify your email before following' : (err?.message || 'Could not follow'));
+    }
   });
 
   root.querySelectorAll('.follow-btn').forEach((btn) => {
