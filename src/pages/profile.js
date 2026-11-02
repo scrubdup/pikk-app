@@ -184,6 +184,7 @@ export function renderProfile(route) {
         <a class="btn" href="${esc(profileRouteHref(user.id, 'public'))}">Public view</a>
         <a class="btn" href="#/profile-shop">Profile Shop</a>
         <a class="btn" href="#/messages">Messages</a>
+        ${user.authSource === 'backend' && !user.emailVerified ? '<button class="btn ghost" id="resendVerifyBtn">Resend verification email</button>' : ''}
         <button class="btn ghost" id="signoutBtn">Sign out</button>
       </div>
     </section>
@@ -288,6 +289,19 @@ export function bindProfile(root) {
       refresh('#/profile');
     } catch (err) {
       toast(err?.message || 'Could not sign in');
+    }
+  });
+  root.querySelector('#resendVerifyBtn')?.addEventListener('click', async () => {
+    try {
+      const r = await authApi.resendVerification();
+      const delivery = r?.verification?.delivery;
+      if (delivery === 'email_sent') toast('Verification email sent');
+      else if (delivery === 'already_verified') toast('Email is already verified');
+      else if (delivery === 'email_provider_not_configured') toast('Verification email service is not configured yet');
+      else if (delivery === 'email_send_failed') toast('Verification email could not be sent');
+      else toast('Verification request created');
+    } catch (err) {
+      toast(err?.message || 'Could not resend verification email');
     }
   });
   root.querySelector('#signoutBtn')?.addEventListener('click', async () => {
