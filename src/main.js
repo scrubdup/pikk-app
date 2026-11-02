@@ -67,6 +67,7 @@ import { renderShield, bindShield } from './pages/shield.js';
 import { renderSupport, bindSupport } from './pages/support.js';
 import { renderSupportStaff, bindSupportStaff } from './pages/support-staff.js';
 import { renderCreatorReview, bindCreatorReview } from './pages/creator-review.js';
+import { renderAdminBootstrap, bindAdminBootstrap } from './pages/admin-bootstrap.js';
 import { renderMerch, bindMerch } from './pages/merch.js';
 import { renderProfile, bindProfile } from './pages/profile.js';
 import { renderVerifyEmail, bindVerifyEmail } from './pages/verify-email.js';
@@ -137,6 +138,7 @@ const ROUTES = {
   '/support': { render: renderSupport, bind: bindSupport },
   '/support-staff': { render: renderSupportStaff, bind: bindSupportStaff },
   '/creator-review': { render: renderCreatorReview, bind: bindCreatorReview },
+  '/admin-bootstrap': { render: renderAdminBootstrap, bind: bindAdminBootstrap },
   '/vault': { render: renderMusic, bind: bindMusic },
   '/merch': { render: renderMerch, bind: bindMerch },
   '/profile': { render: renderProfile, bind: bindProfile },
