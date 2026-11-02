@@ -30,7 +30,7 @@ test('Roast rounds are automated with timed audience voting and no host', () => 
 });
 
 test('Roast Arena documents breaks, tie resolution and rematch voting', () => {
-  assert.match(arena, /audience voting window is the only break<\/strong> \(10 seconds · test value · owner verification needed\)/);
+  assert.match(arena, /audience voting window is the only break<\/strong> \(\$\{VOTE_SECONDS\} seconds, owner-approved\)/);
   assert.match(arena, /tiebreaker final round/);
   assert.match(arena, /Rematch: Yes/);
   assert.match(arena, /Rematch: No/);
@@ -54,16 +54,17 @@ test('Roast Arena Tag-Team preview is TEST MODE with test-value format', () => {
   assert.match(arena, /ROAST_TAG_TEAM_TEST_FORMAT_OWNER_VERIFICATION_NEEDED/);
 });
 
-test('Roast page marks approved timings and keeps only rematch window and tag-team format flagged', () => {
+test('Roast page shows owner-approved vote/rematch timings unflagged and keeps tag-team format flagged', () => {
   assert.match(arena, /Every contestant must agree/);
   assert.match(arena, /Viewers do not vote on rematches/);
-  assert.match(arena, /decision window \$\{REMATCH_SECONDS\}s <em>· test value · owner verification needed/);
+  assert.match(arena, /decision window \$\{REMATCH_SECONDS\}s, rematch rounds are also \$\{ROUND_SECONDS\}s\)/);
+  assert.doesNotMatch(arena, /SECONDS\}s <em>· test value/);
   assert.doesNotMatch(arena, /one tiebreaker round is played\. <em>\(test values/);
   assert.match(arena, /Tag-Team format is a test value/);
 });
 
-test('vote window flagged as test value and turnout shown as TEST MODE', () => {
-  assert.match(arena, /vote window \$\{VOTE_SECONDS\}s <em>· test value · owner verification needed/);
+test('vote window is owner-approved and turnout shown as TEST MODE', () => {
+  assert.match(arena, /vote window \$\{VOTE_SECONDS\}s\)/);
   assert.match(arena, /eligible viewers voted/);
   assert.match(arena, /TEST MODE · test viewer list/);
 });

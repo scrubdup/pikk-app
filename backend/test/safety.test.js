@@ -51,6 +51,14 @@ describe('reports', () => {
     expect(r.status).toBe(201); expect(r.json.report.priority).toBe(2);
     expect((await call('POST', '/reports', { cookie: u.cookie, body })).status).toBe(409);
     expect((await call('POST', '/reports', { cookie: u.cookie, body: { ...body, category: 'nope' } })).status).toBe(422);
+    for (const bad of [undefined, '', 'nope', null, 'SPAM']) {
+      const b2 = { ...body, target_id: `nocat_${String(bad)}` }; if (bad === undefined) delete b2.category; else b2.category = bad;
+      const rr = await call('POST', '/reports', { cookie: u.cookie, body: b2 });
+      expect(rr.status).toBe(422);
+      expect(rr.json?.report).toBeUndefined();
+      const row = await env.DB.prepare(`SELECT COUNT(*) AS n FROM reports WHERE target_id = ?`).bind(b2.target_id).first();
+      expect(row.n).toBe(0);
+    }
     let last;
     for (let i = 0; i < 10; i++) last = await call('POST', '/reports', { cookie: u.cookie, body: { ...body, target_id: `t${i}` } });
     expect(last.status).toBe(429);
