@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs';
 const mem = new Map(); globalThis.localStorage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
 const ss = await import('../src/settings-store.js');
 const read = (f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8');
-test('#/settings route remains registered in the drawer without a top-header shortcut', () => {
+test('#/settings route registered; header gear (next to $) + drawer point at it', () => {
   assert.match(read('src/main.js'), /'\/settings': \{ render: renderSettings, bind: bindSettings \}/);
-  assert.doesNotMatch(read('index.html'), /id="settingsBtn"/);
+  assert.match(read('index.html'), /id="paymentsBtn"[\s\S]*?<\/a>\s*<a class="pill header-explore-search header-settings" id="settingsBtn" href="#\/settings"/);
   assert.match(read('src/nav-sections.js'), /label: 'Settings', href: '#\/settings'/);
 });
 test('settings page has all groups and saves locally', () => {

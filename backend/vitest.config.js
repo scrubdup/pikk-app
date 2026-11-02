@@ -9,11 +9,12 @@ export default defineConfig(async () => {
       wrangler: { configPath: './wrangler.jsonc' },
       miniflare: {
         bindings: {
+          // PIKK Vault (test-only key; kept at the top so it never touches lines other PRs append to).
+          VAULT_SIGNING_KEY: 'vault_local_test_only_not_a_real_signing_key_0123456789',
           TEST_MIGRATIONS: migrations,
           EXPOSE_VERIFY_TOKEN: 'true',
           STRIPE_WEBHOOK_SECRET: 'whsec_local_test_only_not_a_real_secret',
           AGE_VERIFY_WEBHOOK_SECRET: 'agev_local_test_only_not_a_real_secret',
-          VAULT_SIGNING_KEY: 'vault_local_test_only_not_a_real_signing_key_0123456789',
         },
       },
     })],

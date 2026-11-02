@@ -13,6 +13,7 @@
     { "binding": "DB", "database_name": "pikk-db", "database_id": "d545246b-49f7-4a0a-92b4-b18c570baef8", "migrations_dir": "migrations" }
   ],
   // PIKK Vault media bucket: LOCAL PLACEHOLDER ONLY (Miniflare/wrangler dev --local). Not provisioned on any account.
+  // Vault secret (set via `wrangler secret put`, never committed): VAULT_SIGNING_KEY (>=32 chars). Optional var: VAULT_ACCESS_URL_TTL_SEC (default 300).
   "r2_buckets": [
     { "binding": "MEDIA", "bucket_name": "pikk-media-local-placeholder" }
   ],
@@ -26,7 +27,6 @@
     "EXPOSE_VERIFY_TOKEN": "false",
     "PUBLIC_APP_URL": "https://scrubdup.github.io/pikk-app/"
   }
-  // Secrets (set via `wrangler secret put`, never committed): RESEND_API_KEY, STRIPE_WEBHOOK_SECRET, VAULT_SIGNING_KEY (>=32 chars)
+  // Secrets (set via `wrangler secret put`, never committed): RESEND_API_KEY, STRIPE_WEBHOOK_SECRET
   // Set EMAIL_FROM to a verified sender, e.g. "PIKK <verify@your-domain.example>", before enabling production email.
-  // Optional var: VAULT_ACCESS_URL_TTL_SEC (default 300)
 }
