@@ -8,3 +8,12 @@ html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 {
   padding-bottom: env(safe-area-inset-bottom, 0px) !important;
 }
 html body #app { padding-bottom: calc(var(--tab-h) + 8px + env(safe-area-inset-bottom, 0px)) !important; }
+/* t422u-fix: keep left cluster (profile · $ · search) clear of the centred logo on phones. */
+@media (max-width: 480px) {
+  html body .top#topBar { gap: 4px; }
+  html body .top#topBar :is(.pill, .icon-btn) { width: 32px !important; height: 32px !important; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; }
+  html body .top#topBar .logo-img { width: min(32vw, 340px); height: calc(min(32vw, 340px) * 0.2366); }
+}
+@media (max-width: 370px) {
+  html body .top#topBar :is(.pill, .icon-btn) { width: 30px !important; height: 30px !important; }
+}

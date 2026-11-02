@@ -14,3 +14,14 @@ test('t422u tab bar flush bottom with safe-area padding', () => {
   assert.match(html, /viewport-fit=cover/);
   assert.match(main, /import '.\/pikk-t422u.css'/);
 });
+test('t422u-fix: search icon right edge < logo left edge at 360/390/430', () => {
+  const icon = (w) => Number(css.match(new RegExp(`max-width: ${w}px\\)[^@]*?:is\\(\\.pill, \\.icon-btn\\) \\{ width: (\\d+)px`))[1]);
+  const gap = Number(css.match(/\.top#topBar \{ gap: (\d+)px/)[1]);
+  const logoVw = Number(css.match(/logo-img \{ width: min\((\d+)vw/)[1]);
+  for (const [w, padL] of [[360, 5], [390, 9], [430, 9]]) {
+    const size = w <= 370 ? icon(370) : icon(480);
+    const searchRight = padL + 3 * size + 2 * gap;
+    const logoLeft = (w - (w * logoVw) / 100) / 2;
+    assert.ok(searchRight < logoLeft, `${w}px: search right ${searchRight} must be < logo left ${logoLeft}`);
+  }
+});
