@@ -12,7 +12,8 @@ const sig = (page) => page.evaluate((G) => [...document.querySelectorAll(`:is(${
   return { h: Math.round(r.height), pad: c.padding, tapH: Math.round(tapH), txt: e.textContent.trim().slice(0, 16), sel, color: c.color, fs: c.fontSize, fw: c.fontWeight, pill: parseFloat(c.borderRadius) >= r.height / 2 - 1,
     blue: /(30|47), 107, 255/.test(c.borderTopColor), glossy: c.backgroundImage.includes('rgba(255, 255, 255, 0.42)'), flat: c.backgroundImage === 'none' };
 }), GROUPS);
-const open = async (r) => { const p = await b.newPage({ viewport: { width: 390, height: 844 } }); await p.goto(base + '#' + r, { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(+(process.env.W || 6500)); return p; };
+const settle = async (p) => { await p.waitForSelector('#splash', { state: 'detached', timeout: 20000 }); await p.waitForSelector('#app > *', { timeout: 20000 }); await p.waitForTimeout(400); };
+const open = async (r) => { const p = await b.newPage({ viewport: { width: 390, height: 844 } }); await p.goto(base + '#' + r, { waitUntil: 'domcontentloaded' }); await settle(p); return p; };
 const hp = await open('/home'); const home = (await sig(hp)).filter((x) => x.txt); await hp.close();
 const ref = home.find((x) => !x.sel); let bad = 0;
 console.log('/home ref h', ref?.h, 'pad', ref?.pad, 'tap', ref?.tapH);
@@ -43,18 +44,31 @@ const hitTest = (page) => page.evaluate(async (G) => {
     let r = e.getBoundingClientRect(); if (!r.width) continue;
     e.scrollIntoView({ block: 'center', inline: 'nearest' }); await new Promise((f) => requestAnimationFrame(() => f()));
     r = e.getBoundingClientRect(); if (r.left < 0 || r.right > innerWidth) continue;
-    const x = Math.round(r.left + r.width / 2);
-    for (const [lbl, y] of [['above', r.top - 5], ['below', r.bottom + 5]]) {
+    for (const f of [0.25, 0.5, 0.75]) for (const [lbl, y] of [['above', r.top - 5], ['below', r.bottom + 5]]) {
+      const x = Math.round(r.left + r.width * f);
       const hit = document.elementFromPoint(x, y); out.tested++;
-      if (!(hit === e || e.contains(hit))) out.fail.push(`${e.textContent.trim().slice(0, 14)} ${lbl} -> ${hit ? (hit.className || hit.tagName).toString().slice(0, 30) : 'null'}`);
+      if (!(hit === e || e.contains(hit))) out.fail.push(`${e.textContent.trim().slice(0, 14)} ${lbl}@${f * 100}% -> ${hit ? (hit.className || hit.tagName).toString().slice(0, 30) : 'null'}`);
+    }
+  }
+  // Tap areas (from the computed ::before box) of neighbouring chips must not overlap.
+  out.overlaps = 0;
+  for (const g of document.querySelectorAll(G)) {
+    const boxes = [...g.children].filter((c) => c.getBoundingClientRect().width).map((c) => {
+      const r = c.getBoundingClientRect(); const b = getComputedStyle(c, '::before'); const cs = getComputedStyle(c);
+      const bt = parseFloat(cs.borderTopWidth), bl = parseFloat(cs.borderLeftWidth);
+      return { l: r.left + bl + parseFloat(b.left), r: r.right - bl - parseFloat(b.right), t: r.top + bt + parseFloat(b.top), b: r.bottom - bt - parseFloat(b.bottom) };
+    });
+    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+      const a = boxes[i], c = boxes[j];
+      if (Math.min(a.r, c.r) - Math.max(a.l, c.l) > 0.5 && Math.min(a.b, c.b) - Math.max(a.t, c.t) > 0.5) out.overlaps++;
     }
   }
   return out;
 }, GROUPS);
 for (const w of [360, 390, 430]) for (const r of ['/home', ...ROUTES]) {
-  const p = await b.newPage({ viewport: { width: w, height: 844 } }); await p.goto(base + '#' + r, { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(+(process.env.W || 6500));
+  const p = await b.newPage({ viewport: { width: w, height: 844 } }); await p.goto(base + '#' + r, { waitUntil: 'domcontentloaded' }); await settle(p);
   const h = await hitTest(p); await p.close();
-  console.log('hit', w, r, 'points', h.tested, 'miss', h.fail.length, h.fail.slice(0, 3).join(' | '));
-  if (h.fail.length) bad++;
+  console.log('hit', w, r, 'points', h.tested, 'miss', h.fail.length, 'overlaps', h.overlaps, h.fail.slice(0, 3).join(' | '));
+  if (h.fail.length || h.overlaps) bad++;
 }
 await b.close(); process.exit(bad ? 1 : 0);
