@@ -263,7 +263,7 @@ export function bindProfile(root) {
             ${avatar}
             <div><h2 style="margin:0">${esc(p.display_name || p.handle)}</h2><p class="muted" style="margin:4px 0 0">@${esc(p.handle)}</p><p class="muted" style="margin:6px 0 0">${esc(p.bio || '')}</p></div>
           </div>
-          <div class="row wrap pikk-profile-shortcuts"><a class="btn" href="#/posts">Posts feed</a><a class="btn ghost" href="#/messages?view=new">Message</a><a class="btn ghost" href="#/profile">My profile</a></div>
+          <div class="row wrap pikk-profile-shortcuts"><a class="btn" href="#/posts">Posts feed</a><a class="btn ghost" href="#/messages?view=new&handle=${encodeURIComponent(p.handle)}">Message</a><a class="btn ghost" href="#/profile">My profile</a></div>
         </section>`;
     }).catch((err) => {
       backendPublic.innerHTML = `<div class="card muted">${esc(err?.message || 'User not found')}<br/><a class="btn" href="#/profile">Back</a></div>`;
