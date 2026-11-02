@@ -8,8 +8,12 @@ import { contentRoute } from './media-content.js';
 import { NOT_BLOCKED_SQL } from './blocks.js';
 import { MEDIA_LIMITS, STORY_TTL_HOURS, ACCESS_POLICIES, UPLOAD_RATE, VAULT_VERSION } from './media-config.js';
 import { sniff } from './magic.js';
+import { assertQuota, userUsage, storageRoute, stats } from './storage.js';
+import { startMultipart, multipartRoute } from './multipart.js';
+import { backupRoute, backupHealth } from './backup.js';
+import { VAULT_QUOTA } from './media-config.js';
 import { enqueueStmts, getProcessor, processingRoute, processingHealth } from './processing.js';
-import { vaultKey, vaultDeleteFor, assertVaultKeyFor } from './vault-keys.js';
+import { vaultKey, vaultDeleteFor, vaultPutFor, assertVaultKeyFor } from './vault-keys.js';
 
 const ID = '(med_[A-Za-z0-9_-]{8,64})';
 const now = () => new Date().toISOString();
@@ -55,7 +59,9 @@ async function createUpload(env, req, ctx) {
   const access = b.access === undefined ? 'private' : b.access;
   if (!ACCESS_POLICIES.includes(access)) errs.access = `one of ${ACCESS_POLICIES.join(', ')}`;
   if (b.story !== undefined && typeof b.story !== 'boolean') errs.story = 'boolean';
+  if (b.multipart !== undefined && typeof b.multipart !== 'boolean') errs.multipart = 'boolean';
   if (Object.keys(errs).length) throw new ApiError(422, 'validation_failed', 'Invalid input', errs);
+  await assertQuota(env, s.user.id, b.size); // slice 4: 413 quota_exceeded
   const id = newId('med'); const t = now();
   const key = vaultKey(b.type, s.user.id, id);  // server-chosen vault/<type>/<owner>/<id>; client filename never used in key
   const expires = b.story ? new Date(Date.now() + STORY_TTL_HOURS * 3600e3).toISOString() : null;
@@ -64,7 +70,13 @@ async function createUpload(env, req, ctx) {
       VALUES (?,?,?,?,?,?,?,?,?,'pending_upload',?,?,?)`).bind(id, s.user.id, b.type, b.story ? 1 : 0, key, sanitizeFilename(b.filename), b.content_type, b.size, access, expires, t, t),
     auditStmt(env, { actor: s.user.id, action: 'media.upload_created', target: id, ip: clientIp(req), meta: { type: b.type, size: b.size } }),
   ]);
-  return json(201, { upload: { id, upload_url: `/media/uploads/${id}`, method: 'PUT', max_bytes: b.size, expires_at: expires } });
+  if (b.multipart) {
+    let mp;
+    try { mp = await startMultipart(env, { id, owner_id: s.user.id, media_type: b.type }, key, b.size, b.part_size); }
+    catch (e) { await env.DB.prepare(`UPDATE media SET state='deleted', deleted_at=?, last_error='multipart init failed', updated_at=? WHERE id=?`).bind(now(), now(), id).run(); throw e; }
+    return json(201, { upload: { id, mode: 'multipart', ...mp, cancel_url: `/media/uploads/${id}`, expires_at: expires } });
+  }
+  return json(201, { upload: { id, mode: 'single', upload_url: `/media/uploads/${id}`, method: 'PUT', max_bytes: b.size, cancel_url: `/media/uploads/${id}`, expires_at: expires } });
 }
 
 async function ownedMedia(env, ctx, id) {
@@ -81,7 +93,7 @@ async function putUpload(env, req, ctx, id) {
   const len = Number(req.headers.get('Content-Length'));
   if (!Number.isSafeInteger(len) || len <= 0) throw new ApiError(411, 'length_required', 'Content-Length required');
   if (len !== r.size_bytes) throw new ApiError(len > r.size_bytes ? 413 : 422, len > r.size_bytes ? 'payload_too_large' : 'size_mismatch', 'Body size must equal declared size', { expected: r.size_bytes });
-  const obj = await storage(env).put(r.object_key, req.body, { httpMetadata: { contentType: 'application/octet-stream' } });
+  const obj = await vaultPutFor(storage(env), r.object_key, r, req.body, { httpMetadata: { contentType: 'application/octet-stream' } });
   if (!obj || obj.size !== r.size_bytes) {
     await vaultDeleteFor(storage(env), r.object_key, r);
     await setState(env, id, 'failed', 'stored size mismatch');
@@ -150,6 +162,14 @@ async function getMedia(env, ctx, id) {
   return json(200, { media: pub });
 }
 
+async function usersOverAlert(env) {
+  const r = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM (SELECT m.owner_id, SUM(m.size_bytes) AS b, COALESCE(o.max_bytes, ?1) AS q FROM media m LEFT JOIN vault_quota_overrides o ON o.user_id=m.owner_id
+      WHERE m.deleted_at IS NULL AND m.state IN ('pending_upload','uploaded','processing','ready') GROUP BY m.owner_id) WHERE b * 100 >= q * ?2`)
+    .bind(VAULT_QUOTA.defaultUserBytes, VAULT_QUOTA.alertThresholdPct).first();
+  return r.n;
+}
+
 async function health(env, ctx) {
   requirePermission(ctx, 'admin.access');
   let reachable = false; let storageError = null; const configured = !!env.MEDIA;
@@ -167,6 +187,12 @@ async function health(env, ctx) {
     counts_by_state: by,
     last_error: last ? { media_id: last.id, state: last.state, message: last.last_error, at: last.updated_at } : null,
     ...(await processingHealth(env)), // slice 3, additive
+    // slice 4, additive
+    backup: await backupHealth(env),
+    quotas: { default_user_bytes: VAULT_QUOTA.defaultUserBytes, alert_threshold_pct: VAULT_QUOTA.alertThresholdPct,
+      users_over_alert: await usersOverAlert(env) },
+    multipart: { active_uploads: (await stats(env)).backlog.active_multipart_uploads },
+    thumbnails: 'unavailable_pending_provider',
   });
 }
 
@@ -177,6 +203,12 @@ export async function mediaRoute(env, req, ctx, m, p) {
   if (m === 'PUT' && (mm = p.match(new RegExp(`^/media/uploads/${ID}$`)))) return putUpload(env, req, ctx, mm[1]);
   if (m === 'POST' && (mm = p.match(new RegExp(`^/media/${ID}/complete$`)))) return complete(env, req, ctx, mm[1]);
   if (m === 'GET' && (mm = p.match(new RegExp(`^/media/${ID}$`)))) return getMedia(env, ctx, mm[1]);
+  const mp = await multipartRoute(env, req, ctx, m, p, ID);
+  if (mp) return mp;
+  const st = await storageRoute(env, req, ctx, m, p);
+  if (st) return st;
+  const bk = await backupRoute(env, req, ctx, m, p);
+  if (bk) return bk;
   const j = await processingRoute(env, req, ctx, m, p);
   if (j) return j;
   const c = await contentRoute(env, req, ctx, m, p, ID);

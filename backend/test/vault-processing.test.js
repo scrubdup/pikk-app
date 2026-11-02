@@ -251,7 +251,7 @@ describe('slice 3: /vault/health', () => {
     await settle(id);
     const h = await call('GET', '/vault/health', { cookie: adm.cookie });
     expect(h.status).toBe(200);
-    expect(h.json).toMatchObject({ status: 'ok', version: 'vault-slice3-0.3.0', checked_at: expect.any(String),
+    expect(h.json).toMatchObject({ status: 'ok', version: expect.stringMatching(/^vault-slice\d+-/), checked_at: expect.any(String),
       storage: { binding: 'MEDIA', reachable: true, error: null }, counts_by_state: expect.any(Object) });
     expect('last_error' in h.json).toBe(true);
     expect(h.json.counts_by_state.processing).toEqual(expect.any(Number));

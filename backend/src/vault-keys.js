@@ -50,6 +50,12 @@ export async function vaultDeleteFor(bucket, key, row) {
   return bucket.delete(key);
 }
 
+/** Write the object of THIS row only (key bound to owner/type/id). */
+export async function vaultPutFor(bucket, key, row, body, opts) {
+  assertVaultKeyFor(key, row);
+  return bucket.put(key, body, opts);
+}
+
 /** List Vault objects only. Caller prefix (if any) must itself be under vault/; results are re-filtered. */
 export async function vaultList(bucket, { prefix = VAULT_PREFIX, ...opts } = {}) {
   if (typeof prefix !== 'string' || !prefix.startsWith(VAULT_PREFIX) || prefix.includes('..')) throw new VaultKeyError(prefix);
