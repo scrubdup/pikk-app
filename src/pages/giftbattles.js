@@ -4,6 +4,11 @@ import {
   listDemoBattleStreamers,
   GB_DURATION_MS,
   GB_CHAMPION_MS,
+  GB_VOTE_MS,
+  castBattleVote,
+  battleVoteTurnout,
+  battleEligibleVoters,
+  GB_TEST_VIEWERS,
   getGiftBattlePrefs,
   setGiftBattlePrefs,
   getActiveGiftBattle,
@@ -66,9 +71,10 @@ function renderRules() {
       <ul class="gb-rules-list">
         <li><strong>Streamer vs streamer.</strong> A live streamer invites another live streamer; the invited streamer accepts or declines. Viewers cannot be contestants.</li>
         <li>Split screen · <strong>${GB_DURATION_MS / 1000}-second</strong> countdown starts when the invite is accepted.</li>
-        <li>Viewers send <strong>TEST gifts</strong> to a streamer&apos;s side. Score = TEST gift points <em>(scoring weights · owner verification needed)</em>.</li>
-        <li>Higher score wins and the winner is announced. Equal scores = tie, no badge <em>(tie handling · owner verification needed)</em>.</li>
-        <li>The winner gets a <strong>${GB_CHAMPION_MS / 3600000}-hour champion badge</strong>, counted from the moment of the win.</li>
+        <li>After the countdown, a <strong>${GB_VOTE_MS / 1000}s audience vote</strong> <em>(vote length · owner verification needed)</em>. One vote per eligible viewer; the two streamers cannot vote.</li>
+        <li><strong>Audience votes decide the winner, not gifts.</strong> Viewers can still send TEST gifts to a streamer; the gift tally is shown but does not score.</li>
+        <li>Most votes wins and the winner is announced. Equal votes = tie, no badge <em>(tie handling · owner verification needed)</em>.</li>
+        <li>The winner gets a <strong>${GB_CHAMPION_MS / 3600000}-hour champion badge</strong>, counted from the moment of the win <em>(repeat win / newer champion · owner verification needed)</em>.</li>
       </ul>
       <p class="muted" style="margin:10px 0 0">TEST MODE · TEST gifts only · no real payments, wallet charges or server events.</p>
     </div>`;
@@ -94,7 +100,7 @@ function renderChampion(champ) {
       </div>
       <h3 class="gb-champion-name">${esc(champ.username)}</h3>
       <p class="muted" style="margin:0">
-        Score ${esc(String(champ.score))} TEST pts · badge expires in ~${hrs}h ${mins}m
+        ${esc(String(champ.score))} votes · badge expires in ~${hrs}h ${mins}m
         (<time data-gb-badge-expires datetime="${new Date(champ.championUntil).toISOString()}">${esc(new Date(champ.championUntil).toLocaleString())}</time>)
       </p>
     </div>`;
@@ -106,7 +112,7 @@ function renderLiveGate(liveActive, live) {
       <div class="card gb-live-banner">
         <span class="chip">LIVE</span>
         <strong style="margin-left:8px">${esc(live.title || 'Live')}</strong>
-        <p class="muted" style="margin:6px 0 0">You are streaming, so you can invite another live streamer.</p>
+        <p class="muted" style="margin:6px 0 0">You are streaming, so you can invite another live streamer <em>(who counts as a streamer · owner verification needed)</em>.</p>
       </div>`;
   }
   return `
@@ -118,13 +124,14 @@ function renderLiveGate(liveActive, live) {
 }
 
 function splitScreen(battle) {
-  const tile = (who, score, side) => `<div class="gb-split-tile" data-gb-tile="${side}" style="flex:1;min-width:0;text-align:center;border:2px dashed currentColor;border-radius:12px;padding:10px">
+  const tile = (who, gifts, votes, side) => `<div class="gb-split-tile" data-gb-tile="${side}" style="flex:1;min-width:0;text-align:center;border:2px dashed currentColor;border-radius:12px;padding:10px">
       <div class="muted" style="font-size:12px">TEST MODE · placeholder stream · no camera</div>
       <strong>${esc(who.name)}</strong>
-      <div class="gb-score" id="gbScore${side}">${esc(String(score))} pts</div>
+      <div class="gb-gifts" id="gbGift${side}">TEST gifts: ${esc(String(gifts))} <span class="muted">(does not score)</span></div>
+      ${votes == null ? '' : `<div class="gb-score" id="gbVotes${side}">${esc(String(votes))} votes</div>`}
     </div>`;
   return `<div class="gb-split" role="group" aria-label="Split screen" style="display:flex;gap:8px;align-items:stretch">
-      ${tile(battle.challenger, battle.scoreA, 'A')}<div class="gb-vs" aria-hidden="true" style="align-self:center">VS</div>${tile(battle.opponent, battle.scoreB, 'B')}
+      ${tile(battle.challenger, battle.giftA || 0, battle.status === 'voting' || battle.status === 'ended' ? battle.votesA || 0 : null, 'A')}<div class="gb-vs" aria-hidden="true" style="align-self:center">VS</div>${tile(battle.opponent, battle.giftB || 0, battle.status === 'voting' || battle.status === 'ended' ? battle.votesB || 0 : null, 'B')}
     </div>`;
 }
 
@@ -155,13 +162,36 @@ function renderActive(battle) {
       <h3 style="margin-top:16px">Viewers: send a TEST gift to a streamer</h3>
       <div class="row wrap" style="gap:8px">${gifts('challenger', battle.challenger)}</div>
       <div class="row wrap" style="gap:8px;margin-top:8px">${gifts('opponent', battle.opponent)}</div>
-      <p class="muted" style="margin:8px 0 0">TEST points only · no wallet charge or payment.</p>
+      <p class="muted" style="margin:8px 0 0">TEST gifts only · they do not score; audience votes decide the winner · no wallet charge or payment.</p>
+    </div>`;
+}
+
+let actingViewer = GB_TEST_VIEWERS[0];
+function renderVoting(battle) {
+  const msLeft = Math.max(0, (battle.voteEndsAt || 0) - Date.now());
+  const { voted, eligible } = battleVoteTurnout(battle);
+  const voters = battleEligibleVoters(battle);
+  if (!voters.includes(actingViewer)) actingViewer = voters[0];
+  const already = (battle.voters || []).includes(actingViewer);
+  return `
+    <div class="card gb-battle" data-gb-status="voting">
+      <div class="gb-countdown" aria-live="polite" aria-atomic="true">
+        <span class="gb-countdown-label">Vote: who won?</span>
+        <span class="gb-countdown-clock" id="gbVoteClock">${esc(fmtClock(msLeft))}</span>
+      </div>
+      <p class="muted" style="margin:0 0 8px">Vote window ${GB_VOTE_MS / 1000}s <em>(owner verification needed)</em> · audience votes decide the winner, not gifts · streamers cannot vote.</p>
+      ${splitScreen(battle)}
+      <p data-gb-turnout style="margin-top:10px"><strong>${voted} of ${eligible} eligible viewers voted</strong> <span class="chip">TEST MODE · test viewer list</span></p>
+      <label>Acting as test viewer: <select id="gbViewer">${voters.map((v) => `<option ${v === actingViewer ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label>
+      ${already ? '<p class="muted">This viewer already voted.</p>' : `<p>Tap a streamer to vote:</p>
+      <p><button type="button" class="btn primary gb-vote-tap" data-gb-vote="challenger">${esc(battle.challenger.name)}</button>
+      <button type="button" class="btn primary gb-vote-tap" data-gb-vote="opponent">${esc(battle.opponent.name)}</button></p>`}
     </div>`;
 }
 
 function renderEnded(battle) {
   let headline = 'Tie';
-  let sub = 'Equal scores · no badge (tie handling · owner verification needed)';
+  let sub = 'Equal votes · no badge (tie handling · owner verification needed)';
   if (battle.result === 'win' && battle.winnerName) {
     headline = `Winner · ${battle.winnerName}`;
     sub = '24-hour champion badge awarded from the moment of the win';
@@ -181,8 +211,8 @@ function renderEnded(battle) {
       <h3 class="gb-winner-banner">${esc(headline)}</h3>
       <p class="muted">${esc(sub)}</p>
       <p class="gb-score-text" style="margin:12px 0">
-        Final: ${esc(battle.challenger?.name || '?')} ${esc(String(battle.scoreA))} —
-        ${esc(battle.opponent?.name || '?')} ${esc(String(battle.scoreB))} TEST pts
+        Votes: ${esc(battle.challenger?.name || '?')} ${esc(String(battle.scoreA))} —
+        ${esc(battle.opponent?.name || '?')} ${esc(String(battle.scoreB))} · TEST gifts (not scored): ${esc(String(battle.giftA || 0))} — ${esc(String(battle.giftB || 0))}
       </p>
       <button type="button" class="btn primary" id="gbClear">New battle</button>
     </div>`;
@@ -238,7 +268,7 @@ function renderHistoryAndTops() {
                 : h.result || h.status;
           return `<li>
             <strong>${esc(label)}</strong>
-            <span class="muted"> · ${esc(h.challenger?.name || '?')} ${esc(String(h.scoreA))} vs ${esc(h.opponent?.name || '?')} ${esc(String(h.scoreB))} pts · ${esc(timeAgo(h.endedAt || h.createdAt || 0))} · ${esc(h.mode || '')}</span>
+            <span class="muted"> · ${esc(h.challenger?.name || '?')} ${esc(String(h.scoreA))} vs ${esc(h.opponent?.name || '?')} ${esc(String(h.scoreB))} votes · ${esc(timeAgo(h.endedAt || h.createdAt || 0))} · ${esc(h.mode || '')}</span>
           </li>`;
         })
         .join('')
@@ -247,7 +277,7 @@ function renderHistoryAndTops() {
     ? tops
         .map(
           (t, i) =>
-            `<li><span class="chip">#${i + 1}</span> <strong>${esc(t.username)}</strong> <span class="muted">${t.wins} win${t.wins === 1 ? '' : 's'} · ${esc(String(t.points))} TEST pts</span></li>`
+            `<li><span class="chip">#${i + 1}</span> <strong>${esc(t.username)}</strong> <span class="muted">${t.wins} win${t.wins === 1 ? '' : 's'} · ${esc(String(t.points))} votes</span></li>`
         )
         .join('')
     : '<li class="muted">Win a battle to appear here.</li>';
@@ -288,6 +318,7 @@ export function renderGiftBattles() {
   let battleBlock = '';
   if (battle?.status === 'pending') battleBlock = renderPending(battle);
   else if (battle?.status === 'active') battleBlock = renderActive(battle);
+  else if (battle?.status === 'voting') battleBlock = renderVoting(battle);
   else if (battle?.status === 'ended') battleBlock = renderEnded(battle);
   else battleBlock = renderChallengeForm(liveActive, prefs);
 
@@ -359,26 +390,35 @@ export function bindGiftBattles(root) {
         refresh();
         return;
       }
-      const a = root.querySelector('#gbScoreA');
-      const b = root.querySelector('#gbScoreB');
-      if (a && b) { a.textContent = `${res.battle.scoreA} pts`; b.textContent = `${res.battle.scoreB} pts`; } else refresh();
+      const a = root.querySelector('#gbGiftA');
+      const b = root.querySelector('#gbGiftB');
+      if (a && b) { a.firstChild.textContent = `TEST gifts: ${res.battle.giftA} `; b.firstChild.textContent = `TEST gifts: ${res.battle.giftB} `; } else refresh();
     });
   });
 
-  // Countdown ticker for active battle
-  const clock = root.querySelector('#gbClock');
+  root.querySelector('#gbViewer')?.addEventListener('change', (e) => { actingViewer = e.target.value; refresh(); });
+  root.querySelectorAll('[data-gb-vote]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const res = castBattleVote({ viewerId: actingViewer, side: btn.dataset.gbVote });
+      if (res?.error) return toast(String(res.error));
+      toast('Vote counted');
+      refresh();
+    });
+  });
+
+  // Countdown ticker: 60s battle, then the vote window, then the result.
+  const clock = root.querySelector('#gbClock') || root.querySelector('#gbVoteClock');
   if (clock) {
+    const startStatus = getActiveGiftBattle()?.status;
     countdownTimer = setInterval(() => {
-      const ended = tickGiftBattle();
-      if (!ended || ended.status === 'ended') {
+      const cur = tickGiftBattle();
+      if (!cur || cur.status !== startStatus) {
         stopCountdown();
-        if (ended?.status === 'ended') {
-          toast(ended.result === 'win' ? `Winner · ${ended.winnerName}` : 'Tie!');
-        }
+        if (cur?.status === 'ended') toast(cur.result === 'win' ? `Winner · ${cur.winnerName}` : 'Tie!');
         refresh();
         return;
       }
-      const msLeft = Math.max(0, (ended.endsAt || 0) - Date.now());
+      const msLeft = Math.max(0, ((cur.status === 'voting' ? cur.voteEndsAt : cur.endsAt) || 0) - Date.now());
       clock.textContent = fmtClock(msLeft);
     }, 250);
   }

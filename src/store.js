@@ -2725,10 +2725,19 @@ export function exploreSuggestedAccounts() {
 export const GB_DURATION_MS = 60_000;
 /** Spec: 24-HOUR champion badge. expiresAt = winAt + 24h (not midnight). */
 export const GB_CHAMPION_MS = 24 * 60 * 60 * 1000;
-/** OWNER VERIFICATION NEEDED: scoring weights are not in the spec. Prototype: score = sum of TEST gift points. */
-export const GB_SCORING_OWNER_VERIFICATION_NEEDED = Object.freeze({ formula: 'sum_of_test_gift_points' });
-/** OWNER VERIFICATION NEEDED: tie handling is not in the spec. Prototype: equal scores = tie, no badge. */
+/** OWNER-APPROVED (t463u): audience VOTES decide the winner, NOT gifts. Gifts still flow (TEST only) but don't score. */
+export const GB_WINNER_RULE = Object.freeze({ decidedBy: 'audience_votes', giftsScore: false });
+/** OWNER VERIFICATION NEEDED: Battles vote window is not defined. 10s placeholder (Roast's ruling does NOT apply). */
+export const GB_VOTE_TIMING_OWNER_VERIFICATION_NEEDED = Object.freeze({ voteSeconds: 10 });
+export const GB_VOTE_MS = GB_VOTE_TIMING_OWNER_VERIFICATION_NEEDED.voteSeconds * 1000;
+/** OWNER VERIFICATION NEEDED: tie handling is not in the spec. Placeholder: equal votes = tie, no badge. */
 export const GB_TIE_OWNER_VERIFICATION_NEEDED = Object.freeze({ onTie: 'tie_no_badge' });
+/** OWNER VERIFICATION NEEDED: badge on repeat win / newer champion. Placeholder: each win gets its own 24h badge; newest shown. */
+export const GB_BADGE_RESET_OWNER_VERIFICATION_NEEDED = Object.freeze({ onNewWin: 'newest_badge_shown' });
+/** OWNER VERIFICATION NEEDED: who counts as a streamer. Placeholder: host of the active live stream (or a TEST streamer). */
+export const GB_STREAMER_DEFINITION_OWNER_VERIFICATION_NEEDED = Object.freeze({ streamer: 'hosts_active_live' });
+/** TEST viewer ids in the room who may vote (streamers are always excluded). */
+export const GB_TEST_VIEWERS = Object.freeze(['test-viewer-1', 'test-viewer-2', 'test-viewer-3']);
 const GB_DAILY_WINNERS_CAP = 10;
 export function gbChampionExpiresAt(winAt) { return Number(winAt) + GB_CHAMPION_MS; }
 function gbEndOfLocalDay(now = Date.now()) {
@@ -2769,34 +2778,56 @@ function saveGiftBattles(gb) {
 }
 
 function finalizeBattleIfNeeded(battle, now = Date.now()) {
-  if (!battle || battle.status !== 'active') return battle;
-  if (now < (battle.endsAt || 0)) return battle;
-  const a = Number(battle.scoreA || 0);
-  const b = Number(battle.scoreB || 0);
+  if (!battle) return battle;
+  if (battle.status === 'active') {
+    if (now < (battle.endsAt || 0)) return battle;
+    // 60s countdown over: open the audience vote. Gifts stop counting toward anything.
+    const voteStart = battle.endsAt || now;
+    battle = { ...battle, status: 'voting', voteStartedAt: voteStart, voteEndsAt: voteStart + GB_VOTE_MS, votesA: 0, votesB: 0, voters: [] };
+  }
+  if (battle.status !== 'voting' || now < (battle.voteEndsAt || 0)) return battle;
+  // Winner = most audience votes (t463u). Gifts are ignored.
+  const a = Number(battle.votesA || 0);
+  const b = Number(battle.votesB || 0);
   let result = 'tie';
   let winnerId = null;
   let winnerName = null;
-  if (a > b) {
-    result = 'win';
-    winnerId = battle.challenger.id;
-    winnerName = battle.challenger.name;
-  } else if (b > a) {
-    result = 'win';
-    winnerId = battle.opponent.id;
-    winnerName = battle.opponent.name;
-  }
-  const ended = {
+  if (a > b) { result = 'win'; winnerId = battle.challenger.id; winnerName = battle.challenger.name; }
+  else if (b > a) { result = 'win'; winnerId = battle.opponent.id; winnerName = battle.opponent.name; }
+  return {
     ...battle,
     status: 'ended',
-    endedAt: now,
+    endedAt: battle.voteEndsAt,
     result,
     winnerId,
     winnerName,
-    scoreA: a,
+    scoreA: a, // scores are VOTES
     scoreB: b,
-    championUntil: winnerId ? gbChampionExpiresAt(now) : null,
+    championUntil: winnerId ? gbChampionExpiresAt(battle.voteEndsAt) : null,
   };
-  return ended;
+}
+
+/** Viewers in the room who may vote: the TEST viewer list plus the signed-in user, never a contestant streamer. */
+export function battleEligibleVoters(battle, st = state) {
+  const ids = [...GB_TEST_VIEWERS, st.user?.id].filter(Boolean);
+  return [...new Set(ids)].filter((id) => id !== battle.challenger.id && id !== battle.opponent.id && !isBattleStreamer(id, st));
+}
+
+export function battleVoteTurnout(battle) {
+  return { voted: (battle.voters || []).length, eligible: battleEligibleVoters(battle).length };
+}
+
+/** One vote per eligible viewer during the vote window. Streamers cannot vote. side: 'challenger' | 'opponent'. */
+export function castBattleVote({ viewerId, side } = {}) {
+  let battle = getActiveGiftBattle();
+  if (!battle || battle.status !== 'voting') return { error: 'not_voting' };
+  if (!['challenger', 'opponent'].includes(side)) return { error: 'bad_side' };
+  if (viewerId === battle.challenger.id || viewerId === battle.opponent.id || isBattleStreamer(viewerId)) return { error: 'streamer_cannot_vote' };
+  if (!battleEligibleVoters(battle).includes(viewerId)) return { error: 'not_eligible' };
+  if ((battle.voters || []).includes(viewerId)) return { error: 'already_voted' };
+  const next = { ...battle, votesA: battle.votesA + (side === 'challenger' ? 1 : 0), votesB: battle.votesB + (side === 'opponent' ? 1 : 0), voters: [...battle.voters, viewerId] };
+  saveGiftBattles({ ...gbBucket(), active: next });
+  return { battle: next };
 }
 
 export function listDemoBattleStreamers() {
@@ -2817,11 +2848,12 @@ export function getActiveGiftBattle() {
   const gb = gbBucket();
   let active = gb.active;
   if (!active) return null;
-  if (active.status === 'active') {
+  if (active.status === 'active' || active.status === 'voting') {
     const finalized = finalizeBattleIfNeeded(active);
     if (finalized !== active && finalized.status === 'ended') {
       return commitEndedBattle(finalized);
     }
+    if (finalized.status === 'voting' && active.status === 'active') saveGiftBattles({ ...gb, active: finalized });
     active = finalized;
   }
   return active;
@@ -2861,7 +2893,7 @@ export function startGiftBattle({ opponentId } = {}) {
 
   const gb = gbBucket();
   const cur = gb.active;
-  if (cur && (cur.status === 'pending' || cur.status === 'active')) {
+  if (cur && ['pending', 'active', 'voting'].includes(cur.status)) {
     return { error: 'battle_in_progress', battle: cur };
   }
   const battle = {
@@ -2877,8 +2909,13 @@ export function startGiftBattle({ opponentId } = {}) {
     startedAt: null,
     endsAt: null,
     durationMs: GB_DURATION_MS,
-    scoreA: 0, // challenger streamer
-    scoreB: 0, // opponent streamer
+    scoreA: 0, // challenger streamer: audience VOTES (t463u)
+    scoreB: 0, // opponent streamer: audience VOTES
+    giftA: 0, // TEST gift tally, does not score
+    giftB: 0,
+    votesA: 0,
+    votesB: 0,
+    voters: [],
     giftLog: [],
     result: null,
     winnerId: null,
@@ -2932,7 +2969,7 @@ export function declineGiftBattle({ actorId } = {}) {
 export function clearActiveGiftBattle() {
   const gb = gbBucket();
   const b = gb.active;
-  if (b && (b.status === 'pending' || b.status === 'active')) {
+  if (b && ['pending', 'active', 'voting'].includes(b.status)) {
     return { error: 'still_running', battle: b };
   }
   saveGiftBattles({ ...gb, active: null });
@@ -2999,9 +3036,10 @@ export function recordBattleGift({ side = 'challenger', kind = 'gift', amount = 
     testMode: true,
     at: Date.now(),
   };
-  const scoreA = Number(battle.scoreA || 0) + (forOpponent ? 0 : amt);
-  const scoreB = Number(battle.scoreB || 0) + (forOpponent ? amt : 0);
-  let next = { ...battle, scoreA: +scoreA.toFixed(2), scoreB: +scoreB.toFixed(2), giftLog: [...(battle.giftLog || []), entry] };
+  // Gift tally only: does NOT score (t463u).
+  const giftA = Number(battle.giftA || 0) + (forOpponent ? 0 : amt);
+  const giftB = Number(battle.giftB || 0) + (forOpponent ? amt : 0);
+  let next = { ...battle, giftA: +giftA.toFixed(2), giftB: +giftB.toFixed(2), giftLog: [...(battle.giftLog || []), entry] };
   next = finalizeBattleIfNeeded(next);
   if (next.status === 'ended') commitEndedBattle(next);
   else saveGiftBattles({ ...gbBucket(), active: next });
@@ -3012,8 +3050,9 @@ export function recordBattleGift({ side = 'challenger', kind = 'gift', amount = 
 export function tickGiftBattle() {
   const gb = gbBucket();
   const b = gb.active;
-  if (!b || b.status !== 'active') return b;
+  if (!b || !['active', 'voting'].includes(b.status)) return b;
   const finalized = finalizeBattleIfNeeded(b);
+  if (finalized.status === 'voting' && b.status === 'active') saveGiftBattles({ ...gb, active: finalized });
   if (finalized.status === 'ended' && b.status !== 'ended') {
     return commitEndedBattle(finalized);
   }
