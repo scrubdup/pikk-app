@@ -36,7 +36,7 @@ function renderSignIn() {
     `<section class="pikk-msg-flow-hero" aria-label="PIKK messages sign-in">
       <span class="pikk-msg-flow-kicker">PIKK CONNECT · PRIVATE MESSAGES</span>
       <h2>Your conversations. <em>Your circle.</em></h2>
-      <p>Try DMs, group conversations and the PIKK team inbox with a local demo account.</p>
+      <p>Try DMs, group conversations and the creator messages with a local demo account.</p>
       <span class="chip">TEST MODE · No server messaging</span>
     </section>
     <div class="card pikk-msg-flow-panel">
@@ -96,7 +96,7 @@ function renderInbox(user) {
       <p id="pikkMsgResultCount" class="muted" role="status" aria-live="polite" aria-atomic="true" style="margin:8px 0 0;font-size:.875rem">${messageResultSummary(threads.length, threads.length)}</p>
     </div>
     <div class="card msg-team-card">
-      <h3>Artist inbox · DatBoiSkeet</h3>
+      <h3>Creator messages</h3>
       <p class="muted" style="margin:0 0 10px">Free inquiry or <strong>Priority $2.99 TEST MODE</strong> (not charged). Priority = faster review, not a guaranteed personal reply.</p>
       <button type="button" class="btn primary" id="msgOpenTeam">Open team chat</button>
     </div>
@@ -142,13 +142,13 @@ function renderNewChat() {
   const cards = contacts
     .map((c) => {
       const mutual = c.team || isMutualFollow(c.id);
-      const label = c.team ? 'Artist team inbox' : mutual ? 'Message' : 'Message request';
+      const label = c.team ? 'Creator message' : mutual ? 'Message' : 'Message request';
       return `
       <article class="card msg-contact pikk-msg-contact-card">
         <div class="msg-contact-head">
           <span class="pikk-msg-contact-avatar" aria-hidden="true">${esc(String(c.username || "?").slice(0, 1).toUpperCase())}</span>
           <strong>${esc(c.username)}</strong>
-          ${c.team ? '<span class="chip">Artist team</span>' : mutual ? '<span class="chip">Mutual</span>' : '<span class="chip">Request</span>'}
+          ${c.team ? '<span class="chip">Creator</span>' : mutual ? '<span class="chip">Mutual</span>' : '<span class="chip">Request</span>'}
         </div>
         <p class="muted" style="margin:6px 0 10px">${esc(c.bio || '')}</p>
         <button type="button" class="btn ${c.team ? 'primary' : ''}" data-start-peer="${esc(c.id)}" data-peer-name="${esc(c.username)}">${esc(label)}</button>
@@ -176,18 +176,18 @@ function renderNewChat() {
 
 function renderTeamIntro() {
   return `
-    <section class="pikk-msg-flow-hero" aria-label="DatBoiSkeet artist team inbox">
-      <span class="pikk-msg-flow-kicker">PIKK CONNECT · CREATOR TEAM</span>
+    <section class="pikk-msg-flow-hero" aria-label="Creator messages">
+      <span class="pikk-msg-flow-kicker">PIKK CONNECT · CREATOR MESSAGES</span>
       <h2>Reach the team. <em>One inbox.</em></h2>
-      <p>Send a local demo inquiry to the DatBoiSkeet artist team. Priority is a test-mode flag, never a charge.</p>
+      <p>Send a local demo inquiry to this creator account. Priority is a test-mode flag, never a charge.</p>
       <span class="chip">TEST MODE · No real delivery</span>
     </section>
     <div class="card msg-team-card pikk-msg-flow-panel">
       <div class="row" style="justify-content:space-between">
-        <h3 style="margin:0">DatBoiSkeet artist inbox</h3>
+        <h3 style="margin:0">Creator inbox</h3>
         <button type="button" class="btn ghost" id="msgBackInbox">← Inbox</button>
       </div>
-      <p class="muted">Message DatBoiSkeet / authorized team. Free inquiry stays in the normal queue; Priority ($2.99 TEST MODE — not charged) flags the thread for priority review only.</p>
+      <p class="muted">Message this creator account. Free inquiry stays in the normal queue; Priority ($2.99 TEST MODE — not charged) flags the thread for priority review only.</p>
       <div class="row wrap" style="gap:8px;margin-top:8px">
         <button type="button" class="btn primary" id="msgTeamFree">Free inquiry</button>
         <button type="button" class="btn" id="msgTeamPriority">Priority $2.99 · TEST MODE</button>
@@ -300,7 +300,7 @@ export function renderMessages(route) {
   }
 
   return shellPage('Messages', body, {
-    lead: 'DMs, group chats, and DatBoiSkeet team inbox · TEST MODE',
+    lead: 'DMs, group chats, and creator messages · TEST MODE',
   });
 }
 
