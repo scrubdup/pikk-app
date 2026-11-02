@@ -17,6 +17,7 @@ import {
 import { esc, toast, shellPage, timeAgo } from '../ui.js';
 import { navigate } from '../router.js';
 import { messageSearchText, messageResultSummary } from '../message-search.js';
+import { messagesApi, isMessagesApiConfigured } from '../api/messages-client.js';
 
 function refresh(hash) {
   navigate(hash || '#/messages');
@@ -271,8 +272,121 @@ function renderThread(thread, { teamPriorityHint = false } = {}) {
   `;
 }
 
+
+export function renderPersistentConversationList(conversations=[]) {
+  if (!conversations.length) return '<div class="msg-empty"><p class="muted">No persistent conversations yet.</p><a class="btn primary" href="#/messages?view=new">Start a chat</a></div>';
+  return conversations.map(c => {
+    const peer = c.peer_display_name || c.peer_handle || 'PIKK user';
+    const preview = c.last_message || 'No messages yet';
+    const stamp = c.last_message_at || c.created_at;
+    return `<button type="button" class="msg-thread-row persistent-msg-row" data-open-remote-thread="${esc(c.id)}">
+      <div class="pikk-msg-avatar" aria-hidden="true">${esc(String(peer).slice(0,1).toUpperCase())}</div>
+      <div class="pikk-msg-thread-body">
+        <div class="msg-thread-top"><strong>${esc(peer)}</strong><span class="muted">${stamp ? esc(timeAgo(Date.parse(stamp))) : ''}</span></div>
+        <div class="msg-thread-preview muted">${esc(preview.slice(0,100))}</div>
+        <div class="msg-thread-chips"><span class="chip">Persistent</span><span class="muted">@${esc(c.peer_handle||'user')}</span></div>
+      </div>
+    </button>`;
+  }).join('');
+}
+
+export function renderPersistentThread(detail, currentUserId='') {
+  const convo=detail?.conversation;
+  const messages=detail?.messages||[];
+  if(!convo)return '<div class="card muted">Conversation not found.</div>';
+  const peer=convo.peer?.display_name||convo.peer?.handle||'PIKK user';
+  const bubbles=messages.map(m=>{
+    const mine=m.sender_id===currentUserId;
+    return `<div class="msg-bubble ${mine?'mine':''}">
+      <div class="msg-bubble-meta"><strong>${mine?'You':'@'+esc(m.sender_handle||convo.peer?.handle||'user')}</strong><span class="muted">${esc(timeAgo(Date.parse(m.created_at)))}</span></div>
+      <div class="msg-bubble-text">${esc(m.body)}</div>
+    </div>`;
+  }).join('');
+  return `<section class="pikk-msg-flow-hero pikk-msg-flow-hero-thread"><span class="pikk-msg-flow-kicker">PIKK CONNECT · DIRECT MESSAGES</span><h2>${esc(peer)}</h2><p>Persistent private conversation stored on PIKK.</p><span class="chip">Backend message thread</span></section>
+    <div class="card msg-thread-head pikk-msg-flow-panel"><button type="button" class="btn ghost" data-remote-inbox>← Inbox</button><h3 style="margin:10px 0 0">${esc(peer)}</h3></div>
+    <div class="card msg-thread-card pikk-msg-flow-panel">
+      <div class="msg-thread" id="remoteMsgThread">${bubbles||'<p class="muted">No messages yet — say hi.</p>'}</div>
+      <div class="msg-composer"><input id="remoteMsgInput" placeholder="Message…" maxlength="4000" /><button type="button" class="btn primary" id="remoteMsgSend">Send</button></div>
+    </div>`;
+}
+
+function renderPersistentMessages(route,user) {
+  if(!user){
+    return shellPage('Messages',`<section class="pikk-msg-flow-hero"><span class="pikk-msg-flow-kicker">PIKK CONNECT · PRIVATE MESSAGES</span><h2>Your conversations.</h2><p>Sign in with your PIKK account to use persistent private messages.</p><span class="chip">Backend messaging</span></section><div class="card"><a class="btn primary" href="#/profile">Sign in</a></div>`,{lead:'Persistent private messaging'});
+  }
+  const view=route?.query?.view||'';
+  const threadId=route?.query?.t||'';
+  if(threadId){
+    return shellPage('Messages',`<div id="persistentMessageThread" data-thread-id="${esc(threadId)}"><div class="card muted">Loading conversation…</div></div>`,{lead:'Persistent private messaging'});
+  }
+  if(view==='new'){
+    return shellPage('Messages',`<section class="pikk-msg-flow-hero"><span class="pikk-msg-flow-kicker">PIKK CONNECT · NEW CONVERSATION</span><h2>Start a private chat.</h2><p>Enter the PIKK username you want to message.</p><span class="chip">Verified accounts only</span></section><div class="card pikk-msg-flow-panel"><button type="button" class="btn ghost" data-remote-inbox>← Inbox</button><form id="remoteNewChatForm" style="margin-top:12px"><div class="field"><label for="remotePeerHandle">PIKK username</label><input id="remotePeerHandle" name="handle" maxlength="30" pattern="[A-Za-z0-9_]{3,30}" autocomplete="off" required placeholder="username" /></div><button class="btn primary" type="submit">Start conversation</button></form></div>`,{lead:'Persistent private messaging'});
+  }
+  return shellPage('Messages',`<section class="pikk-messages-hero"><div><p class="kicker">PIKK CONNECT · MESSAGES</p><h2>Your conversations.</h2><p>Private messages tied to your PIKK account.</p></div><span class="pikk-messages-hero-mark" aria-hidden="true">✉</span></section><div class="pikk-msg-tools"><div class="pikk-msg-tool-actions"><a class="btn primary" href="#/messages?view=new">+ New chat</a></div></div><div class="card"><h3>Inbox</h3><div class="msg-inbox" id="persistentMsgInbox"><p class="muted">Loading conversations…</p></div></div>`,{lead:'Persistent private messaging · backend stored'});
+}
+
+async function bindPersistentMessages(root) {
+  const user=getState().user;
+  if(!user)return;
+  root.querySelectorAll('[data-remote-inbox]').forEach(btn=>btn.addEventListener('click',()=>refresh('#/messages')));
+
+  const inbox=root.querySelector('#persistentMsgInbox');
+  if(inbox){
+    try{
+      const data=await messagesApi.list();
+      inbox.innerHTML=renderPersistentConversationList(data.conversations||[]);
+      inbox.querySelectorAll('[data-open-remote-thread]').forEach(btn=>btn.addEventListener('click',()=>refresh('#/messages?t='+encodeURIComponent(btn.dataset.openRemoteThread))));
+    }catch(err){
+      inbox.innerHTML=err?.status===401?'<p class="muted">Your session expired. <a href="#/profile">Sign in again</a>.</p>':`<p class="muted">Could not load messages: ${esc(err?.message||'Unknown error')}</p>`;
+    }
+  }
+
+  root.querySelector('#remoteNewChatForm')?.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const handle=event.currentTarget.elements.handle.value.trim();
+    if(!handle)return;
+    try{
+      const data=await messagesApi.start(handle);
+      refresh('#/messages?t='+encodeURIComponent(data.conversation.id));
+    }catch(err){
+      toast(err?.code==='email_unverified'?'Verify your email before starting messages':(err?.message||'Could not start conversation'));
+    }
+  });
+
+  const host=root.querySelector('#persistentMessageThread');
+  if(host){
+    const id=host.dataset.threadId;
+    try{
+      const data=await messagesApi.get(id);
+      host.innerHTML=renderPersistentThread(data,user.id);
+      await messagesApi.markRead(id).catch(()=>{});
+      host.querySelector('[data-remote-inbox]')?.addEventListener('click',()=>refresh('#/messages'));
+      const send=async()=>{
+        const input=host.querySelector('#remoteMsgInput');
+        const message=input?.value?.trim();
+        if(!message)return toast('Type a message');
+        try{
+          await messagesApi.send(id,message);
+          const fresh=await messagesApi.get(id);
+          host.innerHTML=renderPersistentThread(fresh,user.id);
+          bindPersistentMessages(root);
+          toast('Sent');
+        }catch(err){
+          toast(err?.code==='email_unverified'?'Verify your email before sending messages':(err?.message||'Could not send'));
+        }
+      };
+      host.querySelector('#remoteMsgSend')?.addEventListener('click',send);
+      host.querySelector('#remoteMsgInput')?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();send();}});
+      const box=host.querySelector('#remoteMsgThread');if(box)box.scrollTop=box.scrollHeight;
+    }catch(err){
+      host.innerHTML=err?.status===404?'<div class="card muted">Conversation not found or unavailable.</div>':`<div class="card muted">Could not load conversation: ${esc(err?.message||'Unknown error')}</div>`;
+    }
+  }
+}
+
 export function renderMessages(route) {
   const user = getState().user;
+  if (isMessagesApiConfigured()) return renderPersistentMessages(route,user);
   if (!user) return renderSignIn();
 
   ensureDemoMessageContacts();
@@ -306,6 +420,10 @@ export function renderMessages(route) {
 
 export function bindMessages(root) {
   const user = getState().user;
+  if (isMessagesApiConfigured()) {
+    bindPersistentMessages(root);
+    return;
+  }
   if (!user) return;
 
   const goInbox = () => refresh('#/messages');
