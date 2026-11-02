@@ -17,7 +17,9 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('http://127.0.0.1:5173/#/shop', { waitUntil: 'domcontentloaded' });
     await page.locator('.pikk-shop-real-hero').waitFor({ state: 'visible', timeout: 20000 });
-    await page.waitForTimeout(3500); // approved splash completes before capture
+    // The approved splash holds for 5 seconds plus fade; capture the actual Shop,
+    // not the splash overlay covering the top of full-page screenshots.
+    await page.locator('#splash').waitFor({ state: 'detached', timeout: 12000 });
 
     assert.equal(await page.locator('.pikk-shop-featured-product img').count(), 3);
     assert.equal(await page.locator('#pikkShopProducts .pikk-shop-product').count(), MERCH.length);
