@@ -83,7 +83,17 @@ export function renderPersistentPosts(posts=[], { focusId='', currentHandle='' }
         ${canFollow ? `<button class="btn ghost persistent-follow" data-handle="${esc(handle)}">Follow</button>` : ''}
       </div>
       <p class="body-text">${esc(p.body)}</p>
-      <p class="muted" style="font-size:11px;margin:8px 0 0">Saved to PIKK backend · likes/comments persistence is coming next.</p>
+      <div class="post-actions">
+        <button class="btn ghost persistent-like" type="button" data-id="${esc(p.id)}" data-liked="${Number(p.liked_by_me)?'1':'0'}">${Number(p.liked_by_me)?'♥':'♡'} ${Number(p.like_count)||0}</button>
+        <button class="btn ghost persistent-comments-toggle" type="button" data-id="${esc(p.id)}">💬 ${Number(p.comment_count)||0}</button>
+      </div>
+      <div class="comments persistent-comments" data-comments-for="${esc(p.id)}" hidden>
+        <div class="persistent-comments-list"><p class="muted">Loading comments…</p></div>
+        <form class="persistent-comment-form" data-id="${esc(p.id)}">
+          <div class="row"><input class="persistent-comment-input" name="body" maxlength="2000" required placeholder="Add a comment…" /><button class="btn primary" type="submit">Comment</button></div>
+        </form>
+      </div>
+      <p class="muted" style="font-size:11px;margin:8px 0 0">Saved to PIKK backend.</p>
     </article>`;
   }).join('');
 }
