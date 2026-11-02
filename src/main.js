@@ -61,6 +61,7 @@ import { decoratePlayCounts, recordPlay } from './play-counter.js';
 import { renderStory, bindStory, renderCrew, bindCrew, renderFavorites, bindFavorites } from './pages/circle.js';
 import './circle.css';
 import './pikk-polish-connect.css';
+import './pikk-polish-videos.css';
 import './pikk-t422u.css';
 import './pikk-chips.css';
 import './pikk-splash.css';
