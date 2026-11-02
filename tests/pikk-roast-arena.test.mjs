@@ -53,3 +53,11 @@ test('Roast Arena Tag-Team preview is TEST MODE with test-value format', () => {
   assert.match(arena, /every member must consent/i);
   assert.match(arena, /ROAST_TAG_TEAM_TEST_FORMAT_OWNER_VERIFICATION_NEEDED/);
 });
+
+test('Roast page marks approved timings and keeps only rematch window and tag-team format flagged', () => {
+  assert.match(arena, /Every contestant must agree/);
+  assert.match(arena, /Viewers do not vote on rematches/);
+  assert.match(arena, /decision window \$\{REMATCH_SECONDS\}s <em>· test value · owner verification needed/);
+  assert.doesNotMatch(arena, /one tiebreaker round is played\. <em>\(test values/);
+  assert.match(arena, /Tag-Team format is a test value/);
+});
