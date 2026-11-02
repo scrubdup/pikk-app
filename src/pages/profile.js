@@ -134,7 +134,7 @@ export function renderProfile(route) {
         <div class="field"><label>Display name</label><input id="signupDisplay" autocomplete="name" maxlength="60" /></div>
         <div class="field"><label>Username</label><input id="signupHandle" autocomplete="username" maxlength="30" placeholder="3–30 letters, numbers or _" /></div>
         <div class="field"><label>Email</label><input id="signupEmail" type="email" autocomplete="email" /></div>
-        <div class="field"><label>Password</label><input id="signupPassword" type="password" autocomplete="new-password" minlength="10" placeholder="10+ characters, including a letter and number" /></div>
+        <div class="field"><label>Password</label><input id="signupPassword" type="password" autocomplete="new-password" minlength="10" placeholder="10+ chars · a letter + a number" /></div>
         <div class="field"><label for="signupGender">Gender</label><select id="signupGender" required>${genderOptionsHtml()}</select><small class="muted">Chosen once at signup and cannot be changed later.</small></div>
         <button class="btn primary block" id="signupAccountBtn">Create PIKK account</button>
       </div>
@@ -153,10 +153,12 @@ export function renderProfile(route) {
       <div class="card">
         <h3>Become a Creator</h3>
         <p class="muted">After you sign in, apply for Clipper, Creator/Streamer, Brand, Affiliate, or Seller. Admin review unlocks tools — no automatic earnings access.</p>
-        <a class="btn" href="#/signup">Creator applications</a>
-        <a class="btn" href="#/clippers">Clippers apply</a>
-        <a class="btn ghost" href="#/guidelines">Guidelines</a>
-        <a class="btn ghost" href="#/support" data-profile-support>Support</a>
+        <div class="pikk-profile-creator-actions">
+          <a class="btn" href="#/signup">Creator applications</a>
+          <a class="btn" href="#/clippers">Clippers apply</a>
+          <a class="btn ghost" href="#/guidelines">Guidelines</a>
+          <a class="btn ghost" href="#/support" data-profile-support>Support</a>
+        </div>
       </div>`,
       { lead: 'Free PIKK fan profile · follow · posts · role apps · TEST MODE.' }
     );
