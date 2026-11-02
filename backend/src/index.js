@@ -48,7 +48,17 @@ async function route(req, env, ctx) {
 
   const withCookie = (r) => json(r.status, r.body, { 'Set-Cookie': r.cookie });
 
-  if (m === 'GET' && p === '/health') return json(200, { ok: true });
+  if (m === 'GET' && p === '/health') return json(200, {
+    ok: true,
+    service: 'pikk-api',
+    capabilities: {
+      database: !!env.DB,
+      auth: !!env.DB,
+      email_verification: !!env.DB,
+      email_delivery: !!(env.RESEND_API_KEY && env.EMAIL_FROM),
+      media_storage: !!env.MEDIA,
+    },
+  });
 
   if (p.startsWith('/auth/')) await rateLimit(env, `auth:${ip}`, 10, 60);
   if (m === 'POST' && p === '/auth/signup') return withCookie(await signup(env, req, await readJson(req)));
