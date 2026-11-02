@@ -59,7 +59,7 @@ test('t402u: wired into Live and Group Rooms; no host battle button; non-blockin
   const css = rd('pikk-pages.css'); assert.match(css, /\.pikk-gb\{position:sticky/);
 });
 test('t402u: Gift Battles page = explainer of the flow linking into Live; no sign-in wall; Roast untouched', () => {
-  const ex = renderGiftBattleExplainer();
+  const ex = renderGiftBattleExplainer('live');
   for (const x of ['for all viewers', '30 seconds', '60-second', 'first', '#/live?tab=channels', '#/live?tab=rooms', 'TEST MODE']) assert.ok(ex.includes(x), x);
   // Signed-out #/giftbattles (and #/battles): EITHER the streamer-vs-streamer preview OR Design's Streamer Battles
   // explainer (#377). Never a sign-in wall, never viewer-vs-viewer copy.
