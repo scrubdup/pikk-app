@@ -6,6 +6,7 @@ import { VIDEOS, VIDEO_COMING_SOON, MEMBERSHIPS } from '../data.js';
 import { esc, shellPage, toast, ytEmbedSrc } from '../ui.js';
 import { navigate } from '../router.js';
 import { notifyVideoPlaying, notifyVideoIdle, bindPageYoutubeEmbeds } from '../player.js';
+import { accountApi, isAccountApiConfigured } from '../api/account-client.js';
 
 function phase(n) {
   return { badge: `Phase ${n} shell` };
@@ -640,38 +641,92 @@ export function bindCommunity(root = document) {
   });
 }
 
+export const CREATOR_ROLE_OPTIONS = Object.freeze([
+  { id: 'creator', label: 'Creator', note: 'General creator tools and profile publishing.' },
+  { id: 'artist', label: 'Artist', note: 'Music uploads and artist tools.' },
+  { id: 'streamer', label: 'Streamer', note: 'Livestream creator tools.' },
+  { id: 'producer', label: 'Producer', note: 'Beat/music creator tools.' },
+  { id: 'publisher', label: 'Publisher', note: 'Publishing/rights workflow declaration.' },
+  { id: 'seller', label: 'Seller', note: 'Marketplace/storefront tools.' },
+  { id: 'advertiser', label: 'Advertiser', note: 'Business advertising tools.' },
+  { id: 'clipper', label: 'Clipper', note: 'Clipper campaigns and submissions.' },
+]);
+
 export function renderSignup() {
+  const remote=isAccountApiConfigured();
+  const roleOptions=CREATOR_ROLE_OPTIONS.map(role=>`<label class="card creator-role-choice" style="margin:0"><span class="row" style="align-items:flex-start"><input type="checkbox" name="creatorRole" value="${esc(role.id)}" /><span><strong>${esc(role.label)}</strong><br/><small class="muted">${esc(role.note)}</small></span></span></label>`).join('');
   return shellPage(
     'Signup & Creator Apps',
     `<div class="card">
       <p class="kicker">Join PIKK</p>
-      <h2 style="margin:0 0 8px">Fan account first</h2>
-      <p>Everyone creates a PIKK account to participate — follow, comment, save, join Lounge rooms, buy memberships, message the team, or apply to earn. Visitors can browse public promo pages; signing up unlocks the network.</p>
-      <p class="muted" style="margin:8px 0 12px"><strong>Basic fan signup is free</strong> — no manual approval. This demo uses local Profile sign-in (TEST MODE · no real email/auth yet).</p>
-      <a class="btn primary" href="#/profile">Sign in / create demo user</a>
+      <h2 style="margin:0 0 8px">Your PIKK account</h2>
+      <p>Everyone uses one PIKK account. Creator roles are declarations on that account—not separate accounts.</p>
+      <p class="muted" style="margin:8px 0 12px">${remote
+        ? '<strong>Backend account roles are connected.</strong> Sign in, then select the roles that describe how you plan to use PIKK.'
+        : '<strong>Account role service is not connected in this build.</strong> Role changes will not be saved until the production API endpoint is configured.'}</p>
+      <a class="btn primary" href="#/profile">Open Profile / Sign in</a>
       <a class="btn ghost" href="#/guidelines" style="margin-left:8px">Read Guidelines</a>
-      <p class="muted" style="margin:10px 0 0;font-size:12px">By signing up you agree to the <a href="#/terms">Terms</a> (draft), including <a href="#/terms?s=security">Security &amp; Data Breach / Limitation of Liability</a>, and the <a href="#/privacy">Privacy</a> notice.</p>
+      <p class="muted" style="margin:10px 0 0;font-size:12px">By using PIKK you agree to the <a href="#/terms">Terms</a> (draft), including <a href="#/terms?s=security">Security &amp; Data Breach / Limitation of Liability</a>, and the <a href="#/privacy">Privacy</a> notice.</p>
     </div>
 
+    <section class="card" id="creator-role-manager">
+      <h3>Account roles</h3>
+      <p class="muted">Member is always included. Selecting Creator, Artist, Streamer, Producer, Publisher, Seller, Advertiser or Clipper declares your intended use. <strong>It does not grant admin privileges, payout eligibility, verification, or monetization approval.</strong></p>
+      ${remote ? `<form id="creatorRoleForm">
+        <label class="card creator-role-choice" style="margin:0 0 10px"><span class="row"><input type="checkbox" checked disabled /><span><strong>Member</strong><br/><small class="muted">Every PIKK account.</small></span></span></label>
+        <div class="grid-2" id="creatorRoleChoices">${roleOptions}</div>
+        <p id="creatorRoleStatus" class="muted" role="status" aria-live="polite" style="margin:12px 0"></p>
+        <button class="btn primary" type="submit">Save account roles</button>
+      </form>` : '<p class="chip">Role manager waiting for backend API configuration</p>'}
+    </section>
+
     <div class="card">
-      <h3>Apply for a role</h3>
-      <p class="muted" style="margin:0 0 10px">From Profile → Become a Creator, request one or more roles. Each has its own application — no automatic access to earning tools.</p>
+      <h3>Specialized applications &amp; tools</h3>
+      <p class="muted" style="margin:0 0 10px">Some tools still require additional review beyond the role declaration above.</p>
       <ul class="list-plain">
-        <li><span><strong>Creator / Streamer</strong><br/><span class="muted" style="font-size:12px">Profile, socials, livestream plan · PIKK branding &amp; moderation</span></span><a href="#/live">Live</a></li>
-        <li><span><strong>Clipper</strong><br/><span class="muted" style="font-size:12px">Work samples &amp; analytics · paid promo campaigns</span></span><a href="#/clippers">Apply</a></li>
-        <li><span><strong>Brand / Advertiser</strong><br/><span class="muted" style="font-size:12px">Business identity, campaigns &amp; disclosures</span></span><a href="#/marketplace">Marketplace</a></li>
-        <li><span><strong>Affiliate / Promoter</strong><br/><span class="muted" style="font-size:12px">Referral &amp; campaign promotion plan</span></span><a href="#/refer">Refer</a></li>
-        <li><span><strong>Seller</strong><br/><span class="muted" style="font-size:12px">Storefront details, fulfillment &amp; verification</span></span><a href="#/marketplace">Storefront</a></li>
+        <li><span><strong>Creator / Streamer</strong><br/><span class="muted" style="font-size:12px">Livestream plan, safety and creator tools</span></span><a href="#/live">Live</a></li>
+        <li><span><strong>Artist / Producer</strong><br/><span class="muted" style="font-size:12px">Private draft music uploads with rights certification</span></span><a href="#/music?view=upload">Upload Music</a></li>
+        <li><span><strong>Clipper</strong><br/><span class="muted" style="font-size:12px">Work samples &amp; campaign workflow</span></span><a href="#/clippers">Apply</a></li>
+        <li><span><strong>Brand / Advertiser</strong><br/><span class="muted" style="font-size:12px">Business campaigns &amp; disclosures</span></span><a href="#/marketplace">Marketplace</a></li>
+        <li><span><strong>Seller</strong><br/><span class="muted" style="font-size:12px">Storefront, fulfillment &amp; verification</span></span><a href="#/marketplace">Storefront</a></li>
       </ul>
     </div>
 
     <div class="card">
       <h3>Approval flow</h3>
-      <p class="muted" style="margin:0">Register → select role → submit → admin reviews → approve / reject / waitlist → notify → unlock role tools. Earnings need identity/tax/payout checks before payouts. All roles stay under Community Guidelines.</p>
-      <p class="chip" style="margin-top:10px">TEST MODE · local demo user on Profile</p>
+      <p class="muted" style="margin:0">Account → declare role(s) → complete any role-specific application/verification → admin/provider review where required → unlock restricted tools. Earnings still require identity/tax/payout checks before real payouts.</p>
     </div>`,
-    { lead: 'Free fan signup + creator role applications · §16.' }
+    { lead: remote ? 'Real account role declarations + specialized creator applications' : 'Creator role manager waiting for production API configuration' }
   );
+}
+
+export function bindSignup(root){
+  if(!isAccountApiConfigured()) return;
+  const form=root.querySelector('#creatorRoleForm');
+  const status=root.querySelector('#creatorRoleStatus');
+  if(!form)return;
+  const setStatus=(message)=>{if(status)status.textContent=message;};
+  accountApi.me().then(data=>{
+    const roles=(data.signup_roles||[]).map(r=>typeof r==='string'?r:r.role);
+    root.querySelectorAll('input[name="creatorRole"]').forEach(input=>{input.checked=roles.includes(input.value);});
+    setStatus('Current account roles loaded.');
+  }).catch(err=>{
+    setStatus(err?.status===401?'Sign in from Profile to manage creator roles.':(err?.message||'Could not load account roles.'));
+  });
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const roles=[...root.querySelectorAll('input[name="creatorRole"]:checked')].map(input=>input.value);
+    const button=form.querySelector('button[type="submit"]');if(button)button.disabled=true;
+    setStatus('Saving account roles…');
+    try{
+      const data=await accountApi.updateSignupRoles(roles);
+      const saved=(data.signup_roles||[]).filter(role=>role!=='member');
+      setStatus(saved.length?'Saved: '+saved.join(', ')+'.':'Saved as Member only.');
+      toast('Account roles saved');
+    }catch(err){
+      setStatus(err?.status===401?'Sign in to save account roles.':(err?.message||'Could not save account roles.'));
+    }finally{if(button)button.disabled=false;}
+  });
 }
 
 export function renderMessages() {
