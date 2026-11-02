@@ -63,6 +63,18 @@ async function route(req, env, ctx) {
     return json(200, { signup_roles: wanted });
   }
 
+  if (m === 'GET' && p === '/posts') {
+    const s = requireAuth(ctx);
+    const r = await env.DB.prepare(
+      `SELECT p.id, p.kind, p.body, p.created_at, p.author_id, u.handle AS author, u.display_name
+         FROM posts p JOIN users u ON u.id = p.author_id
+        WHERE p.deleted_at IS NULL AND u.banned_at IS NULL
+          AND ${NOT_BLOCKED_SQL('p.author_id')}
+        ORDER BY p.created_at DESC, p.id DESC LIMIT 100`
+    ).bind(s.user.id).all();
+    return json(200, { posts: r.results });
+  }
+
   if (m === 'POST' && p === '/posts') {
     const s = requireVerified(ctx);
     if (s.status.muted_until) throw new ApiError(403, 'account_muted', 'Account is muted', { until: s.status.muted_until });
