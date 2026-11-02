@@ -155,3 +155,16 @@ describe('PIKK Vault slice 2: content + signed URLs', () => {
     expect(rows.results.every(r => r.actor_id === u.id)).toBe(true);
   });
 });
+
+describe('Vault content is bound to its own row key', () => {
+  it("a ready row repointed at another owner's vault key never streams that object", async () => {
+    const a = await newUser(); const b = await newUser();
+    const id = await upload(a, { type: 'photo', content_type: 'image/jpeg', bytes: JPEG });
+    const victim = `vault/photo/${b.id}/med_victimcontent1`;
+    await env.MEDIA.put(victim, JPEG.slice().reverse());
+    await env.DB.prepare('UPDATE media SET object_key=? WHERE id=?').bind(victim, id).run();
+    const r = await raw(`/media/${id}/content`, { cookie: a.cookie });
+    expect(r.status).toBeGreaterThanOrEqual(400);
+    expect(Array.from(r.bytes)).not.toEqual(Array.from(JPEG.slice().reverse()));
+  });
+});

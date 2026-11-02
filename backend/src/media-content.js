@@ -1,4 +1,4 @@
-import { assertVaultKey } from './vault-keys.js';
+import { assertVaultKeyFor } from './vault-keys.js';
 // PIKK Vault slice 2: playback + download (GET /media/:id/content) and short-lived signed URLs.
 import { ApiError, json, clientIp } from './http.js';
 import { requireAuth } from './auth.js';
@@ -82,7 +82,7 @@ async function content(env, req, ctx, id) {
   };
   const range = req.method === 'HEAD' ? null : parseRange(req.headers.get('Range'), size);
   if (range === 'unsatisfiable') return new Response(null, { status: 416, headers: { ...base, 'Content-Range': `bytes */${size}`, 'Content-Type': 'text/plain' } });
-  assertVaultKey(r.object_key);
+  assertVaultKeyFor(r.object_key, r); // key must belong to this row (owner/type/id)
   const obj = await env.MEDIA.get(r.object_key, range ? { range } : undefined);
   if (!obj) throw notFound();
   if (download) await audit(env, { actor: uid, action: 'media.download', target: id, ip: clientIp(req), meta: { via, range: range ? `${range.offset}-${range.offset + range.length - 1}` : null } });
