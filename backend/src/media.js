@@ -21,7 +21,7 @@ export function sanitizeFilename(name) {
 }
 
 function storage(env) {
-  if (!env.MEDIA) throw new ApiError(503, 'storage_unavailable', 'Media storage not configured');
+  if (!env.MEDIA) throw new ApiError(503, 'vault_storage_not_configured', 'Vault storage not configured');
   return env.MEDIA;
 }
 
@@ -37,6 +37,7 @@ function view(r) {
 
 async function createUpload(env, req, ctx) {
   const s = requireVerified(ctx);
+  storage(env); // fail fast (503) before creating a row when R2 isn't configured
   if (s.status.muted_until) throw new ApiError(403, 'account_muted', 'Account is muted', { until: s.status.muted_until });
   await rateLimit(env, `media:${s.user.id}`, UPLOAD_RATE.limit, UPLOAD_RATE.windowSec);
   const b = await readJson(req);
@@ -142,8 +143,8 @@ async function getMedia(env, ctx, id) {
 
 async function health(env, ctx) {
   requirePermission(ctx, 'admin.access');
-  let reachable = false; let storageError = null;
-  try { if (env.MEDIA) { await env.MEDIA.head('__vault_health_probe'); reachable = true; } else storageError = 'binding MEDIA missing'; }
+  let reachable = false; let storageError = null; const configured = !!env.MEDIA;
+  try { if (env.MEDIA) { await env.MEDIA.head('__vault_health_probe'); reachable = true; } else storageError = 'vault storage not configured (binding MEDIA missing)'; }
   catch (e) { storageError = 'storage probe failed'; }
   const counts = await env.DB.prepare(`SELECT state, COUNT(*) AS n FROM media GROUP BY state`).all();
   const by = { pending_upload: 0, uploaded: 0, ready: 0, rejected: 0, failed: 0, deleted: 0 };
@@ -153,7 +154,7 @@ async function health(env, ctx) {
     status: reachable ? 'ok' : 'degraded',
     version: VAULT_VERSION,
     checked_at: now(),
-    storage: { binding: 'MEDIA', reachable, error: storageError },
+    storage: { binding: 'MEDIA', configured, reachable, error: storageError },
     counts_by_state: by,
     last_error: last ? { media_id: last.id, state: last.state, message: last.last_error, at: last.updated_at } : null,
   });
