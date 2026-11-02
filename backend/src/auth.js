@@ -98,9 +98,9 @@ export async function signup(env, req, body) {
   const signupRoles = validateSignupRoles(body.signup_roles);
   // Owner rule: gender is chosen at signup and can never be self-changed afterwards.
   const SIGNUP_GENDERS = ['female', 'male', 'nonbinary', 'undisclosed'];
-  if (body.gender !== undefined && body.gender !== null && !SIGNUP_GENDERS.includes(body.gender))
-    throw new ApiError(422, 'validation_failed', 'Invalid input', { gender: SIGNUP_GENDERS.join(', ') });
-  const gender = body.gender || null;
+  if (!SIGNUP_GENDERS.includes(body.gender))
+    throw new ApiError(422, 'validation_failed', 'Invalid input', { gender: `required: one of ${SIGNUP_GENDERS.join(', ')}` });
+  const gender = body.gender;
   const exists = await env.DB.prepare(`SELECT 1 FROM credentials WHERE email = ? UNION ALL SELECT 1 FROM users WHERE handle = ?`).bind(v.email, v.handle).first();
   if (exists) throw new ApiError(409, 'account_exists', 'Email or handle already registered');
   const id = newId('usr');
@@ -109,7 +109,7 @@ export async function signup(env, req, body) {
   const t = nowIso();
   try {
     await env.DB.batch([
-      env.DB.prepare(`INSERT INTO users(id,auth_subject,handle,display_name,account_type,created_at,gender,gender_set_at) VALUES (?,?,?,?, 'member', ?,?,?)`).bind(id, `local:${id}`, v.handle, v.display_name, t, gender, gender ? t : null),
+      env.DB.prepare(`INSERT INTO users(id,auth_subject,handle,display_name,account_type,created_at,gender,gender_set_at) VALUES (?,?,?,?, 'member', ?,?,?)`).bind(id, `local:${id}`, v.handle, v.display_name, t, gender, t),
       env.DB.prepare(`INSERT INTO credentials(user_id,email,password_hash,password_salt,password_iterations,updated_at) VALUES (?,?,?,?,?,?)`).bind(id, v.email, pw.hash, pw.salt, pw.iterations, t),
       env.DB.prepare(`INSERT INTO user_roles(user_id,role,granted_at) VALUES (?, 'user', ?)`).bind(id, t),
       ...signupRoles.map(r => env.DB.prepare(`INSERT INTO user_signup_roles(user_id,role,declared_at) VALUES (?,?,?)`).bind(id, r, t)),

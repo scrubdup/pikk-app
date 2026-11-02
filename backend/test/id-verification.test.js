@@ -271,7 +271,11 @@ describe('owner rule: gender chosen at signup, never self-changed', () => {
     }
     expect((await call('GET', '/account/gender', { cookie: r.cookie })).json).toEqual({ gender: 'female', locked: true });
   });
-  it('signup rejects an invalid gender', async () => { expect((await signupWith('robot')).status).toBe(422); });
+  it('signup rejects an invalid or missing gender with 422', async () => {
+    for (const g of ['robot', undefined, null, '']) {
+      const r = await signupWith(g); expect(r.status).toBe(422); expect(r.json.error.details.gender).toMatch(/required/);
+    }
+  });
   it('legacy null account can set once, then locked (no verification needed)', async () => {
     const u = await newUser();
     expect((await call('GET', '/account/gender', { cookie: u.cookie })).json).toEqual({ gender: null, locked: false });

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { call, freshIp, newUser } from './helpers.js';
 
-const base = (h) => ({ email: `${h}@example.com`, password: 'password 1234', handle: h, display_name: h });
+const base = (h) => ({ email: `${h}@example.com`, password: 'password 1234', handle: h, display_name: h, gender: 'male' });
 
 describe('signup roles (aligned to PR #110)', () => {
   it('accepts the nine approved roles, always keeps member, and grants no permissions', async () => {
