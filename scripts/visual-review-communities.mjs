@@ -40,6 +40,7 @@ try {
     await page.locator('#pikkForumForm button[type="submit"]').click();
     await page.locator('.pikk-forum-post').waitFor();
     assert.equal(await page.locator('.pikk-forum-post').count(), 1);
+    assert.match(await page.locator('#pikkForumFilterStatus').textContent(), /Music & Artists · 1 discussion · Newest first/);
     const upvote = page.locator('.pikk-forum-votes button[data-fvote="1"]');
     assert.match(await upvote.getAttribute('aria-label'), /Upvote PIKK QA discussion/);
     await upvote.focus();
@@ -72,6 +73,7 @@ try {
     await page.screenshot({ path: 'visual-review/communities-'+name+'-reply-posted.png', fullPage: true });
     await page.locator('.pikk-forum-topic-cards [data-ftopic="business"]').click();
     assert.equal(await page.locator('.pikk-forum-post').count(), 0);
+    assert.match(await page.locator('#pikkForumFilterStatus').textContent(), /Business & Money · 0 discussions · Newest first/);
     const empty = page.locator('.pikk-forum-empty');
     assert.equal(await empty.getAttribute('role'), 'status', 'Empty topic result is announced to assistive technology');
     assert.equal(await empty.textContent(), 'No discussions in Business & Money yet. Choose All discussions to browse other topics, or start a conversation here.');
@@ -79,6 +81,7 @@ try {
     await page.locator('.pikk-forum-topic-cards [data-ftopic="music"]').click();
     assert.equal(await page.locator('.pikk-forum-post').count(), 1);
     await page.locator('[data-fsort="top"]').click();
+    assert.match(await page.locator('#pikkForumFilterStatus').textContent(), /Music & Artists · 1 discussion · Top voted/);
     await page.waitForTimeout(2500);
     await page.screenshot({ path: 'visual-review/communities-'+name+'.png', fullPage: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'Horizontal overflow '+name);

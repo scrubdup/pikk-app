@@ -48,7 +48,7 @@ export function renderCommunities(){
     '<main class="pikk-forum-center"><nav class="pikk-forum-sort" aria-label="Sort posts"><button class="on" data-fsort="new" aria-pressed="true">✦ New</button><button data-fsort="top" aria-pressed="false">▲ Top</button><button data-fsort="discussed" aria-pressed="false">▤ Discussed</button></nav>'+
     '<div class="pikk-forum-topic-board"><h3>Discover communities</h3><div class="pikk-forum-topic-cards">'+TOPICS.map(t=>'<button data-ftopic="'+t[0]+'" aria-pressed="false"><span>'+t[2]+'</span><strong>'+esc(t[1])+'</strong></button>').join('')+'</div></div>'+
     '<section class="pikk-forum-compose"><h3>Start a discussion</h3>'+(user?'<form id="pikkForumForm"><label for="pikkForumTopic">Community</label><select id="pikkForumTopic">'+TOPICS.map(t=>'<option value="'+t[0]+'">'+esc(t[1])+'</option>').join('')+'</select><label for="pikkForumTitle">Title</label><input id="pikkForumTitle" required maxlength="110" placeholder="What is on your mind?" /><label for="pikkForumBody">Discussion</label><textarea id="pikkForumBody" required maxlength="4000" rows="3" placeholder="Ask a question or share a thought..."></textarea><button class="btn primary" type="submit">Publish locally · TEST MODE</button></form>':'<p class="muted">Sign in with a PIKK demo account to write discussions and vote.</p><a href="#/profile" class="btn primary">Sign in</a>')+'</section>'+
-    '<section><h3 class="pikk-forum-feed-title">Community discussions</h3><div id="pikkForumFeed"></div></section></main>'+
+    '<section><h3 class="pikk-forum-feed-title">Community discussions</h3><p id="pikkForumFilterStatus" class="muted" role="status" aria-live="polite"></p><div id="pikkForumFeed"></div></section></main>'+
     '<aside class="pikk-forum-info"><h3>About PIKK Communities</h3><p>Topic-based discussion with an original PIKK look, separate from the live Lounge and social feed.</p><h3>Community safety</h3><p>Respect others. No harassment, hate, scams or personal information. Reports on this preview only hide posts on your device.</p><a href="#/guidelines">Community Guidelines</a></aside></div>',
     {lead:'Topic communities · discussions · voting · replies · local preview'});
 }
@@ -57,7 +57,15 @@ export function bindCommunities(root){
   let topic='all',sort='new';
   const user=()=>getState().user;
   const feed=host.querySelector('#pikkForumFeed');
-  const redraw=()=>{feed.innerHTML=makePosts(load(),user(),topic,sort);};
+  const status=host.querySelector('#pikkForumFilterStatus');
+  const redraw=()=>{
+    const state=load();
+    feed.innerHTML=makePosts(state,user(),topic,sort);
+    const count=state.posts.filter(p=>!state.hidden.includes(p.id)&&(topic==='all'||p.topic===topic)).length;
+    const label=topic==='all'?'All discussions':TOPICS.find(t=>t[0]===topic)?.[1]||'Community';
+    const order={new:'Newest first',top:'Top voted',discussed:'Most discussed'}[sort];
+    status.textContent=`${label} · ${count} ${count===1?'discussion':'discussions'} · ${order}`;
+  };
   const query=new URLSearchParams(location.hash.split('?')[1]||'').get('topic');
   if(ids.has(query))topic=query;
   function pressed(selector,key,value){host.querySelectorAll(selector).forEach(b=>{let on=b.dataset[key]===value;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));});}
