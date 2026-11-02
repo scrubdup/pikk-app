@@ -41,7 +41,7 @@ describe('PIKK Vault media', () => {
     expect(done.json.media.checksum_sha256).toBe(await sha(bytes));
     expect(done.json.media.filename).not.toMatch(/[\/<>]/);
     const row = await env.DB.prepare('SELECT object_key, owner_id FROM media WHERE id=?').bind(id).first();
-    expect(row.object_key).toBe(`u/${u.id}/${id}`);
+    expect(row.object_key).toBe(`vault/${type}/${u.id}/${id}`);
     expect(await env.MEDIA.head(row.object_key)).not.toBeNull();
     const g = await call('GET', `/media/${id}`, { cookie: u.cookie });
     expect(g.status).toBe(200); expect(g.json.media.state).toBe('ready');

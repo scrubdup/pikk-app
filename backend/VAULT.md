@@ -1,5 +1,10 @@
 # PIKK Vault (backend) — LOCAL ONLY, not deployed
 
+## Object keys & shared bucket (prefix isolation)
+- Vault shares ONE R2 bucket (`env.MEDIA`) with main's music uploads (PIKK Backend decision): music uses `music/<user_id>/...`, Vault uses `vault/<media_type>/<owner_id>/<media_id>` (was `u/<owner>/<id>`).
+- `src/vault-keys.js` is the only way Vault builds, deletes or lists keys: `vaultKey()`, `assertVaultKey()`, `vaultDelete()`, `vaultList()`. Any key not shaped `vault/<type>/<owner>/<id>` (other prefix, traversal, extra segments) throws `VaultKeyError`. Delete, list, backup and restore paths all go through the guard.
+- Tests: `test/vault-prefix.test.js` plants a `music/` object and checks it survives every Vault operation.
+
 ## Slice 3: processing, Story sweeper, admin controls (migration `0010_vault_processing.sql`)
 - **States:** `pending_upload → uploaded → processing → ready | failed` (`rejected` on spoofed type at complete). `POST /media/:id/complete` sniffs + hashes, then returns **202** with `state: processing` and a queued `probe` job. Nothing is playable until `ready`: `/media/:id/content` and `/access-url` require `ready` for everyone, owner included.
 - **Jobs:** `processing_jobs` (job_type, state queued/running/succeeded/failed, attempts, max_attempts=3, last_error, run_after, timestamps). Transient errors retry with backoff (`PROCESSING.backoffMs`); content mismatches fail immediately and delete the object. Stuck `running` jobs are reclaimed after 10 min by the cron.
