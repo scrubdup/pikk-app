@@ -63,7 +63,8 @@ function panel(key, i, m) {
 }
 export function matchView(key, st) {
   const m = st.match; const names = MODES[key].names;
-  const label = m.phase === 'round' ? `Round ${m.round}${m.tieBreaker ? ' · Final tiebreaker' : ''}` : m.phase === 'vote' ? `Vote for the round ${m.round} winner` : m.phase === 'rematch' ? 'Result · Run It Back?' : 'Match finished';
+  const roundName = m.tieBreaker ? 'Tie Breaker' : `Round ${m.round}`;
+  const label = m.phase === 'round' ? roundName : m.phase === 'vote' ? `${roundName} · Vote: who won?` : m.phase === 'rematch' ? 'Result · Run It Back?' : 'Match finished';
   const result = m.result === 'winner' ? `<p data-roast-result="winner"><strong>Winner (audience votes): ${esc(names[m.winner])}</strong></p>` : m.result === 'tie' ? '<p data-roast-result="tie"><strong>Result: Tie</strong> (tiebreaker round was also tied)</p>' : '';
   const voted = m.votersThisRound.includes(st.viewer);
   const order = m.turnOrder ? `<p>Turn order (teams alternate): ${m.turnOrder.map((t) => esc(memberName(t.memberId))).join(' → ')} <em>(test values · owner verification needed)</em></p>` : '';
@@ -75,7 +76,7 @@ export function matchView(key, st) {
     <p>Round votes so far: ${m.votes[0]} – ${m.votes[1]} · Round winners: ${m.roundWinners.map((w) => (w === null ? 'tie' : names[w].split(' ')[0] + (m.teams ? ' ' + names[w].split(' ')[1] : ''))).join(', ') || '—'}</p>
     <label>Acting as test viewer: <select data-roast-viewer>${VIEWERS.map((v) => `<option ${v === st.viewer ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
     ${m.phase === 'vote' ? (({ voted: n, eligible: e }) => `<p data-roast-turnout><strong>${n} of ${e} eligible viewers voted</strong> <span class="chip">TEST MODE · test viewer list</span></p>`)(roastVoteTurnout(m)) : ''}
-    ${m.phase === 'vote' ? (voted ? '<p class="muted">This viewer already voted this round.</p>' : `<p><button type="button" class="btn primary" data-roast-vote="0">Vote: ${esc(names[0])}</button> <button type="button" class="btn primary" data-roast-vote="1">Vote: ${esc(names[1])}</button></p>`) : ''}
+    ${m.phase === 'vote' ? (voted ? '<p class="muted">This viewer already voted this round.</p>' : `<p data-roast-vote-screen><strong data-roast-vote-round>${roundName}</strong> · Tap a name to vote who won:</p><p><button type="button" class="btn primary" data-roast-vote="0" aria-label="Vote for ${esc(names[0])}">${esc(names[0])}</button> <button type="button" class="btn primary" data-roast-vote="1" aria-label="Vote for ${esc(names[1])}">${esc(names[1])}</button></p>`) : ''}
     ${result}
     ${m.phase === 'rematch' ? `<p><strong>Rematch? Every contestant must agree within ${REMATCH_SECONDS}s.</strong> Viewers do not vote on rematches.</p><ul data-roast-rematch-list>${m.contestants.map((c) => `<li>${esc(contestantName(key, m, c))}: ${c in m.rematchAgreement ? (m.rematchAgreement[c] ? '<strong>Yes</strong>' : 'No') : `<button type="button" class="btn" data-roast-rematch="yes" data-contestant="${c}">Rematch: Yes</button> <button type="button" class="btn" data-roast-rematch="no" data-contestant="${c}">Rematch: No</button>`}</li>`).join('')}</ul>` : ''}
     ${m.rematch === 'agreed' ? '<p data-roast-rematch-status="agreed">All contestants agreed. <button type="button" class="btn primary" data-roast="rematch">Start rematch</button></p>' : m.rematch === 'declined' ? '<p data-roast-rematch-status="declined">Rematch declined by a contestant. Match over.</p>' : m.rematch === 'expired' ? '<p data-roast-rematch-status="expired">Rematch window closed without agreement. Match over.</p>' : ''}

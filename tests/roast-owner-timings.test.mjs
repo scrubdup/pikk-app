@@ -45,3 +45,36 @@ test('engine reads ROAST_APPROVED_RULES.rematchRequiresAllContestants; flipping 
   const loose = castRematchVote(decided({ ...RULES, rematchRequiresAllContestants: false }), true, 'a');
   assert.equal(loose.rematch, 'agreed'); assert.equal(loose.phase, 'finished');
 });
+
+// Owner ruling t447u: vote screen shows round number + both names, tap a name to vote, tiebreaker says "Tie Breaker".
+const NAMES = { '1v1': ['Challenger (test)', 'Opponent (test)'], tag: ['Team A (test)', 'Team B (test)'] };
+const tieTo = (m, rounds) => { for (let r = 0; r < rounds; r++) { m = advance(m, ROUND_SECONDS); m = advance(m, VOTE_SECONDS); } return m; };
+for (const [key, inv] of [['1v1', oneVOne], ['tag', tag]]) {
+  test(`${key}: vote screen shows round number, both names as tap-to-vote buttons, 10s window`, () => {
+    const m = advance(advance(createRoastMatch(inv(), { eligibleViewerIds: V }), ROUND_SECONDS), 0);
+    const m2 = advance(tieTo(createRoastMatch(inv(), { eligibleViewerIds: V }), 1), ROUND_SECONDS);
+    assert.equal(m.seconds, 10);
+    const html = matchView(key, { match: m2, viewer: V[0] });
+    assert.match(html, /<strong data-roast-vote-round>Round 2<\/strong>/);
+    for (const [i, n] of NAMES[key].entries()) assert.match(html, new RegExp(`data-roast-vote="${i}"[^>]*>${n.replace(/[()]/g, '\\$&')}</button>`));
+    assert.match(html, /Tap a name to vote/);
+    assert.doesNotMatch(html, /Tie Breaker/);
+    const voted = castRoastVote(m2, 1, V[0]); assert.deepEqual(voted.votes, [0, 1], 'tapping a name records the vote');
+  });
+  test(`${key}: tiebreaker round is labeled "Tie Breaker" instead of a round number`, () => {
+    let m = tieTo(createRoastMatch(inv(), { eligibleViewerIds: V }), 3);
+    assert.equal(m.tieBreaker, true);
+    assert.match(matchView(key, { match: m, viewer: V[0] }), /Tie Breaker · <span data-roast-clock>/);
+    m = advance(m, ROUND_SECONDS);
+    const html = matchView(key, { match: m, viewer: V[0] });
+    assert.match(html, /<strong data-roast-vote-round>Tie Breaker<\/strong>/);
+    assert.doesNotMatch(html, /Round 4/);
+  });
+}
+test('rematch needs BOTH contestants within the 5s window; one yes then timeout expires', () => {
+  let m = castRematchVote(decided(), true, 'a');
+  assert.equal(m.rematch, null);
+  m = advance(m, 4); assert.equal(m.phase, 'rematch');
+  assert.equal(castRematchVote(m, true, 'b').rematch, 'agreed');
+  assert.equal(advance(m, 1).rematch, 'expired');
+});
