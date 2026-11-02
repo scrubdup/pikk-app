@@ -1,18 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRoastInvite, respondRoastInvite, createRoastMatch, tickRoastMatch, castRoastVote, castRematchVote, sendRoastTestGift, recordRoastReport, ROAST_APPROVED_TIMINGS as TIMINGS, ROAST_VOTE_TEST_TIMING_OWNER_VERIFICATION_NEEDED as VOTEFLAG, roastVoteTurnout, ROAST_REMATCH_TEST_TIMING_OWNER_VERIFICATION_NEEDED as REMATCH, ROAST_APPROVED_RULES as RULES, startRematch, ROUND_SECONDS, VOTE_SECONDS } from '../src/roast-engine.js';
+import { createRoastInvite, respondRoastInvite, createRoastMatch, tickRoastMatch, castRoastVote, castRematchVote, sendRoastTestGift, recordRoastReport, ROAST_APPROVED_TIMINGS as TIMINGS, roastVoteTurnout, ROAST_APPROVED_RULES as RULES, startRematch, ROUND_SECONDS, VOTE_SECONDS, REMATCH_SECONDS } from '../src/roast-engine.js';
 const advance = (m, n) => { for (let i = 0; i < n; i++) m = tickRoastMatch(m); return m; };
 const V = ['v1', 'v2', 'v3'];
 const accepted = () => respondRoastInvite(createRoastInvite({ inviterId: 'a', inviteeId: 'b', consentAccepted: true }), { accept: true, consentAccepted: true });
 const newMatch = () => createRoastMatch(accepted(), { eligibleViewerIds: V });
 const playRound = (m, votes) => { m = advance(m, ROUND_SECONDS); for (const [c, v] of votes) m = castRoastVote(m, c, v); return advance(m, VOTE_SECONDS); };
 
-test('approved timings and rules are separate from the still-unverified rematch window', () => {
-  assert.deepEqual({ ...TIMINGS }, { roundSeconds: 60, baseRounds: 3 });
-  assert.deepEqual({ ...VOTEFLAG }, { voteSeconds: 10 }); assert.equal(VOTE_SECONDS, VOTEFLAG.voteSeconds); assert.ok(Object.isFrozen(VOTEFLAG));
-  assert.deepEqual({ ...REMATCH }, { rematchSeconds: 10 });
+test('owner-approved timings: 60s rounds, 3 rounds, 10s vote, 5s rematch agree window', () => {
+  assert.deepEqual({ ...TIMINGS }, { roundSeconds: 60, baseRounds: 3, voteSeconds: 10, rematchSeconds: 5 });
+  assert.ok(Object.isFrozen(TIMINGS)); assert.equal(VOTE_SECONDS, 10); assert.equal(REMATCH_SECONDS, 5);
   assert.deepEqual({ ...RULES }, { tiebreakerRounds: 1, contestantsMayVote: false, rematchRequiresAllContestants: true });
-  assert.ok(Object.isFrozen(TIMINGS) && Object.isFrozen(REMATCH) && Object.isFrozen(RULES));
+  assert.ok(Object.isFrozen(TIMINGS) && Object.isFrozen(RULES));
 });
 test('invite requires challenger consent and mirrors backend fields', () => {
   assert.equal(createRoastInvite({ inviterId: 'a', inviteeId: 'b', consentAccepted: false }).error, 'consent_required');
@@ -169,7 +168,7 @@ test('one contestant saying no declines the rematch', () => {
 });
 test('rematch window closing without agreement expires', () => {
   let m = castRematchVote(decided(), true, 'a');
-  m = advance(m, REMATCH.rematchSeconds);
+  m = advance(m, REMATCH_SECONDS);
   assert.equal(m.phase, 'finished'); assert.equal(m.rematch, 'expired');
 });
 test('tag-team rematch requires every member', () => {

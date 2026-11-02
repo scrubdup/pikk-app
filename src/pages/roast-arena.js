@@ -61,14 +61,14 @@ function panel(key, i, m) {
     ${['round', 'vote'].includes(m.phase) ? `<button type="button" class="btn" data-roast-gift="${i}">Send TEST gift</button>` : ''}
   </div>`;
 }
-function matchView(key, st) {
+export function matchView(key, st) {
   const m = st.match; const names = MODES[key].names;
   const label = m.phase === 'round' ? `Round ${m.round}${m.tieBreaker ? ' · Final tiebreaker' : ''}` : m.phase === 'vote' ? `Vote for the round ${m.round} winner` : m.phase === 'rematch' ? 'Result · Run It Back?' : 'Match finished';
   const result = m.result === 'winner' ? `<p data-roast-result="winner"><strong>Winner (audience votes): ${esc(names[m.winner])}</strong></p>` : m.result === 'tie' ? '<p data-roast-result="tie"><strong>Result: Tie</strong> (tiebreaker round was also tied)</p>' : '';
   const voted = m.votersThisRound.includes(st.viewer);
   const order = m.turnOrder ? `<p>Turn order (teams alternate): ${m.turnOrder.map((t) => esc(memberName(t.memberId))).join(' → ')} <em>(test values · owner verification needed)</em></p>` : '';
   return `<p class="chip">TEST MODE · local only · no server, video or real payments</p>
-    <div class="card"><strong>On-screen rules (automated, no host):</strong> ${BASE_ROUNDS} rounds of ${ROUND_SECONDS}s, then a vote after each round (vote window ${VOTE_SECONDS}s <em>· test value · owner verification needed</em>). One vote per viewer per round${m.teams ? ' for a team' : ''}. Winner is decided by votes only; gifts are tallied separately. If tied after ${BASE_ROUNDS} rounds, one tiebreaker round is played, then it ends as a tie. Contestants cannot vote. A rematch needs every contestant to agree (decision window ${REMATCH_SECONDS}s <em>· test value · owner verification needed</em>).</div>
+    <div class="card"><strong>On-screen rules (automated, no host):</strong> ${BASE_ROUNDS} rounds of ${ROUND_SECONDS}s, then a vote after each round (vote window ${VOTE_SECONDS}s). One vote per viewer per round${m.teams ? ' for a team' : ''}. Winner is decided by votes only; gifts are tallied separately. If tied after ${BASE_ROUNDS} rounds, one tiebreaker round is played, then it ends as a tie. Contestants cannot vote. A rematch needs every contestant to agree (decision window ${REMATCH_SECONDS}s, rematch rounds are also ${ROUND_SECONDS}s).</div>
     ${order}
     <h3 aria-live="polite">${label} · <span data-roast-clock>${clock(m.seconds)}</span></h3>
     <div class="row" style="display:flex;gap:12px">${panel(key, 0, m)}${panel(key, 1, m)}</div>
@@ -77,7 +77,7 @@ function matchView(key, st) {
     ${m.phase === 'vote' ? (({ voted: n, eligible: e }) => `<p data-roast-turnout><strong>${n} of ${e} eligible viewers voted</strong> <span class="chip">TEST MODE · test viewer list</span></p>`)(roastVoteTurnout(m)) : ''}
     ${m.phase === 'vote' ? (voted ? '<p class="muted">This viewer already voted this round.</p>' : `<p><button type="button" class="btn primary" data-roast-vote="0">Vote: ${esc(names[0])}</button> <button type="button" class="btn primary" data-roast-vote="1">Vote: ${esc(names[1])}</button></p>`) : ''}
     ${result}
-    ${m.phase === 'rematch' ? `<p><strong>Rematch? Every contestant must agree.</strong> Viewers do not vote on rematches.</p><ul data-roast-rematch-list>${m.contestants.map((c) => `<li>${esc(contestantName(key, m, c))}: ${c in m.rematchAgreement ? (m.rematchAgreement[c] ? '<strong>Yes</strong>' : 'No') : `<button type="button" class="btn" data-roast-rematch="yes" data-contestant="${c}">Rematch: Yes</button> <button type="button" class="btn" data-roast-rematch="no" data-contestant="${c}">Rematch: No</button>`}</li>`).join('')}</ul>` : ''}
+    ${m.phase === 'rematch' ? `<p><strong>Rematch? Every contestant must agree within ${REMATCH_SECONDS}s.</strong> Viewers do not vote on rematches.</p><ul data-roast-rematch-list>${m.contestants.map((c) => `<li>${esc(contestantName(key, m, c))}: ${c in m.rematchAgreement ? (m.rematchAgreement[c] ? '<strong>Yes</strong>' : 'No') : `<button type="button" class="btn" data-roast-rematch="yes" data-contestant="${c}">Rematch: Yes</button> <button type="button" class="btn" data-roast-rematch="no" data-contestant="${c}">Rematch: No</button>`}</li>`).join('')}</ul>` : ''}
     ${m.rematch === 'agreed' ? '<p data-roast-rematch-status="agreed">All contestants agreed. <button type="button" class="btn primary" data-roast="rematch">Start rematch</button></p>' : m.rematch === 'declined' ? '<p data-roast-rematch-status="declined">Rematch declined by a contestant. Match over.</p>' : m.rematch === 'expired' ? '<p data-roast-rematch-status="expired">Rematch window closed without agreement. Match over.</p>' : ''}
     <p><button type="button" class="btn" data-roast="report">Report (stub)</button> <button type="button" class="btn" data-roast="skip">Skip to next phase (test control)</button></p>
     ${m.reports.length ? `<p class="muted" data-roast-reports>${m.reports.length} report(s) recorded locally only. Not sent to moderators.</p>` : ''}`;
