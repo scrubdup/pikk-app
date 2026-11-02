@@ -3,6 +3,7 @@ import { requireVerified } from './auth.js';
 import { newId } from './crypto.js';
 import { audit } from './audit.js';
 import { rateLimit } from './ratelimit.js';
+import { assertMusicKey, musicKey, MusicKeyError } from './music-keys.js';
 
 const MAX_AUDIO_BYTES = 50 * 1024 * 1024;
 const AUDIO_TYPES = new Set([
@@ -84,10 +85,11 @@ export async function musicUploadRoute(env, req, ctx, method, path) {
 
     const id = newId('media');
     const now = new Date().toISOString();
-    const storageKey = `music/${s.user.id}/${id}/${safeName(file.name)}`;
+    // Filename lives in D1 (original_name), not in the key: music/<owner>/<id> only.
+    const storageKey = musicKey(s.user.id, id);
 
     try {
-      await storage.put(storageKey, file.stream(), {
+      await storage.put(assertMusicKey(storageKey, s.user.id), file.stream(), {
         httpMetadata: { contentType: file.type },
         customMetadata: { owner_id: s.user.id, media_id: id, kind: 'music' },
       });
@@ -107,7 +109,7 @@ export async function musicUploadRoute(env, req, ctx, method, path) {
         ).bind(id, title, artistName, albumTitle, genre, explicitContent),
       ]);
     } catch (err) {
-      try { await storage.delete(storageKey); } catch {}
+      try { await storage.delete(assertMusicKey(storageKey, s.user.id)); } catch {}
       throw err;
     }
 
@@ -152,7 +154,10 @@ export async function musicUploadRoute(env, req, ctx, method, path) {
         WHERE id=? AND owner_id=? AND kind='music' AND status<>'deleted'`
     ).bind(match[1], s.user.id).first();
     if (!row) throw new ApiError(404, 'not_found', 'Music upload not found');
-    const object = await storage.get(row.storage_key);
+    let key;
+    try { key = assertMusicKey(row.storage_key, s.user.id); }
+    catch (e) { if (e instanceof MusicKeyError) throw new ApiError(404, 'media_missing', 'Stored audio file not found'); throw e; }
+    const object = await storage.get(key);
     if (!object) throw new ApiError(404, 'media_missing', 'Stored audio file not found');
     const headers = new Headers();
     object.writeHttpMetadata?.(headers);
