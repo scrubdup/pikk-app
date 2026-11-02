@@ -38,3 +38,13 @@ test('saving a reply reopens its thread with accurate disclosure state and keybo
  assert.match(view,/if\(panel&&trigger\)\{panel\.hidden=false;trigger\.setAttribute\('aria-expanded','true'\);trigger\.focus\(\);\}/);
  assert.match(view,/toast\('Reply saved locally'\)/);
 });
+
+test('voting keeps keyboard focus and identifies the post; reply input has a label',()=>{
+ assert.match(view,/aria-label="Upvote .*esc\(p\.title\)/);
+ assert.match(view,/aria-label="Downvote .*esc\(p\.title\)/);
+ assert.match(view,/label for="pikk-forum-reply-/);
+ assert.match(view,/textarea id="pikk-forum-reply-/);
+ assert.match(view,/feed\.querySelectorAll\('\[data-fvote\]'\)/);
+ assert.match(view,/button\.dataset\.id===voteId && button\.dataset\.fvote===direction/);
+ assert.match(view,/\?\.focus\(\)/);
+});

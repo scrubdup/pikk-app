@@ -26,6 +26,7 @@ try {
     });
     await page.goto('http://127.0.0.1:5173/#/communities', { waitUntil: 'domcontentloaded' });
     await page.locator('#pikkForum').waitFor();
+    await page.locator('#splash').waitFor({ state: 'detached', timeout: 12000 });
     if (width >= 1100) {
       const board = await page.locator('#pikkForum').boundingBox();
       assert.ok(board && board.width >= 950, 'Desktop Communities must use wide three-column canvas');
@@ -39,8 +40,13 @@ try {
     await page.locator('#pikkForumForm button[type="submit"]').click();
     await page.locator('.pikk-forum-post').waitFor();
     assert.equal(await page.locator('.pikk-forum-post').count(), 1);
-    await page.locator('.pikk-forum-votes button[data-fvote="1"]').click();
+    const upvote = page.locator('.pikk-forum-votes button[data-fvote="1"]');
+    assert.match(await upvote.getAttribute('aria-label'), /Upvote PIKK QA discussion/);
+    await upvote.focus();
+    await upvote.press('Enter');
     assert.equal(await page.locator('.pikk-forum-votes b').textContent(), '1');
+    assert.equal(await upvote.evaluate(el => el === document.activeElement), true,
+      name + ' voting keeps keyboard focus on the upvote control');
     const disclosure = page.locator('[data-fopen]');
     const thread = page.locator('[data-thread]');
     assert.equal(await disclosure.getAttribute('aria-expanded'), 'false', 'Replies start collapsed');
@@ -56,6 +62,7 @@ try {
     assert.equal(await thread.isHidden(), true, 'Thread hidden after collapse');
     await disclosure.click();
     assert.equal(await disclosure.getAttribute('aria-expanded'), 'true', 'Click reopens replies');
+    assert.equal(await page.locator('[data-freply] textarea').evaluate(el => el.labels?.[0]?.textContent?.trim()), 'Reply');
     await page.locator('[data-freply] textarea').fill('Welcome to the PIKK discussion.');
     await page.locator('[data-freply] button').click();
     assert.equal(await page.locator('.pikk-forum-comment').count(), 1);
