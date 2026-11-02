@@ -43,7 +43,7 @@ import { navigate, getRoute } from '../router.js';
 import { notifyLiveOpen, notifyLiveClosed } from '../player.js';
 import { giftStickerHtml, getGiftSticker } from '../gift-stickers.js';
 import { renderLiveDiscoveryDirectory, mountLiveDirectorySearch, liveDiscoveryRefreshHref } from '../live-discovery.js';
-import { renderGiftForAllControls, bindGiftForAll, renderWinnersStrip, nameHtml as gbNameHtml, hasWinnerBadge as gbHasBadge, loadRecords as gbLoad } from '../live-gift-battle.js';
+import { renderGiftForAllControls, bindGiftForAll, challengeGifter as gbChallengeGifter, renderWinnersStrip, nameHtml as gbNameHtml, hasWinnerBadge as gbHasBadge, loadRecords as gbLoad } from '../live-gift-battle.js';
 import { renderGoLiveCategoryFields, bindGoLiveCategoryFields, readGoLiveFields, renderGroupRoomsPanel, bindGroupRooms } from '../live-rooms.js';
 
 /** t197u discovery tabs — preserve ?tab= on soft refresh */
@@ -1153,7 +1153,26 @@ function mountSongRequestForm(root) {
   });
 }
 
+function bindGbChallengePop(root) {
+  root.addEventListener('click', (ev) => {
+    const pop = getLiveGbChallengePop();
+    if (ev.target.closest('#liveGbPopChallenge')) {
+      if (!pop) return toast('Challenge expired');
+      const ok = gbChallengeGifter(root, pop.fromUser);
+      dismissLiveGbChallengePop(pop.id);
+      root.querySelector('#liveGbChallengePop')?.remove();
+      if (!ok) toast('Gift Battle runs on the Live stage · TEST MODE');
+      return;
+    }
+    if (ev.target.closest('#liveGbPopDismiss')) {
+      dismissLiveGbChallengePop(pop?.id);
+      root.querySelector('#liveGbChallengePop')?.remove();
+    }
+  });
+}
+
 export function bindLive(root) {
+  bindGbChallengePop(root);
   mountLiveDirectorySearch(root);
   root.querySelectorAll('.hot-live-watch').forEach((btn) => {
     btn.addEventListener('click', () => {

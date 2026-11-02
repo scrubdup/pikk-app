@@ -163,6 +163,16 @@ export function bindGiftForAll(root, { me = 'You', toast = () => {} } = {}) {
       s.b = null; s.w = openChallengeWindow({ gifter: b.dataset.gbGiftall === 'me' ? me : DEMO_PLACEHOLDER });
       draw(); tick();
     });
+    // A paid-gift "Challenge @gifter" pop on the Live stage enters the same 30s first-tap flow: open the window for that
+    // gifter, and this tap is the first tap, so it accepts and starts the 60s battle.
+    slot.addEventListener('pikk-gb-challenge', (ev) => {
+      const gifter = String(ev.detail?.gifter || DEMO_PLACEHOLDER);
+      if (s.b && !isOver(s.b)) return toast('A Gift Battle is already running');
+      s.b = null; s.w = openChallengeWindow({ gifter });
+      const r = tryAccept(s.w, gifter === me ? DEMO_PLACEHOLDER : me); s.w = r.window || s.w;
+      if (r.ok) s.b = r.battle;
+      draw(); tick();
+    });
     slot.addEventListener('click', (ev) => {
       if (ev.target.closest('[data-gb-accept]')) {
         const challenger = s.w?.gifter === me ? DEMO_PLACEHOLDER : me;
@@ -177,7 +187,17 @@ export function bindGiftForAll(root, { me = 'You', toast = () => {} } = {}) {
   });
 }
 
-export function renderGiftBattleExplainer() {
+/** Dispatch a paid-gift challenge into the first Gift Battle slot on this page. Returns false if there is no slot. */
+export function challengeGifter(root, gifter) {
+  const slot = root.querySelector('[data-gb-slot]');
+  if (!slot) return false;
+  slot.dispatchEvent(new CustomEvent('pikk-gb-challenge', { detail: { gifter } }));
+  return true;
+}
+
+/** Viewer-vs-viewer explainer: only for Live and Group Rooms (scope 'live' | 'room'); never on the streamer Battles page. */
+export function renderGiftBattleExplainer(scope) {
+  if (scope !== 'live' && scope !== 'room') return '';
   return `
     <div class="card pikk-gb-explainer" id="gbExplainer">
       <h3 style="margin:0 0 6px">Gift Battles happen inside Live &amp; Group Rooms</h3>
