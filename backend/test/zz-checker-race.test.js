@@ -9,16 +9,18 @@ describe('checker race probe', () => {
     await claim(env, j.id, T);
     const now = T + LEASE_SEC * 1000;
     const [a, b] = await Promise.all([reclaimExpired(env, now), reclaimExpired(env, now)]);
-    console.log('RECLAIM_RESULTS', JSON.stringify({ a, b }));
     expect([...a, ...b].length).toBe(1);
   });
   it('slow worker completes while reclaim is in flight', async () => {
     await env.DB.prepare('DELETE FROM jobs').run();
     const j = await enqueue(env, { kind: 'k', key: 'race2', maxAttempts: 3, now: T });
-    await claim(env, j.id, T);
+    const tok = await claim(env, j.id, T);
     const now = T + LEASE_SEC * 1000;
-    const [r] = await Promise.all([reclaimExpired(env, now), complete(env, j.id, now)]);
-    const row = await env.DB.prepare('SELECT state FROM jobs WHERE id=?').bind(j.id).first();
-    console.log('COMPLETE_RACE', JSON.stringify({ r, state: row.state }));
+    const [r, c] = await Promise.all([reclaimExpired(env, now), complete(env, j.id, tok, now)]);
+    const row = await env.DB.prepare('SELECT state, attempts FROM jobs WHERE id=?').bind(j.id).first();
+    // Exactly one of reclaim / late complete wins, and the row reflects the winner.
+    expect(r.length + (c ? 1 : 0)).toBe(1);
+    expect(row.state).toBe(c ? 'succeeded' : 'failed');
+    expect(row.attempts).toBe(1);
   });
 });

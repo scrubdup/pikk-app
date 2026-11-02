@@ -39,6 +39,17 @@ export const WINDOW_MS = 5 * 60 * 1000;
 /** Deterministic per-5-minute-window key: duplicate cron deliveries in one window share one job record. */
 export const dbCheckKey = (nowMs) => `${DB_CHECK_KIND}:${new Date(Math.floor(nowMs / WINDOW_MS) * WINDOW_MS).toISOString()}`;
 
+/**
+ * Master Mind cron entry point, called from index.js scheduled() alongside other subsystems (e.g. Vault's runVaultCron).
+ * OFF unless env.MASTERMIND_JOBS_ENABLED === 'true' (plain var, unset by default, pending owner approval).
+ */
+export async function runMasterMindScheduled(env, _event, now = () => Date.now()) {
+  if (env.MASTERMIND_JOBS_ENABLED !== 'true') return { skipped: 'disabled' };
+  if (typeof now === 'function') return runScheduled(env, now);
+  const base = Number.isFinite(now) ? now : Date.now(); const start = Date.now();
+  return runScheduled(env, () => base + (Date.now() - start));
+}
+
 export async function runScheduled(env, now = () => Date.now()) {
   const t0 = now();
   await reclaimExpired(env, t0); // crashed workers: expired leases become failed attempts before new claims

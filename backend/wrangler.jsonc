@@ -16,6 +16,8 @@
     "SESSION_TTL_HOURS": "720",
     "EXPOSE_VERIFY_TOKEN": "false",
     "PUBLIC_APP_URL": "https://scrubdup.github.io/pikk-app/"
+    // MASTERMIND_JOBS_ENABLED: plain var (not a secret), intentionally UNSET = off pending owner approval.
+    // Set to "true" only when the owner approves the Master Mind heartbeat/job runner.
   }
   // Secrets (set via `wrangler secret put`, never committed): RESEND_API_KEY, STRIPE_WEBHOOK_SECRET,
   // OWNER_BOOTSTRAP_TOKEN (optional, >=32 chars, one-time owner bootstrap; delete after use)

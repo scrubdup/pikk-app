@@ -3,7 +3,7 @@ import { signup, login, logout, verifyEmail, resendVerification, loadSession, re
 import { requirePermission, GRANTABLE_ROLES, OWNER_ROLE } from './permissions.js';
 import { opsSummary } from './ops.js';
 import { bootstrapOwner } from './bootstrap.js';
-import { runScheduled } from './heartbeat.js';
+import { runMasterMindScheduled } from './heartbeat.js';
 import { assertNotBlocked, NOT_BLOCKED_SQL } from './blocks.js';
 import { safetyRoute, ageVerificationWebhook } from './safety.js';
 import { requireString, requirePositiveInt, validateSignupRoles } from './validate.js';
@@ -346,8 +346,13 @@ export default {
     res.headers.set('X-Request-Id', requestId);
     return res;
   },
-  // Master Mind phase 2: inert until a cron trigger is enabled in wrangler.jsonc at deploy time (owner decision).
-  async scheduled(_controller, env, ctx) {
-    ctx.waitUntil(runScheduled(env).catch(e => console.error('scheduled heartbeat failed', e && e.message)));
+  // Thin cron dispatcher: each subsystem exports one function; failures are isolated by allSettled.
+  // Master Mind no-ops unless MASTERMIND_JOBS_ENABLED === 'true'. No cron triggers are enabled in this branch.
+  async scheduled(event, env, ctx) {
+    const now = Date.now();
+    ctx.waitUntil(Promise.allSettled([
+      runMasterMindScheduled(env, event, now),
+      // >>> PIKK Vault slot: runVaultCron(env, event, now),  (#346; add its import from Vault's module on merge)
+    ]).then(rs => rs.forEach(r => r.status === 'rejected' && console.error('scheduled task failed', r.reason && r.reason.message))));
   },
 };
