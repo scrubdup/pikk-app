@@ -29,6 +29,6 @@ test('Wallet visual CSS is responsive, route-scoped and accessible', () => {
   assert.match(main, /import '\.\/wallet-premium\.css';/);
   assert.match(main, /'\/wallet': \{ render: renderWallet, bind: bindWallet \}/);
   assert.equal(TABBAR.length, 7);
-  assert.match(html, /pikk-official-approved\.jpg/);
+  assert.match(html, /pikk-logo-official\.png/);
   assert.match(html, /dbs-sticky-player/);
 });

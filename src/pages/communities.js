@@ -14,21 +14,27 @@ function makePosts(v,user,topic,sort){
   let a=v.posts.filter(p=>!v.hidden.includes(p.id)&&(topic==='all'||p.topic===topic));
   const score=p=>Object.entries(v.votes).reduce((n,x)=>n+(x[0].startsWith(p.id+':')?Number(x[1])||0:0),0);
   a.sort((x,y)=>sort==='top'?score(y)-score(x):sort==='discussed'?(y.replies?.length||0)-(x.replies?.length||0):y.when-x.when);
-  if(!a.length)return '<div class="pikk-forum-empty">No discussions yet. Start the first conversation on this browser.</div>';
+  if(!a.length){
+    const name=TOPICS.find(t=>t[0]===topic)?.[1]||'this community';
+    const message=topic==='all'
+      ? 'No discussions yet. Start the first conversation on this browser.'
+      : 'No discussions in '+esc(name)+' yet. Choose All discussions to browse other topics, or start a conversation here.';
+    return '<div class="pikk-forum-empty" role="status">'+message+'</div>';
+  }
   return a.map(p=>{
     const label=TOPICS.find(t=>t[0]===p.topic)?.[1]||'Community';
     const replies=Array.isArray(p.replies)?p.replies:[];
     const vote=Number(v.votes[p.id+':'+(user?.id||'guest')])||0;
     return '<article class="pikk-forum-post"><div class="pikk-forum-votes">'+
-      '<button data-fvote="1" data-id="'+esc(p.id)+'" aria-label="Upvote" aria-pressed="'+(vote===1)+'" '+(user?'':'disabled')+'>▲</button>'+
-      '<b>'+score(p)+'</b><button data-fvote="-1" data-id="'+esc(p.id)+'" aria-label="Downvote" aria-pressed="'+(vote===-1)+'" '+(user?'':'disabled')+'>▼</button></div>'+
+      '<button data-fvote="1" data-id="'+esc(p.id)+'" aria-label="Upvote '+esc(p.title)+'" aria-pressed="'+(vote===1)+'" '+(user?'':'disabled')+'>▲</button>'+
+      '<b>'+score(p)+'</b><button data-fvote="-1" data-id="'+esc(p.id)+'" aria-label="Downvote '+esc(p.title)+'" aria-pressed="'+(vote===-1)+'" '+(user?'':'disabled')+'>▼</button></div>'+
       '<div class="pikk-forum-post-content"><p class="pikk-forum-meta">'+esc(label)+' · u/'+esc(p.author)+' · local preview</p>'+
       '<h3>'+esc(p.title)+'</h3><p class="pikk-forum-text">'+esc(p.body)+'</p>'+
       '<button class="pikk-forum-reply-button" data-fopen="'+esc(p.id)+'" aria-expanded="false" aria-controls="pikk-forum-thread-'+esc(p.id)+'">▤ '+replies.length+' replies</button> '+
       (user&&user.id!==p.owner?'<button class="pikk-forum-reply-button" data-freport="'+esc(p.id)+'">◇ Hide / report locally</button>':'')+
       '<div class="pikk-forum-thread" id="pikk-forum-thread-'+esc(p.id)+'" data-thread="'+esc(p.id)+'" hidden>'+ 
       replies.map(r=>'<p class="pikk-forum-comment"><strong>'+esc(r.author)+'</strong> '+esc(r.body)+'</p>').join('')+
-      (user?'<form data-freply="'+esc(p.id)+'"><label>Reply</label><textarea maxlength="1000" required rows="2" placeholder="Join the discussion"></textarea><button class="btn primary" type="submit">Reply · local</button></form>':'<a href="#/profile" class="btn ghost">Sign in to reply</a>')+
+      (user?'<form data-freply="'+esc(p.id)+'"><label for="pikk-forum-reply-'+esc(p.id)+'">Reply</label><textarea id="pikk-forum-reply-'+esc(p.id)+'" maxlength="1000" required rows="2" placeholder="Join the discussion"></textarea><button class="btn primary" type="submit">Reply · local</button></form>':'<a href="#/profile" class="btn ghost">Sign in to reply</a>')+
       '</div></div></article>';
   }).join('');
 }
@@ -42,7 +48,7 @@ export function renderCommunities(){
     '<main class="pikk-forum-center"><nav class="pikk-forum-sort" aria-label="Sort posts"><button class="on" data-fsort="new" aria-pressed="true">✦ New</button><button data-fsort="top" aria-pressed="false">▲ Top</button><button data-fsort="discussed" aria-pressed="false">▤ Discussed</button></nav>'+
     '<div class="pikk-forum-topic-board"><h3>Discover communities</h3><div class="pikk-forum-topic-cards">'+TOPICS.map(t=>'<button data-ftopic="'+t[0]+'" aria-pressed="false"><span>'+t[2]+'</span><strong>'+esc(t[1])+'</strong></button>').join('')+'</div></div>'+
     '<section class="pikk-forum-compose"><h3>Start a discussion</h3>'+(user?'<form id="pikkForumForm"><label for="pikkForumTopic">Community</label><select id="pikkForumTopic">'+TOPICS.map(t=>'<option value="'+t[0]+'">'+esc(t[1])+'</option>').join('')+'</select><label for="pikkForumTitle">Title</label><input id="pikkForumTitle" required maxlength="110" placeholder="What is on your mind?" /><label for="pikkForumBody">Discussion</label><textarea id="pikkForumBody" required maxlength="4000" rows="3" placeholder="Ask a question or share a thought..."></textarea><button class="btn primary" type="submit">Publish locally · TEST MODE</button></form>':'<p class="muted">Sign in with a PIKK demo account to write discussions and vote.</p><a href="#/profile" class="btn primary">Sign in</a>')+'</section>'+
-    '<section><h3 class="pikk-forum-feed-title">Community discussions</h3><div id="pikkForumFeed"></div></section></main>'+
+    '<section><h3 class="pikk-forum-feed-title">Community discussions</h3><p id="pikkForumFilterStatus" class="muted" role="status" aria-live="polite"></p><div id="pikkForumFeed"></div></section></main>'+
     '<aside class="pikk-forum-info"><h3>About PIKK Communities</h3><p>Topic-based discussion with an original PIKK look, separate from the live Lounge and social feed.</p><h3>Community safety</h3><p>Respect others. No harassment, hate, scams or personal information. Reports on this preview only hide posts on your device.</p><a href="#/guidelines">Community Guidelines</a></aside></div>',
     {lead:'Topic communities · discussions · voting · replies · local preview'});
 }
@@ -51,7 +57,15 @@ export function bindCommunities(root){
   let topic='all',sort='new';
   const user=()=>getState().user;
   const feed=host.querySelector('#pikkForumFeed');
-  const redraw=()=>{feed.innerHTML=makePosts(load(),user(),topic,sort);};
+  const status=host.querySelector('#pikkForumFilterStatus');
+  const redraw=()=>{
+    const state=load();
+    feed.innerHTML=makePosts(state,user(),topic,sort);
+    const count=state.posts.filter(p=>!state.hidden.includes(p.id)&&(topic==='all'||p.topic===topic)).length;
+    const label=topic==='all'?'All discussions':TOPICS.find(t=>t[0]===topic)?.[1]||'Community';
+    const order={new:'Newest first',top:'Top voted',discussed:'Most discussed'}[sort];
+    status.textContent=`${label} · ${count} ${count===1?'discussion':'discussions'} · ${order}`;
+  };
   const query=new URLSearchParams(location.hash.split('?')[1]||'').get('topic');
   if(ids.has(query))topic=query;
   function pressed(selector,key,value){host.querySelectorAll(selector).forEach(b=>{let on=b.dataset[key]===value;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));});}
@@ -60,7 +74,13 @@ export function bindCommunities(root){
     const t=e.target.closest('[data-ftopic]');if(t){topic=t.dataset.ftopic;pressed('[data-ftopic]','ftopic',topic);const select=host.querySelector('#pikkForumTopic');if(select&&topic!=='all')select.value=topic;redraw();return;}
     const so=e.target.closest('[data-fsort]');if(so){sort=so.dataset.fsort;pressed('[data-fsort]','fsort',sort);redraw();return;}
     const op=e.target.closest('[data-fopen]');if(op){const p=host.querySelector('[data-thread="'+op.dataset.fopen+'"]');if(p){p.hidden=!p.hidden;op.setAttribute('aria-expanded',String(!p.hidden));}return;}
-    const vote=e.target.closest('[data-fvote]');if(vote&&user()){const v=load(),key=vote.dataset.id+':'+user().id,n=Number(vote.dataset.fvote);v.votes[key]=v.votes[key]===n?0:n;if(save(v))redraw();return;}
+    const vote=e.target.closest('[data-fvote]');if(vote&&user()){const v=load(),key=vote.dataset.id+':'+user().id,n=Number(vote.dataset.fvote);v.votes[key]=v.votes[key]===n?0:n;if(save(v)){
+      const voteId=vote.dataset.id, direction=vote.dataset.fvote;
+      redraw();
+      // The feed is replaced after voting; restore focus to the same control.
+      // Compare dataset values rather than interpolating local IDs into a CSS selector.
+      [...feed.querySelectorAll('[data-fvote]')].find(button => button.dataset.id===voteId && button.dataset.fvote===direction)?.focus();
+    }return;}
     const hide=e.target.closest('[data-freport]');if(hide&&user()){if(!confirm('Hide this post on this browser? This will NOT submit a report to a server.'))return;const v=load();v.hidden.push(hide.dataset.freport);if(save(v))redraw();toast('Hidden locally only — no server report submitted');}
   });
   host.addEventListener('submit',e=>{
@@ -75,7 +95,7 @@ export function bindCommunities(root){
       const body=clean(form.querySelector('textarea')?.value);if(!body)return;
       const v=load(),p=v.posts.find(x=>x.id===form.dataset.freply);if(!p)return;
       p.replies ||= [];p.replies.push({author:clean(user().username).slice(0,30)||'Member',body});
-      if(save(v)){redraw();const panel=host.querySelector('[data-thread="'+p.id+'"]');if(panel)panel.hidden=false;toast('Reply saved locally');}
+      if(save(v)){redraw();const panel=host.querySelector('[data-thread="'+p.id+'"]');const trigger=host.querySelector('[data-fopen="'+p.id+'"]');if(panel&&trigger){panel.hidden=false;trigger.setAttribute('aria-expanded','true');trigger.focus();}toast('Reply saved locally');}
     }
   });
   redraw();

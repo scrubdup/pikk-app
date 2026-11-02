@@ -3,7 +3,7 @@ import { esc, shellPage } from '../ui.js';
 
 /** Keep the approved PIKK artwork visible on GitHub Pages project URLs. */
 export function viralLiveLogoSrc(base = (import.meta.env && import.meta.env.BASE_URL) || '/') {
-  return String(base).replace(/\/?$/, '/') + 'brand/pikk-official-approved.jpg';
+  return String(base).replace(/\/?$/, '/') + 'brand/pikk-logo-official.png';
 }
 
 /**

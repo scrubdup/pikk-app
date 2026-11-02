@@ -14,7 +14,8 @@ test('premium Dating screen keeps original prelaunch information and safety prom
   assert.doesNotMatch(html,/data-real-match|startCamera\(/);
 });
 test('Dating discovery links navigate only to existing PIKK routes',()=>{
-  for(const route of ['#/dating','#/community','#/connect#connect-random-chat','#/messages','#/profile','#/live'])assert.ok(html.includes('href="'+route+'"'),route);
+  for(const route of ['#/dating','#/communities','#/connect#connect-random-chat','#/messages','#/profile','#/live'])assert.ok(html.includes('href="'+route+'"'),route);
+  assert.doesNotMatch(html,/href="#\/community"/);
   assert.match(main,/'\/dating': \{ render: renderDating(?:, bind: bindDating)? \}/);
 });
 test('premium Dating layout works at mobile widths and keyboard focus',()=>{
@@ -26,7 +27,7 @@ test('premium Dating layout works at mobile widths and keyboard focus',()=>{
 });
 test('existing app shell, player, and all seven navigation tabs are preserved',()=>{
   assert.equal(TABBAR.length,7);
-  assert.deepEqual(TABBAR.map(t=>t.label),['Music', 'Videos', 'Create', 'Connect', 'Dating', 'Shop', 'Games']);
+  assert.deepEqual(TABBAR.map(t=>t.label),['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop']);
   assert.match(main,/initDbsPlayer/);
-  assert.match(readFileSync(new URL('../index.html',import.meta.url),'utf8'),/pikk-official-approved/);
+  assert.match(readFileSync(new URL('../index.html',import.meta.url),'utf8'),/pikk-logo-official/);
 });

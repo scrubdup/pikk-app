@@ -13,25 +13,27 @@ for (const [name, width, height] of [['mobile', 390, 844], ['desktop', 1440, 900
   page.on('pageerror', err => errors.push(err.message));
   await page.goto('http://127.0.0.1:5173/#/updates', { waitUntil: 'domcontentloaded' });
   await page.locator('.pikk-updates-hero').waitFor({ state: 'visible', timeout: 20000 });
-  await page.waitForTimeout(3300);
+  // The approved splash holds for five seconds plus fade; capture the actual page, not the loading overlay.
+  await page.locator('#splash').waitFor({ state: 'hidden', timeout: 12000 });
   const title = await page.locator('.pikk-updates-hero h2').textContent();
   if (!title.includes('Know what loaded')) throw new Error(name + ': release hero missing');
   const count = await page.locator('.pikk-update-card').count();
   if (count !== 5) throw new Error(name + ': expected 5 published release cards, got ' + count);
   if (!(await page.locator('.pikk-updates-hero-mark img').isVisible())) throw new Error(name + ': approved chrome logo artwork missing');
-  if (!(await page.locator('.pikk-update-card').first().getByText('Viral Live: Correct Category Destinations').isVisible())) throw new Error(name + ': latest Viral Live release missing');
+  if (!(await page.locator('.pikk-update-card').first().getByText('Support: Find Answers Faster').isVisible())) throw new Error(name + ': latest Support release missing');
   if (await page.locator('.pikk-update-kind').count() !== 5) throw new Error(name + ': test-mode status labels missing');
+  if ((await page.locator('.pikk-update-latest').count()) !== 1) throw new Error(name + ': latest release marker missing or duplicated');
   const hrefs = await page.locator('.pikk-update-links a.btn').evaluateAll(nodes => nodes.map(a => a.getAttribute('href')));
-  const expected = ['#/viral-live', '#/viral-live', '#/viral-live', '#/explore', '#/explore'];
+  const expected = ['#/support', '#/support', '#/support', '#/communities', '#/profile'];
   if (JSON.stringify(hrefs) !== JSON.stringify(expected)) throw new Error(name + ': release route links mismatch: ' + hrefs);
   const titles = await page.locator('.pikk-update-card h3').allTextContents();
   const accessibleNames = await page.locator('.pikk-update-links a.btn').evaluateAll(nodes => nodes.map(a => a.getAttribute('aria-label')));
   const expectedNames = titles.map(title => 'See ' + title + ' in PIKK');
   if (JSON.stringify(accessibleNames) !== JSON.stringify(expectedNames)) throw new Error(name + ': release links need unique descriptive accessible names: ' + accessibleNames);
   if (new Set(accessibleNames).size !== 5) throw new Error(name + ': release link names are not unique');
-  if (!titles.includes('Viral Live: Source Queue Keyboard Browsing') || !titles.includes('Explore: Escape Clears Search')) throw new Error(name + ': latest verified features missing');
+  if (!titles.includes('Support: No Duplicate Drafts') || !titles.includes('Communities: Accessible Reply Threads')) throw new Error(name + ': latest verified features missing');
   const prLinks = await page.locator('.pikk-update-source').evaluateAll(nodes => nodes.map(a => a.getAttribute('href')));
-  const expectedPrs = [197, 196, 195, 194, 193].map(n => 'https://github.com/scrubdup/pikk-app/pull/' + n);
+  const expectedPrs = [276, 274, 272, 271, 270].map(n => 'https://github.com/scrubdup/pikk-app/pull/' + n);
   if (JSON.stringify(prLinks) !== JSON.stringify(expectedPrs)) throw new Error(name + ': verified PR links mismatch');
   const tabs = await page.locator('#tabbar a').allTextContents();
   if (tabs.length !== 7) throw new Error(name + ': approved seven-tab navigation changed: ' + tabs.length);
@@ -40,7 +42,7 @@ for (const [name, width, height] of [['mobile', 390, 844], ['desktop', 1440, 900
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   if (overflow > 3) throw new Error(name + ': horizontal overflow ' + overflow + 'px');
   await page.screenshot({ path: 'visual-review/updates-' + name + '.png', fullPage: true });
-  for (const [route, heading] of [['viral-live', 'PIKK Viral Live'], ['explore', 'Explore']]) {
+  for (const [route, heading] of [['support', 'PIKK Support'], ['communities', 'PIKK Communities'], ['profile', 'Profile']]) {
     await page.locator('.pikk-update-card a[href="#/' + route + '"]').first().click();
     await page.waitForURL(url => url.hash === '#/' + route, { timeout: 10000 });
     await page.locator('#app h1').getByText(heading, { exact: false }).waitFor({ state: 'visible', timeout: 10000 });
