@@ -2,21 +2,23 @@
 // no server, live video, shared votes, or real payments happen here.
 // Roast Arena is separate from PIKK Gift Battles; nothing here touches battle code.
 
-/**
- * OWNER VERIFICATION NEEDED: these timings come from the earlier prototype and were
- * never confirmed by the owner. They are shown in the UI as "test values".
- */
-export const ROAST_TEST_TIMINGS_OWNER_VERIFICATION_NEEDED = Object.freeze({
+/** OWNER-APPROVED (2026-11-02): round length, vote window and round count for 1v1 and Tag-Team. */
+export const ROAST_APPROVED_TIMINGS = Object.freeze({
   roundSeconds: 60,
   voteSeconds: 10,
-  rematchSeconds: 10,
   baseRounds: 3,
 });
-const T = ROAST_TEST_TIMINGS_OWNER_VERIFICATION_NEEDED;
-export const ROUND_SECONDS = T.roundSeconds;
-export const VOTE_SECONDS = T.voteSeconds;
-export const REMATCH_SECONDS = T.rematchSeconds;
-export const BASE_ROUNDS = T.baseRounds;
+/** OWNER VERIFICATION NEEDED: rematch decision window was not ruled on; prototype test value. */
+export const ROAST_REMATCH_TEST_TIMING_OWNER_VERIFICATION_NEEDED = Object.freeze({ rematchSeconds: 10 });
+/**
+ * OWNER-APPROVED rules (2026-11-02): a tie after the scheduled rounds gets ONE tiebreaker round,
+ * then ends as a tie; contestants cannot vote; a rematch needs every contestant to agree.
+ */
+export const ROAST_APPROVED_RULES = Object.freeze({ tiebreakerRounds: 1, contestantsMayVote: false, rematchRequiresAllContestants: true });
+export const ROUND_SECONDS = ROAST_APPROVED_TIMINGS.roundSeconds;
+export const VOTE_SECONDS = ROAST_APPROVED_TIMINGS.voteSeconds;
+export const REMATCH_SECONDS = ROAST_REMATCH_TEST_TIMING_OWNER_VERIFICATION_NEEDED.rematchSeconds;
+export const BASE_ROUNDS = ROAST_APPROVED_TIMINGS.baseRounds;
 
 let seq = 0;
 const nowIso = () => new Date().toISOString();
@@ -43,7 +45,7 @@ export function respondRoastInvite(invite, { accept, consentAccepted }) {
 
 /**
  * OWNER VERIFICATION NEEDED: Tag-Team format was never specified. Smallest test default:
- * 2v2, teams alternate turns (A1, B1, A2, B2). Rounds/timings reuse the 1v1 test values.
+ * 2v2, teams alternate turns (A1, B1, A2, B2). Rounds/timings use the owner-approved 1v1 values.
  */
 export const ROAST_TAG_TEAM_TEST_FORMAT_OWNER_VERIFICATION_NEEDED = Object.freeze({
   teamSize: 2,
@@ -103,7 +105,7 @@ export function createRoastMatch(invite, { eligibleViewerIds = [] } = {}) {
     eligibleViewerIds: eligibleViewerIds.filter(v => !contestants.includes(v)),
     phase: 'round', round: 1, seconds: ROUND_SECONDS,
     votes: [0, 0], votersThisRound: [], scores: [0, 0], roundWinners: [],
-    gifts: [0, 0], rematchVotes: [0, 0], rematchVoters: [], reports: [],
+    gifts: [0, 0], rematchAgreement: {}, rematch: null, reports: [],
     winner: null, result: null, tieBreaker: false,
   };
 }
@@ -123,10 +125,22 @@ export function sendRoastTestGift(match, contestant, amount = 1) {
   return { ...match, gifts };
 }
 
-export function castRematchVote(match, yes, viewerId) {
-  if (match.phase !== 'rematch' || !match.eligibleViewerIds.includes(viewerId) || match.rematchVoters.includes(viewerId)) return match;
-  const rematchVotes = [...match.rematchVotes]; rematchVotes[yes ? 0 : 1] += 1;
-  return { ...match, rematchVotes, rematchVoters: [...match.rematchVoters, viewerId] };
+/**
+ * Rematch needs mutual agreement: every contestant (both in 1v1, all members in Tag-Team) must say yes.
+ * Viewers have no say. Any "no" ends the match; the window closing without full agreement ends it too.
+ */
+export function castRematchVote(match, yes, contestantId) {
+  if (match.phase !== 'rematch' || !match.contestants.includes(contestantId) || contestantId in match.rematchAgreement) return match;
+  const rematchAgreement = { ...match.rematchAgreement, [contestantId]: !!yes };
+  if (!yes) return { ...match, rematchAgreement, rematch: 'declined', phase: 'finished', seconds: 0 };
+  const all = match.contestants.every((c) => rematchAgreement[c] === true);
+  return all ? { ...match, rematchAgreement, rematch: 'agreed', phase: 'finished', seconds: 0 } : { ...match, rematchAgreement };
+}
+
+/** Starts a fresh match with the same contestants, only after every contestant agreed. */
+export function startRematch(match, invite) {
+  if (match.rematch !== 'agreed' || invite?.id !== match.inviteId) throw new Error('rematch_not_agreed');
+  return createRoastMatch(invite, { eligibleViewerIds: match.eligibleViewerIds });
 }
 
 /** Report stub: recorded locally on the match only; nothing is sent to moderators. */
@@ -149,10 +163,10 @@ export function tickRoastMatch(match) {
       return { ...match, scores, roundWinners, winner, result: 'winner', phase: 'rematch', seconds: REMATCH_SECONDS };
     }
     if (match.tieBreaker) {
-      // Tiebreaker round also tied: match ends as a tie (owner verification needed).
+      // Tiebreaker round also tied: match ends as a tie (owner-approved).
       return { ...match, scores, roundWinners, winner: null, result: 'tie', phase: 'finished', seconds: 0 };
     }
     return { ...match, scores, roundWinners, phase: 'round', round: match.round + 1, seconds: ROUND_SECONDS, votes: [0, 0], votersThisRound: [], tieBreaker: match.round >= BASE_ROUNDS };
   }
-  return { ...match, phase: 'finished', seconds: 0 };
+  return { ...match, phase: 'finished', seconds: 0, rematch: match.rematch || 'expired' };
 }

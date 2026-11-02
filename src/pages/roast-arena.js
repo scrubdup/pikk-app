@@ -1,4 +1,4 @@
-import { createTagTeamInvite, respondTagTeamInvite, ROAST_TAG_TEAM_TEST_FORMAT_OWNER_VERIFICATION_NEEDED, createRoastInvite, respondRoastInvite, createRoastMatch, tickRoastMatch, castRoastVote, castRematchVote, sendRoastTestGift, recordRoastReport, ROUND_SECONDS, VOTE_SECONDS, BASE_ROUNDS } from '../roast-engine.js';
+import { createTagTeamInvite, respondTagTeamInvite, ROAST_TAG_TEAM_TEST_FORMAT_OWNER_VERIFICATION_NEEDED, createRoastInvite, respondRoastInvite, createRoastMatch, tickRoastMatch, castRoastVote, castRematchVote, startRematch, REMATCH_SECONDS, sendRoastTestGift, recordRoastReport, ROUND_SECONDS, VOTE_SECONDS, BASE_ROUNDS } from '../roast-engine.js';
 import { shellPage } from '../ui.js';
 
 /** Roast Arena 1v1 and Tag-Team TEST MODE flows. Everything is local: no server, video, or payments. */
@@ -8,6 +8,7 @@ const MODES = {
   '1v1': { root: 'roast-1v1', names: ['Challenger (test)', 'Opponent (test)'] },
   tag: { root: 'roast-tagteam', names: ['Team A (test)', 'Team B (test)'] },
 };
+const contestantName = (key, m, c) => (m.teams ? memberName(c) : MODES[key].names[m.contestants.indexOf(c)]);
 const memberName = (id) => id.replace('test-', '').toUpperCase() + ' (test)';
 const states = {};
 const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -67,7 +68,7 @@ function matchView(key, st) {
   const voted = m.votersThisRound.includes(st.viewer);
   const order = m.turnOrder ? `<p>Turn order (teams alternate): ${m.turnOrder.map((t) => esc(memberName(t.memberId))).join(' → ')} <em>(test values · owner verification needed)</em></p>` : '';
   return `<p class="chip">TEST MODE · local only · no server, video or real payments</p>
-    <div class="card"><strong>On-screen rules (automated, no host):</strong> ${BASE_ROUNDS} rounds of ${ROUND_SECONDS}s, then a ${VOTE_SECONDS}s vote after each round. One vote per viewer per round${m.teams ? ' for a team' : ''}. Winner is decided by votes only; gifts are tallied separately. If tied after ${BASE_ROUNDS} rounds, one tiebreaker round is played. <em>(test values · owner verification needed)</em></div>
+    <div class="card"><strong>On-screen rules (automated, no host):</strong> ${BASE_ROUNDS} rounds of ${ROUND_SECONDS}s, then a ${VOTE_SECONDS}s vote after each round. One vote per viewer per round${m.teams ? ' for a team' : ''}. Winner is decided by votes only; gifts are tallied separately. If tied after ${BASE_ROUNDS} rounds, one tiebreaker round is played, then it ends as a tie. Contestants cannot vote. A rematch needs every contestant to agree (decision window ${REMATCH_SECONDS}s <em>· test value · owner verification needed</em>).</div>
     ${order}
     <h3 aria-live="polite">${label} · <span data-roast-clock>${clock(m.seconds)}</span></h3>
     <div class="row" style="display:flex;gap:12px">${panel(key, 0, m)}${panel(key, 1, m)}</div>
@@ -75,7 +76,8 @@ function matchView(key, st) {
     <label>Acting as test viewer: <select data-roast-viewer>${VIEWERS.map((v) => `<option ${v === st.viewer ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
     ${m.phase === 'vote' ? (voted ? '<p class="muted">This viewer already voted this round.</p>' : `<p><button type="button" class="btn primary" data-roast-vote="0">Vote: ${esc(names[0])}</button> <button type="button" class="btn primary" data-roast-vote="1">Vote: ${esc(names[1])}</button></p>`) : ''}
     ${result}
-    ${m.phase === 'rematch' ? '<p><button type="button" class="btn" data-roast-rematch="yes">Rematch: Yes</button> <button type="button" class="btn" data-roast-rematch="no">Rematch: No</button></p>' : ''}
+    ${m.phase === 'rematch' ? `<p><strong>Rematch? Every contestant must agree.</strong> Viewers do not vote on rematches.</p><ul data-roast-rematch-list>${m.contestants.map((c) => `<li>${esc(contestantName(key, m, c))}: ${c in m.rematchAgreement ? (m.rematchAgreement[c] ? '<strong>Yes</strong>' : 'No') : `<button type="button" class="btn" data-roast-rematch="yes" data-contestant="${c}">Rematch: Yes</button> <button type="button" class="btn" data-roast-rematch="no" data-contestant="${c}">Rematch: No</button>`}</li>`).join('')}</ul>` : ''}
+    ${m.rematch === 'agreed' ? '<p data-roast-rematch-status="agreed">All contestants agreed. <button type="button" class="btn primary" data-roast="rematch">Start rematch</button></p>' : m.rematch === 'declined' ? '<p data-roast-rematch-status="declined">Rematch declined by a contestant. Match over.</p>' : m.rematch === 'expired' ? '<p data-roast-rematch-status="expired">Rematch window closed without agreement. Match over.</p>' : ''}
     <p><button type="button" class="btn" data-roast="report">Report (stub)</button> <button type="button" class="btn" data-roast="skip">Skip to next phase (test control)</button></p>
     ${m.reports.length ? `<p class="muted" data-roast-reports>${m.reports.length} report(s) recorded locally only. Not sent to moderators.</p>` : ''}`;
 }
@@ -106,6 +108,8 @@ function onClick(key, event) {
     st.invite = key === 'tag' ? respondTagTeamInvite(st.invite, el.dataset.memberId, { accept: false }) : respondRoastInvite(st.invite, { accept: false });
   } else if (action === 'reset') {
     stopTimer(st); states[key] = { viewer: VIEWERS[0] };
+  } else if (action === 'rematch') {
+    st.match = startRematch(st.match, st.invite); startTimer(key);
   } else if (action === 'report') {
     st.match = recordRoastReport(st.match, { reporterId: st.viewer, reason: 'test report' });
   } else if (action === 'skip') {
@@ -116,7 +120,8 @@ function onClick(key, event) {
   } else if (el.dataset.roastGift !== undefined) {
     st.match = sendRoastTestGift(st.match, Number(el.dataset.roastGift), 1);
   } else if (el.dataset.roastRematch !== undefined) {
-    st.match = castRematchVote(st.match, el.dataset.roastRematch === 'yes', st.viewer);
+    st.match = castRematchVote(st.match, el.dataset.roastRematch === 'yes', el.dataset.contestant);
+    if (st.match.phase === 'finished') stopTimer(st);
   }
   draw(key);
 }
@@ -142,12 +147,12 @@ export function renderRoastArena() {
     </div>
     <div class="card">
       <h3>1 vs. 1 · TEST MODE preview</h3>
-      <p class="muted">Try the 1v1 flow locally: invite, consent from both sides, timed rounds, one vote per test viewer per round. Test values only; nothing is shared or sent to a server.</p>
+      <p class="muted">Try the 1v1 flow locally: invite, consent from both sides, timed rounds, one vote per test viewer per round. Test-mode data only; nothing is shared or sent to a server.</p>
       <div id="roast-1v1"></div>
     </div>
     <div class="card">
       <h3>Tag Team · TEST MODE preview</h3>
-      <p class="muted">Local Tag-Team flow: every member must consent, teams alternate turns, one vote per test viewer per round for a team. Format and timings are test values; nothing is shared or sent to a server.</p>
+      <p class="muted">Local Tag-Team flow: every member must consent, teams alternate turns, one vote per test viewer per round for a team. Tag-Team format is a test value; round timings are owner-approved; nothing is shared or sent to a server.</p>
       <div id="roast-tagteam"></div>
     </div>
     <div class="card">
@@ -162,9 +167,9 @@ export function renderRoastArena() {
         <li>The system starts a visible countdown and displays the current round and time remaining to everyone.</li>
         <li>When the round ends, both microphones pause and viewers see <strong>Vote: Contestant A</strong> or <strong>Vote: Contestant B</strong> buttons.</li>
         <li>Each eligible viewer gets one vote per round within the timed voting window; the system locks voting when time expires.</li>
-        <li>Results display the round winner, cumulative score and a separate gifts leaderboard. The <strong>10-second audience voting window is the only break</strong> between rounds. The next round starts immediately after voting closes. If the final match vote is tied, an automatic <strong>tiebreaker final round</strong> begins after voting closes. At the end of a decided match, viewers can vote <strong>Rematch: Yes</strong> or <strong>Rematch: No</strong>; a rematch proceeds only if both contestants agree.</li>
+        <li>Results display the round winner, cumulative score and a separate gifts leaderboard. The <strong>10-second audience voting window is the only break</strong> between rounds. The next round starts immediately after voting closes. If the final match vote is tied, an automatic <strong>tiebreaker final round</strong> begins after voting closes. At the end of a decided match, each contestant chooses <strong>Rematch: Yes</strong> or <strong>Rematch: No</strong>; a rematch proceeds only if both contestants agree (in Tag-Team, every member). Viewers do not vote on rematches.</li>
       </ol>
-      <p class="muted">Voting windows, tiebreakers, rematch polls with no additional inter-round break are planned behavior, not yet a working real-time match.</p>
+      <p class="muted">Voting windows, tiebreakers, rematch agreement with no additional inter-round break are planned behavior, not yet a working real-time match.</p>
     </div>
     <div class="card">
       <h3>Discovery</h3>
