@@ -3,6 +3,7 @@ import { signup, login, logout, verifyEmail, resendVerification, loadSession, re
 import { requirePermission, GRANTABLE_ROLES, OWNER_ROLE } from './permissions.js';
 import { opsSummary } from './ops.js';
 import { bootstrapOwner } from './bootstrap.js';
+import { runMasterMindScheduled } from './heartbeat.js';
 import { assertNotBlocked, NOT_BLOCKED_SQL } from './blocks.js';
 import { safetyRoute, ageVerificationWebhook } from './safety.js';
 import { requireString, requirePositiveInt, validateSignupRoles } from './validate.js';
@@ -344,5 +345,13 @@ export default {
     for (const [k, v] of Object.entries(cors)) res.headers.set(k, v);
     res.headers.set('X-Request-Id', requestId);
     return res;
+  },
+  // Thin cron dispatcher: each subsystem exports one function; failures are isolated by allSettled.
+  // Master Mind no-ops unless MASTERMIND_JOBS_ENABLED === 'true'. No cron triggers are enabled in this branch.
+  async scheduled(event, env, ctx) {
+    const now = Date.now();
+    ctx.waitUntil(Promise.allSettled([
+      runMasterMindScheduled(env, event, now),
+    ]).then(rs => rs.forEach(r => r.status === 'rejected' && console.error('scheduled task failed', r.reason && r.reason.message))));
   },
 };

@@ -20,7 +20,7 @@ describe('PIKK Master Mind: GET /admin/ops/summary', () => {
     const r = await call('GET', '/admin/ops/summary', { cookie: o.cookie });
     expect(r.status).toBe(200);
     expect(r.json.readOnly).toBe(true);
-    const names = ['api', 'database', 'shield', 'support', 'audit', 'ledger', 'vault', 'live', 'broadcast', 'costs', 'backups'];
+    const names = ['api', 'database', 'shield', 'support', 'audit', 'ledger', 'vault', 'live', 'broadcast', 'costs', 'backups', 'workers', 'jobs'];
     expect(Object.keys(r.json.panels).sort()).toEqual([...names].sort());
     for (const n of names) {
       const p = r.json.panels[n];

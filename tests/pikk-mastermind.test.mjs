@@ -31,3 +31,13 @@ test('Master Mind does not use the unsafe client admin gate or local mock data',
   assert.ok(page.includes('brand/pikk-logo-official.png'), 'uses official PIKK logo asset');
   assert.ok(!/hida/i.test(page));
 });
+test('workers heartbeat panel is labelled and renders "no heartbeat recorded" for missing beats', async () => {
+  const { PANEL_LABELS } = await import('../src/mastermind.js');
+  assert.equal(PANEL_LABELS.workers, 'Workers (heartbeats)');
+  assert.ok(page.includes('no heartbeat recorded'));
+});
+test('jobs panel is labelled and failed-job review is view-only (no controls)', async () => {
+  const { PANEL_LABELS } = await import('../src/mastermind.js');
+  assert.equal(PANEL_LABELS.jobs, 'Jobs');
+  assert.ok(!/<button|retry|pause/i.test(page), 'Master Mind page has no controls');
+});
