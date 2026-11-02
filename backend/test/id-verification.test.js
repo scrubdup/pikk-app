@@ -302,3 +302,47 @@ describe('set-once race (meta.changes)', () => {
     expect((await env.DB.prepare(`SELECT COUNT(*) n FROM audit_log WHERE action='account.gender_set' AND target=?`).bind(u.id).first()).n).toBe(1);
   });
 });
+
+describe('one staff gender correction per account', () => {
+  const audits = async (id) => (await env.DB.prepare(`SELECT COUNT(*) n FROM audit_log WHERE action='admin.gender_changed' AND target=?`).bind(id).first()).n;
+  it('first correction succeeds + audited; second by moderator or admin is 409 with no extra audit', async () => {
+    const u = await newUser({ gender: 'male' });
+    const mod = await staff('moderator'); const admin = await staff('admin');
+    const r1 = await call('POST', '/admin/account/gender', { cookie: mod.cookie, body: { handle: u.handle, gender: 'female', reason: 'typo at signup' } });
+    expect(r1.status).toBe(200); expect(await audits(u.id)).toBe(1);
+    expect((await env.DB.prepare(`SELECT gender_corrected_at FROM users WHERE id=?`).bind(u.id).first()).gender_corrected_at).toBeTruthy();
+    for (const who of [mod, admin]) {
+      const r = await call('POST', '/admin/account/gender', { cookie: who.cookie, body: { handle: u.handle, gender: 'male', reason: 'second try' } });
+      expect(r.status).toBe(409); expect(r.json.error.code).toBe('gender_correction_used');
+    }
+    expect(await audits(u.id)).toBe(1);
+    expect((await env.DB.prepare(`SELECT gender FROM users WHERE id=?`).bind(u.id).first()).gender).toBe('female');
+    expect((await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'male' } })).status).toBe(409);
+  });
+  it('race: correction already used between read and UPDATE -> 409, no audit', async () => {
+    const { staffCorrectGenderOnce } = await import('../src/contests.js');
+    const u = await newUser({ gender: 'male' }); const admin = await staff('admin');
+    const row = await env.DB.prepare(`SELECT id, gender FROM users WHERE id=?`).bind(u.id).first();
+    await env.DB.prepare(`UPDATE users SET gender='female', gender_corrected_at='2026-11-02T00:00:00Z' WHERE id=?`).bind(u.id).run();
+    await expect(staffCorrectGenderOnce(env, admin.id, row, 'nonbinary', 'racing')).rejects.toMatchObject({ status: 409, code: 'gender_correction_used' });
+    expect(await audits(u.id)).toBe(0);
+    expect((await env.DB.prepare(`SELECT gender FROM users WHERE id=?`).bind(u.id).first()).gender).toBe('female');
+  });
+});
+
+describe('every frontend gender value is accepted by the backend', () => {
+  it('signup and staff correction accept each option value the UI sends', async () => {
+    const { genderOptionsHtml } = await import('../src/genders.js');
+    const values = [...genderOptionsHtml().matchAll(/value="([^"]+)"/g)].map((m) => m[1]);
+    expect(values.length).toBe(4);
+    const admin = await staff('admin');
+    for (const v of values) {
+      const u = await newUser({ gender: v });
+      expect((await env.DB.prepare(`SELECT gender FROM users WHERE id=?`).bind(u.id).first()).gender).toBe(v);
+      const target = values.find((x) => x !== v);
+      expect((await call('POST', '/admin/account/gender', { cookie: admin.cookie, body: { handle: u.handle, gender: target, reason: 'value check' } })).status).toBe(200);
+      const legacy = await newUser();
+      expect((await call('POST', '/account/gender', { cookie: legacy.cookie, body: { gender: v } })).status).toBe(200);
+    }
+  });
+});

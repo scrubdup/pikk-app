@@ -52,3 +52,5 @@ CREATE TABLE contest_votes (
 -- Account gender (self-declared, server-stored; NOT read from ID documents). Used for women-only contests.
 ALTER TABLE users ADD COLUMN gender TEXT CHECK(gender IN ('female','male','nonbinary','undisclosed'));
 ALTER TABLE users ADD COLUMN gender_set_at TEXT;
+-- One staff correction per account, ever (owner rule). Set atomically; never cleared.
+ALTER TABLE users ADD COLUMN gender_corrected_at TEXT;

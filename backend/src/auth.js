@@ -2,6 +2,7 @@ import { ApiError, clientIp } from './http.js';
 import { hashPassword, verifyPassword, randomToken, sha256Hex, newId } from './crypto.js';
 import { validateSignup, validateLogin, requireString, validateSignupRoles } from './validate.js';
 import { audit } from './audit.js';
+import { GENDERS } from './genders.js';
 import { sendVerificationEmail } from './email.js';
 
 export const SESSION_COOKIE = '__Host-pikk_session';
@@ -97,9 +98,8 @@ export async function signup(env, req, body) {
   // Only whitelisted fields are read; client-supplied roles/email_verified/age_verified_18/session flags are ignored (cf. PR #29).
   const signupRoles = validateSignupRoles(body.signup_roles);
   // Owner rule: gender is chosen at signup and can never be self-changed afterwards.
-  const SIGNUP_GENDERS = ['female', 'male', 'nonbinary', 'undisclosed'];
-  if (!SIGNUP_GENDERS.includes(body.gender))
-    throw new ApiError(422, 'validation_failed', 'Invalid input', { gender: `required: one of ${SIGNUP_GENDERS.join(', ')}` });
+  if (!GENDERS.includes(body.gender))
+    throw new ApiError(422, 'validation_failed', 'Invalid input', { gender: `required: one of ${GENDERS.join(', ')}` });
   const gender = body.gender;
   const exists = await env.DB.prepare(`SELECT 1 FROM credentials WHERE email = ? UNION ALL SELECT 1 FROM users WHERE handle = ?`).bind(v.email, v.handle).first();
   if (exists) throw new ApiError(409, 'account_exists', 'Email or handle already registered');

@@ -10,7 +10,8 @@ import { auditStmt } from './audit.js';
 import { requireString } from './validate.js';
 
 export const CONTESTS = Object.freeze({ twerk: { adultContestantsOnly: true, contestantGenders: ['female'] } });
-export const GENDERS = ['female', 'male', 'nonbinary', 'undisclosed'];
+import { GENDERS } from './genders.js';
+export { GENDERS };
 
 /** Owner rule: once an account has a gender (set at signup, or the one-time legacy set) it is locked forever.
  *  Only staff can correct genuine data-entry mistakes (POST /admin/account/gender, reason + audit). */
@@ -26,6 +27,16 @@ export async function setOwnGenderOnce(env, userId, gender) {
   const r = await env.DB.prepare(`UPDATE users SET gender = ?, gender_set_at = ? WHERE id = ? AND gender IS NULL`).bind(gender, t, userId).run();
   if (!r?.meta?.changes) throw new ApiError(409, 'gender_locked', 'Account gender is set at signup and cannot be changed. Contact Support if it was entered by mistake.');
   await auditStmt(env, { actor: userId, action: 'account.gender_set', target: userId, meta: { gender } }).run();
+}
+
+/** Owner rule: ONE staff correction per account, then permanently locked (even for admins).
+ *  Atomic via WHERE gender_corrected_at IS NULL; audit only on success. */
+export async function staffCorrectGenderOnce(env, actorId, user, gender, reason) {
+  const t = new Date().toISOString();
+  const r = await env.DB.prepare(`UPDATE users SET gender = ?, gender_set_at = ?, gender_corrected_at = ? WHERE id = ? AND gender_corrected_at IS NULL`)
+    .bind(gender, t, t, user.id).run();
+  if (!r?.meta?.changes) throw new ApiError(409, 'gender_correction_used', 'This account already used its one gender correction. It is permanently locked.');
+  await auditStmt(env, { actor: actorId, action: 'admin.gender_changed', target: user.id, meta: { from: user.gender, to: gender, reason } }).run();
 }
 
 export async function contestEligibility(env, userId, contest) {
@@ -67,11 +78,7 @@ export async function contestRoute(env, req, ctx, m, p) {
     const reason = requireString(b, 'reason', { min: 5, max: 500 });
     const u = await env.DB.prepare(`SELECT id, gender FROM users WHERE handle = ?`).bind(handle).first();
     if (!u) throw new ApiError(404, 'not_found', 'User not found');
-    const t = new Date().toISOString();
-    await env.DB.batch([
-      env.DB.prepare(`UPDATE users SET gender = ?, gender_set_at = ? WHERE id = ?`).bind(b.gender, t, u.id),
-      auditStmt(env, { actor: s.user.id, action: 'admin.gender_changed', target: u.id, meta: { from: u.gender, to: b.gender, reason } }),
-    ]);
+    await staffCorrectGenderOnce(env, s.user.id, u, b.gender, reason);
     return json(200, { gender: b.gender });
   }
   let em;

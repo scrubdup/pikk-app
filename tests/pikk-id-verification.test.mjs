@@ -54,3 +54,17 @@ test('policy page version comes from the shared consent-text source; profile sho
   assert.match(prof, /Set once/); assert.match(prof, /accountGenderLegacy" hidden/);
   assert.match(read('src/api/auth-client.js'), /\.\.\.\(gender \? \{ gender \} : \{\}\)/);
 });
+
+test('gender values: one source of truth matches DB CHECK, frontend options and labels', async () => {
+  const g = await import('../backend/src/genders.js');
+  assert.deepEqual([...g.GENDERS], ['female', 'male', 'nonbinary', 'undisclosed']);
+  const sent = [...g.genderOptionsHtml().matchAll(/value="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(sent, [...g.GENDERS]);
+  assert.equal(g.GENDER_LABELS.nonbinary, 'Non-binary'); assert.equal(g.GENDER_LABELS.undisclosed, 'Prefer not to say');
+  const mig = read('backend/migrations/0012_id_verification.sql');
+  const check = mig.match(/gender IN \(([^)]+)\)/)[1].match(/'([^']+)'/g).map((x) => x.slice(1, -1));
+  assert.deepEqual(check, [...g.GENDERS]);
+  const prof = read('src/pages/profile.js');
+  assert.doesNotMatch(prof, /option value="(female|male|nonbinary|undisclosed)"/); // no hand-written copies
+  assert.match(read('backend/src/auth.js'), /from '.\/genders.js'/); assert.match(read('backend/src/contests.js'), /from '.\/genders.js'/);
+});
