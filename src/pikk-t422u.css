@@ -1,0 +1,10 @@
+/* t422u: header order profile · $ · search (left of logo); ☰ stays right. Tab bar flush to bottom edge. */
+html body .top#topBar #headerProfile { display: grid; order: -3; }
+html body .top#topBar #paymentsBtn { order: -2; }
+html body .top#topBar #exploreSearchBtn { order: -1; }
+html body #tabbar.tabbar,
+html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 {
+  position: fixed; bottom: 0 !important; margin-bottom: 0 !important; transform: none !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+}
+html body #app { padding-bottom: calc(var(--tab-h) + 8px + env(safe-area-inset-bottom, 0px)) !important; }
