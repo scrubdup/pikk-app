@@ -41,7 +41,7 @@ export async function loadSession(env, req) {
   if (!token || token.length > 100) return null;
   const idHash = await sha256Hex(token);
   const row = await env.DB.prepare(
-    `SELECT s.id_hash, u.id, u.handle, u.display_name, u.disabled_at, u.muted_until, u.suspended_until, u.banned_at,
+    `SELECT s.id_hash, u.id, u.handle, u.display_name, u.bio, u.avatar_url, u.disabled_at, u.muted_until, u.suspended_until, u.banned_at,
             u.age_verified_18, u.age_verification_method, u.age_verified_at, c.email, c.email_verified_at
        FROM sessions s JOIN users u ON u.id = s.user_id JOIN credentials c ON c.user_id = u.id
       WHERE s.id_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ?`).bind(idHash, nowIso()).first();
@@ -52,7 +52,7 @@ export async function loadSession(env, req) {
   ]);
   return {
     sessionIdHash: idHash,
-    user: { id: row.id, handle: row.handle, display_name: row.display_name, email: row.email, email_verified: !!row.email_verified_at,
+    user: { id: row.id, handle: row.handle, display_name: row.display_name, bio: row.bio || '', avatar_url: row.avatar_url || '', email: row.email, email_verified: !!row.email_verified_at,
       age_verified_18: row.age_verified_18 === 1, age_verified_at: row.age_verified_at, age_verification_method: row.age_verification_method },
     status: accountStatus(row),
     roles: roles.results.map(r => r.role),
