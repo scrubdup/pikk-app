@@ -3,6 +3,7 @@ import { signup, login, logout, verifyEmail, resendVerification, loadSession, re
 import { requirePermission, GRANTABLE_ROLES, OWNER_ROLE } from './permissions.js';
 import { opsSummary } from './ops.js';
 import { bootstrapOwner } from './bootstrap.js';
+import { runScheduled } from './heartbeat.js';
 import { assertNotBlocked, NOT_BLOCKED_SQL } from './blocks.js';
 import { safetyRoute, ageVerificationWebhook } from './safety.js';
 import { requireString, requirePositiveInt, validateSignupRoles } from './validate.js';
@@ -344,5 +345,9 @@ export default {
     for (const [k, v] of Object.entries(cors)) res.headers.set(k, v);
     res.headers.set('X-Request-Id', requestId);
     return res;
+  },
+  // Master Mind phase 2: inert until a cron trigger is enabled in wrangler.jsonc at deploy time (owner decision).
+  async scheduled(_controller, env, ctx) {
+    ctx.waitUntil(runScheduled(env).catch(e => console.error('scheduled heartbeat failed', e && e.message)));
   },
 };
