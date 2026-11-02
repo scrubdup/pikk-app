@@ -19,6 +19,7 @@
     "EXPOSE_VERIFY_TOKEN": "false",
     "PUBLIC_APP_URL": "https://scrubdup.github.io/pikk-app/"
   }
-  // Secrets (set via `wrangler secret put`, never committed): RESEND_API_KEY, STRIPE_WEBHOOK_SECRET
+  // Secrets (set via `wrangler secret put`, never committed): RESEND_API_KEY, STRIPE_WEBHOOK_SECRET,
+  // OWNER_BOOTSTRAP_TOKEN (optional, >=32 chars, one-time owner bootstrap; delete after use)
   // Set EMAIL_FROM to a verified sender, e.g. "PIKK <verify@your-domain.example>", before enabling production email.
 }

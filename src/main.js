@@ -52,6 +52,7 @@ import { messagesApi, isMessagesApiConfigured } from './api/messages-client.js';
 import { renderHome, bindHome } from './pages/home.js';
 import { renderUpdates, bindUpdates } from './pages/updates.js';
 import { renderAdmin, bindAdmin } from './pages/admin.js';
+import { renderMastermind, bindMastermind } from './pages/mastermind.js';
 import { renderPosts, bindPosts } from './pages/posts.js';
 import { renderPromote, bindPromote } from './pages/promote.js';
 import { renderDonate, bindDonate } from './pages/donate.js';
@@ -152,6 +153,7 @@ const ROUTES = {
   '/missions': { render: renderMissions, bind: bindMissions },
   '/pricing': { render: renderPricing, bind: bindPricing },
   '/admin': { render: renderAdmin, bind: bindAdmin },
+  '/mastermind': { render: renderMastermind, bind: bindMastermind },
   '/guidelines': { render: renderGuidelines },
   '/settings': { render: renderSettings, bind: bindSettings },
   '/contest': { render: renderTwerkContest, bind: bindTwerkContest }, // only contest today: #/contest/twerk
