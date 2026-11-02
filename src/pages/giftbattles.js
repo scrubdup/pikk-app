@@ -93,10 +93,7 @@ export function renderSignedOutPreview() {
       <p><strong>3 of 5 eligible viewers voted</strong> <span class="chip">sample</span></p>
       <p class="muted">In a battle, viewers tap a streamer&apos;s name to vote. Streamer A wins this sample on votes even with fewer gifts.</p>
     </div>
-    <div class="card">
-      <h3 style="margin:0 0 6px">Sign in to battle or vote</h3>
-      <a class="btn primary" href="#/profile">Sign in</a>
-    </div>`;
+    `;
 }
 
 function renderRules() {
@@ -341,7 +338,7 @@ function renderPrefs(prefs) {
 export function renderGiftBattles() {
   const { user, live } = getState();
   // t401u: explainer is the main view; no sign-in wall.
-  if (!user) return shellPage('PIKK Battles', renderSignedOutPreview(), { lead: BATTLES_LEAD });
+  if (!user) return shellPage('PIKK Battles', renderGiftBattleExplainer('battles') + renderSignedOutPreview(), { lead: BATTLES_LEAD });
 
   // Finalize expired battles on render
   tickGiftBattle();
@@ -358,7 +355,7 @@ export function renderGiftBattles() {
   else battleBlock = renderChallengeForm(liveActive, prefs);
 
   const body = `
-    ${renderGiftBattleExplainer()}
+    ${renderGiftBattleExplainer('battles')}
     ${renderRules()}
     ${renderChampion(champ)}
     ${renderDailyWinnersBoard()}

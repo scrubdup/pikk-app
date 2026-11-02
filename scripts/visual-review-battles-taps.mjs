@@ -54,6 +54,31 @@ try {
       assert.deepEqual(errors, [], `${width}: page errors`);
       await ctx.close();
     }
+    // Signed-in page (both routes, live and not live): every button / button-link is >=44px tall and its
+    // centre is not covered by another element (elementFromPoint), incl. Open Live / Group Rooms / Roast Arena if present.
+    for (const width of [360, 390, 430]) for (const route of ['#/battles', '#/giftbattles']) for (const live of [false, true]) {
+      const ctx = await browser.newContext({ viewport: { width, height: 844 }, deviceScaleFactor: 1, reducedMotion: 'reduce', isMobile: true, hasTouch: true });
+      await ctx.addInitScript(([now, live]) => localStorage.setItem('dbs_v1', JSON.stringify({ user: { id: 'u_testhost', username: 'TestHost' }, live: live ? { id: 'live_t', hostId: 'u_testhost', hostName: 'TestHost', title: 'Test live', startedAt: now, endedAt: null, viewers: 0, giftsTotal: 0, tipsTotal: 0, giftLog: [], chat: [] } : null })), [Date.now(), live]);
+      const page = await ctx.newPage();
+      await page.goto(base + route, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.locator('#splash').waitFor({ state: 'hidden', timeout: 20000 }).catch(() => {});
+      await page.locator('.gb-rules').waitFor({ timeout: 20000 });
+      const text = await page.locator('.page').first().innerText();
+      assert.doesNotMatch(text, /sends more/i, `${route}@${width}: no 'sends more' explainer`);
+      const taps = await page.evaluate(() => [...document.querySelectorAll('.page a.btn, .page button')].map((el) => {
+        el.scrollIntoView({ block: 'center' });
+        const r = el.getBoundingClientRect(); if (!r.width) return null;
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return { label: el.textContent.trim().slice(0, 40), h: Math.round(r.height * 10) / 10, covered: !!top && !el.contains(top) && !top.contains(el) };
+      }).filter(Boolean));
+      assert.ok(taps.length > 0, `${route}@${width}: buttons found`);
+      for (const t of taps) {
+        assert.ok(t.h >= 44, `${route}@${width} live=${live}: '${t.label}' rendered ${t.h}px < 44px`);
+        assert.equal(t.covered, false, `${route}@${width} live=${live}: centre of '${t.label}' is covered`);
+      }
+      results.push({ route, width, live, buttons: taps.length });
+      await ctx.close();
+    }
   } finally { await browser.close(); }
   console.log(JSON.stringify(results));
 } catch (e) { console.error(e); process.exitCode = 1; } finally { server.kill(); setTimeout(() => process.exit(process.exitCode || 0), 200); }
