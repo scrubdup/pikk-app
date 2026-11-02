@@ -38,6 +38,14 @@ try{
   await capture('saved');
   await page.locator('.ai-artist-delete').click();
   await page.locator('.ai-artist-drafts').getByText('No AI music drafts').waitFor();
+  // Platform music discovery must not be branded as an individual creator feature.
+  await page.goto(base+'#/music',{waitUntil:'domcontentloaded',timeout:30000});
+  await page.locator('.pikk-music-showcase').waitFor({state:'visible',timeout:20000});
+  await page.locator('#splash').waitFor({state:'hidden',timeout:15000});
+  assert.match(await page.locator('.pikk-music-showcase .kicker').textContent(),/PIKK MUSIC · DISCOVER/);
+  assert.equal(await page.locator('#tabbar a').count(),7,'music keeps seven tabs');
+  assert.equal(await page.locator('#dbs-sticky-player').isVisible(),true,'PIKK music player retained');
+  await capture('music-discovery');
   await context.close();
  }}finally{await browser.close()}
 }finally{server.kill('SIGTERM')}

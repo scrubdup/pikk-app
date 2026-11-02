@@ -271,7 +271,7 @@ export function renderMusic(route = {}) {
   const musicHero = `
     <section class="pikk-music-showcase card" aria-label="Official PIKK music discovery">
       <div class="pikk-music-showcase-copy">
-        <p class="kicker">PIKK MUSIC · DATBOISKEET</p>
+        <p class="kicker">PIKK MUSIC · DISCOVER</p>
         <h2>Discover the sound.</h2>
         <p>Stream verified releases, browse albums and playlists, and explore the Vault.</p>
         <div class="pikk-music-showcase-actions">
