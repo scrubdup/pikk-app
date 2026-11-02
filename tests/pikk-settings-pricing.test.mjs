@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs';
 const mem = new Map(); globalThis.localStorage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
 const ss = await import('../src/settings-store.js');
 const read = (f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8');
-test('#/settings route registered; header gear (next to $) + drawer point at it', () => {
+test('#/settings route registered in the drawer; no header gear (owner t219u)', () => {
   assert.match(read('src/main.js'), /'\/settings': \{ render: renderSettings, bind: bindSettings \}/);
-  assert.match(read('index.html'), /id="paymentsBtn"[\s\S]*?<\/a>\s*<a class="pill header-explore-search header-settings" id="settingsBtn" href="#\/settings"/);
+  assert.doesNotMatch(read('index.html'), /id="settingsBtn"/);
   assert.match(read('src/nav-sections.js'), /label: 'Settings', href: '#\/settings'/);
 });
 test('settings page has all groups and saves locally', () => {

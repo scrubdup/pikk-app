@@ -14,13 +14,15 @@ export async function call(method, path, { body, cookie, ip = `10.200.${Math.flo
 }
 
 let n = 0;
-export async function newUser({ verify = true } = {}) {
+/** gender: value sent at signup. Default emulates a LEGACY account (gender NULL, created before signup required it). */
+export async function newUser({ verify = true, gender } = {}) {
   n++;
   const handle = `user_${n}_${Math.random().toString(36).slice(2, 7)}`;
   const email = `${handle}@example.com`;
   const password = 'correct horse 42';
-  const r = await call('POST', '/auth/signup', { body: { email, password, handle, display_name: `User ${n}` }, ip: freshIp() });
+  const r = await call('POST', '/auth/signup', { body: { email, password, handle, display_name: `User ${n}`, gender: gender || 'undisclosed' }, ip: freshIp() });
   if (r.status !== 201) throw new Error(`signup failed ${r.status} ${JSON.stringify(r.json)}`);
+  if (!gender) await env.DB.prepare(`UPDATE users SET gender = NULL, gender_set_at = NULL WHERE id = ?`).bind(r.json.user.id).run();
   if (verify) {
     const v = await call('POST', '/auth/verify', { body: { token: r.json.verification.token }, ip: freshIp() });
     if (v.status !== 200) throw new Error('verify failed');

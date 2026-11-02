@@ -146,9 +146,9 @@ try {
 
       // Following uses the same public route after a local demo sign-in.
       await page.goto(base + '#/profile', { waitUntil: 'domcontentloaded' });
-      await page.locator('#signinName').fill('Explore QA');
-      await page.locator('#signinBtn').click();
-      await page.locator('#signoutBtn').waitFor({ state: 'visible' });
+      // Demo sign-in was removed (7859454); seed a QA-only local profile instead (no backend session).
+      await page.evaluate((u) => localStorage.setItem('dbs_v1', JSON.stringify({ user: { ...u, createdAt: Date.now() } })), { id: 'u_exploreqa', username: 'ExploreQA', bio: 'Explore visual QA', avatar: '', followers: [], following: ['dbs'], memberships: { skeetPlus: false, backstage: false, innerCircle: false }, purchasedTracks: [] });
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await page.goto(base + '#/explore', { waitUntil: 'domcontentloaded' });
       await page.locator('[data-explore-tab="following"]').click();
       const followedArtist = page.locator('#explorePanel .explore-hit[href="#/profile/dbs"]');

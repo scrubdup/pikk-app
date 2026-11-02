@@ -200,7 +200,7 @@ describe('dating.access (age_verified_18)', () => {
       expect((await call(m, p, { cookie: u.cookie, body: { age_verified_18: true } })).status).toBe(404);
     }
     // signup ignores client-supplied flag
-    const s = await call('POST', '/auth/signup', { body: { email: 'teen@example.com', password: 'password 1234', handle: 'teen_one', display_name: 'T', age_verified_18: true }, ip: freshIp() });
+    const s = await call('POST', '/auth/signup', { body: { email: 'teen@example.com', password: 'password 1234', handle: 'teen_one', display_name: 'T', gender: 'female', age_verified_18: true }, ip: freshIp() });
     const row = await env.DB.prepare(`SELECT age_verified_18 FROM users WHERE id = ?`).bind(s.json.user.id).first();
     expect(row.age_verified_18).toBe(0);
     // forged vendor call
