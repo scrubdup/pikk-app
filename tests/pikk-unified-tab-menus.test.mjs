@@ -43,7 +43,7 @@ test('modal controls retain keyboard escape, focus trapping, and route close', (
 
 test('Games menu includes all approved titles without linking unbuilt games to unrelated pages', () => {
   const games = SECTION_MENU_ITEMS.games;
-  assert.equal(games.length, 20, 'Arcade hub, all 15 approved games, plus Roast Arena, Gift Battles, Missions, Loyalty');
+  assert.equal(games.length, 20, 'Arcade hub, all 15 approved games, plus Roast Arena, PIKK Battles, Missions, Loyalty');
   for (const title of ['PIKK Arcade','PIKK Speed','PIKK Blackjack','PIKK Slots','PIKK Poker','PIKK Spades','PIKK Dominoes','PIKK Chess','PIKK Clash','PIKK Knockout','PIKK Playground','PIKK Bowling','PIKK Pickleball','PIKK Pool','PIKK Cup Pong','Block Wars']) {
     assert.ok(games.some(item => item.title === title), title);
   }
