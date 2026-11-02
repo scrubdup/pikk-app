@@ -17,3 +17,8 @@ html body #app { padding-bottom: calc(var(--tab-h) + 8px + max(4px, calc(env(saf
   html body .top#topBar :is(.pill, .icon-btn) { width: 34px !important; height: 34px !important; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; }
   html body .top#topBar .logo-img { width: min(30vw, 340px); height: calc(min(30vw, 340px) * 0.2366); }
 }
+/* t220u: the raised Create orb used position:relative + top:-18px, which moves it visually but keeps its full
+   ~85px box in the grid row, so every other tab got ~44px of empty space under its label (the "dark band"
+   above Safari's bar). Raise it with a negative margin instead so it overhangs the bar without inflating the row. */
+html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 { align-items: end; }
+html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary { top: 0 !important; margin-top: var(--pikk-create-raise, -40px); }
