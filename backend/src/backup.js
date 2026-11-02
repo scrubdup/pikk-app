@@ -80,8 +80,10 @@ export async function restoreBackup({ sourceBucket, targetDb, targetBucket, mani
   if (!mo) throw new Error('manifest not found');
   const man = await mo.json();
   if (man.format !== 'pikk-vault-backup-manifest/1') throw new Error('unsupported manifest format');
-  const report = { manifest_key: key, run_id: man.run_id, restored: 0, verified: 0, skipped_missing_owner: [], errors: [] };
+  const report = { manifest_key: key, run_id: man.run_id, restored: 0, verified: 0, skipped_missing_owner: [], skipped_invalid: [], errors: [] };
   for (const e of man.entries) {
+    // An entry must carry a non-empty string id: otherwise skip it as invalid (no object write, no row insert).
+    if (!e || typeof e !== 'object' || typeof e.id !== 'string' || e.id === '') { report.skipped_invalid.push({ object_key: e && e.object_key, reason: 'missing id' }); continue; }
     try {
       const owner = await targetDb.prepare(`SELECT id FROM users WHERE id=?`).bind(e.owner_id).first();
       if (!owner) { report.skipped_missing_owner.push(e.id); continue; }
