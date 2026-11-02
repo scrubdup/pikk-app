@@ -6,8 +6,9 @@ html body .pikk-video-tile > .chip { align-self: flex-start; }
 html body .pikk-video-tile h3 { font-size: 13px; line-height: 1.25; min-height: 2.5em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: #fff; }
 html body .pikk-video-tile > p.muted { font-size: 11px !important; color: #c0c6cf; margin: 0 0 8px !important; }
 html body .pikk-video-tile > .row { margin-top: auto; display: grid; grid-template-columns: 1fr; gap: 6px; }
-html body .pikk-video-tile > .row .btn { width: 100%; justify-content: center; min-height: 34px; font-size: 12px; padding: 6px 8px; white-space: nowrap; }
-@media (min-width: 420px) { html body .pikk-video-tile > .row { grid-template-columns: 1fr 1fr; } }
+html body .pikk-video-tile > .row .btn { width: 100%; justify-content: center; min-height: 44px; font-size: 12px; padding: 6px 8px; white-space: nowrap; min-width: 0; }
+/* Checker #364: stack actions at every width (2-up overflowed tiles at 420-430px). */
+html body .pikk-video-tile { min-width: 0; }
 /* 3-up promo boxes: keep price + copy from clipping on phones. */
 @media (max-width: 430px) {
   html body .pikk-featured-row-three .pikk-ad-slot { padding-left: 8px; padding-right: 8px; min-width: 0; }
