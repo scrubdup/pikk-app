@@ -21,15 +21,36 @@ class OccTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.conn = occ.connect(os.path.join(self.tmp.name, "t.db"))
         occ.init_db(self.conn)
+        self.repo = Path(self.tmp.name, "repo")
+        self.repo.mkdir()
+        self.git("init", "-q", "-b", "feature/x")
+        self.commit("check.sh", "exit 0\n", "clean")
 
     def tearDown(self):
         self.conn.close()
         self.tmp.cleanup()
 
+    def git(self, *a):
+        return subprocess.run(["git", "-C", str(self.repo), "-c", "user.email=t@t", "-c", "user.name=t", *a],
+                              check=True, capture_output=True, text=True).stdout.strip()
+
+    def commit(self, name, body, msg):
+        (self.repo / name).write_text(body)
+        self.git("add", name)
+        self.git("commit", "-q", "-m", msg)
+
+    def worktrees(self):
+        return self.git("worktree", "list").count("\n") + 1
+
     def gated(self, runner=PASS):
         tid = occ.add_task(self.conn, "fix", agent="backend", branch="feature/x")
-        occ.run_gate(self.conn, tid, self.tmp.name, STEPS, runner)
+        occ.run_gate(self.conn, tid, self.repo, STEPS, runner)
         return tid
+
+    def approve(self, tid):
+        with redirect_stdout(io.StringIO()):
+            occ.approve(self.conn, tid, "owner", repo=self.repo, confirm=lambda _: f"APPROVE {tid}",
+                        interactive=True)
 
     def test_init_is_idempotent(self):
         occ.init_db(self.conn)
@@ -45,9 +66,11 @@ class OccTest(unittest.TestCase):
         self.assertIsNone(occ.claim(self.conn, "x", a))     # already claimed
         self.assertEqual(occ.list_tasks(self.conn, status="claimed")[0]["agent"], "backend")
 
-    def test_main_branch_rejected(self):
-        with self.assertRaises(SystemExit):
-            occ.add_task(self.conn, "bad", branch="main")
+    def test_bad_branch_names_rejected(self):
+        for bad in ["main", "master", "-x", "--force", "a..b", "bad name", "x~1"]:
+            with self.subTest(bad=bad), self.assertRaises(SystemExit):
+                occ.add_task(self.conn, "bad", branch=bad)
+        self.assertTrue(occ.valid_branch("feature/ok-1"))
 
     def test_handoff_records_and_reassigns(self):
         tid = self.gated()
@@ -61,8 +84,7 @@ class OccTest(unittest.TestCase):
         tid = occ.add_task(self.conn, "t")
         occ.log_error(self.conn, "boom", tid, "backend")
         occ.add_progress(self.conn, tid, "half", "backend", 50)
-        s = occ.status_summary(self.conn)
-        self.assertEqual(s["errors"], 1)
+        self.assertEqual(occ.status_summary(self.conn)["errors"], 1)
         self.assertEqual(self.conn.execute("SELECT percent FROM progress").fetchone()[0], 50)
 
     def test_gate_fail_logs_error(self):
@@ -71,10 +93,35 @@ class OccTest(unittest.TestCase):
         self.assertEqual(occ.get_task(self.conn, tid)["status"], "gate_failed")
         self.assertEqual(occ.status_summary(self.conn)["errors"], 1)
 
+    def test_gate_missing_branch_fails(self):
+        tid = occ.add_task(self.conn, "fix", branch="feature/nope")
+        _, result = occ.run_gate(self.conn, tid, self.repo, STEPS, PASS)
+        self.assertEqual(result, "fail")
+
+    def test_gate_runs_branch_head_not_checkout(self):
+        """Regression (Checker REJECT @2d1cf59): failing branch gated while a clean branch is checked out."""
+        self.git("checkout", "-q", "-b", "feature/bad")
+        self.commit("check.sh", "exit 1\n", "broken")
+        bad_sha = self.git("rev-parse", "HEAD")
+        self.git("checkout", "-q", "feature/x")            # clean branch checked out
+        before = self.worktrees()
+        tid = occ.add_task(self.conn, "bad", branch="feature/bad")
+        _, result = occ.run_gate(self.conn, tid, self.repo, [("check", ["sh", "check.sh"], ".")])
+        self.assertEqual(result, "fail")
+        self.assertEqual(occ.latest_gate(self.conn, tid)["commit_sha"], bad_sha)
+        self.assertEqual(self.worktrees(), before)          # temp worktree removed
+        with self.assertRaises(SystemExit):
+            self.approve(tid)
+        self.assertEqual(occ.sync_candidates(self.conn), [])
+        # and the clean branch passes with the same real command
+        ok = occ.add_task(self.conn, "ok", branch="feature/x")
+        self.assertEqual(occ.run_gate(self.conn, ok, self.repo, [("check", ["sh", "check.sh"], ".")])[1], "pass")
+        self.assertEqual(self.worktrees(), before)
+
     def test_approve_requires_passing_gate(self):
         tid = self.gated(FAIL)
         with self.assertRaises(SystemExit):
-            occ.approve(self.conn, tid, "owner", confirm=lambda _: f"APPROVE {tid}", interactive=True)
+            self.approve(tid)
 
     def test_approve_requires_interactive_and_exact_text(self):
         tid = self.gated()
@@ -85,30 +132,25 @@ class OccTest(unittest.TestCase):
         self.assertEqual(occ.sync_candidates(self.conn), [])
 
     def test_approve_then_sync_candidates(self):
-        repo = Path(self.tmp.name, "repo")
-        repo.mkdir()
-        subprocess.run(["git", "-C", str(repo), "init", "-q", "-b", "feature/x"], check=True)
-        subprocess.run(["git", "-C", str(repo), "-c", "user.email=t@t", "-c", "user.name=t",
-                        "commit", "-q", "--allow-empty", "-m", "1"], check=True)
-        tid = occ.add_task(self.conn, "fix", branch="feature/x")
-        occ.run_gate(self.conn, tid, repo, STEPS, PASS)
-        with redirect_stdout(io.StringIO()):
-            occ.approve(self.conn, tid, "owner", repo=repo, confirm=lambda _: f"APPROVE {tid}", interactive=True)
+        tid = self.gated()
+        self.approve(tid)
         self.assertEqual([r["branch"] for r in occ.sync_candidates(self.conn)], ["feature/x"])
         occ.mark_synced(self.conn, tid)
         self.assertEqual(occ.sync_candidates(self.conn), [])
 
+    def test_sync_drops_protected_and_unsafe_branches(self):
+        tid = self.gated()
+        self.approve(tid)
+        for bad in ["main", "master", "-evil"]:
+            self.conn.execute("UPDATE approvals SET branch=?", (bad,))
+            with self.subTest(bad=bad):
+                self.assertEqual(occ.sync_candidates(self.conn), [])
+
     def test_approve_rejects_moved_branch(self):
-        repo = Path(self.tmp.name, "repo")
-        git = lambda *a: subprocess.run(["git", "-C", str(repo), *a], check=True, capture_output=True)  # noqa: E731
-        repo.mkdir()
-        git("init", "-q", "-b", "feature/x")
-        git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "1")
-        tid = occ.add_task(self.conn, "fix", branch="feature/x")
-        occ.run_gate(self.conn, tid, repo, STEPS, PASS)
-        git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "2")
+        tid = self.gated()
+        self.commit("other.txt", "x", "2")
         with self.assertRaises(SystemExit):
-            occ.approve(self.conn, tid, "owner", repo=repo, confirm=lambda _: f"APPROVE {tid}", interactive=True)
+            self.approve(tid)
 
     def test_cli_smoke(self):
         db = os.path.join(self.tmp.name, "cli.db")

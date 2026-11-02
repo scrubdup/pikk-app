@@ -7,9 +7,11 @@ pushes to main. See README.md.
 import argparse
 import json
 import os
+import shutil
 import sqlite3
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -17,7 +19,11 @@ SCHEMA = HERE / "schema.sql"
 PROTECTED_BRANCHES = {"main", "master"}
 
 # The test gate: the same suites CI runs (backend vitest, frontend node --test, vite build).
+# Runs inside a clean temporary worktree of the exact commit, so dependencies are installed first
+# (`--prefer-offline` uses the local npm cache, so this works without internet after one online install).
 DEFAULT_GATE = [
+    ("backend install", ["npm", "ci", "--prefer-offline", "--no-audit", "--no-fund"], "backend"),
+    ("frontend install", ["npm", "ci", "--prefer-offline", "--no-audit", "--no-fund"], "."),
     ("backend tests (vitest)", ["npm", "test"], "backend"),
     ("frontend tests (node --test)", ["npm", "test"], "."),
     ("build (vite)", ["npm", "run", "build"], "."),
@@ -57,14 +63,29 @@ def set_status(conn, task_id, status, **extra):
     conn.execute(sql, (status, *extra.values(), task_id))
 
 
+def valid_branch(branch):
+    """True for a safe feature-branch name: not main/master, no leading dash, valid git ref."""
+    if not branch or branch in PROTECTED_BRANCHES or branch.startswith("-"):
+        return False
+    try:
+        r = subprocess.run(["git", "check-ref-format", "--branch", branch], capture_output=True, text=True)
+    except OSError:
+        return False
+    return r.returncode == 0 and r.stdout.strip() == branch
+
+
 def check_branch(branch):
-    if branch and branch.strip() in PROTECTED_BRANCHES:
-        raise SystemExit(f"error: work must happen on a feature branch, not '{branch}'")
+    if branch is None:
+        return
+    if not valid_branch(branch):
+        raise SystemExit(f"error: '{branch}' is not an allowed branch (feature branches only, valid git name)")
 
 
 def git_head(repo, branch):
     try:
-        out = subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", branch or "HEAD"],
+        check_branch(branch)
+        ref = f"refs/heads/{branch}^{{commit}}" if branch else "HEAD"
+        out = subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "--quiet", ref],
                              capture_output=True, text=True, check=True)
         return out.stdout.strip()
     except (OSError, subprocess.CalledProcessError):
@@ -129,22 +150,39 @@ def add_progress(conn, task_id, note, agent=None, percent=None):
 
 
 def run_gate(conn, task_id, repo, commands=None, runner=subprocess.run):
-    """Run every gate command; record one pass/fail row pinned to the branch head."""
+    """Run every gate command in a clean temporary worktree of the branch head; record pass/fail for that sha."""
     task = get_task(conn, task_id)
+    if not task["branch"]:
+        raise SystemExit("error: task has no branch to test")
     check_branch(task["branch"])
     repo = Path(repo)
     sha = git_head(repo, task["branch"])
-    results, ok = [], True
-    for name, cmd, cwd in (commands or DEFAULT_GATE):
+    results, ok = [], sha is not None
+    if sha is None:
+        results.append({"step": "resolve branch", "passed": False, "rc": "branch not found"})
+    else:
+        tmp = tempfile.mkdtemp(prefix="occ-gate-")
         try:
-            rc = runner(cmd, cwd=str(repo / cwd)).returncode
-        except OSError as e:
-            rc = f"could not start: {e}"
-        passed = rc == 0
-        ok = ok and passed
-        results.append({"step": name, "passed": passed, "rc": rc})
-        if not passed:
-            break
+            add = subprocess.run(["git", "-C", str(repo), "worktree", "add", "--detach", tmp, sha],
+                                 capture_output=True, text=True)
+            if add.returncode != 0:
+                ok = False
+                results.append({"step": "worktree add", "passed": False, "rc": add.stderr.strip()})
+            else:
+                for name, cmd, cwd in (commands or DEFAULT_GATE):
+                    try:
+                        rc = runner(cmd, cwd=str(Path(tmp) / cwd)).returncode
+                    except OSError as e:
+                        rc = f"could not start: {e}"
+                    passed = rc == 0
+                    ok = ok and passed
+                    results.append({"step": name, "passed": passed, "rc": rc})
+                    if not passed:
+                        break
+        finally:
+            subprocess.run(["git", "-C", str(repo), "worktree", "remove", "--force", tmp], capture_output=True)
+            shutil.rmtree(tmp, ignore_errors=True)
+            subprocess.run(["git", "-C", str(repo), "worktree", "prune"], capture_output=True)
     result = "pass" if ok else "fail"
     cur = conn.execute("INSERT INTO gate_runs(task_id, branch, commit_sha, result, details) VALUES (?,?,?,?,?)",
                        (task_id, task["branch"], sha, result, json.dumps(results)))
@@ -194,7 +232,7 @@ def sync_candidates(conn):
         "JOIN gate_runs g ON g.id = a.gate_run_id AND g.result='pass' "
         "WHERE t.status='approved' AND a.branch IS NOT NULL AND a.commit_sha IS NOT NULL "
         "ORDER BY t.id").fetchall()
-    return [r for r in rows if r["branch"] not in PROTECTED_BRANCHES]
+    return [r for r in rows if valid_branch(r["branch"])]
 
 
 def mark_synced(conn, task_id):

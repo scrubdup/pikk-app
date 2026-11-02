@@ -20,4 +20,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m unittest discover -s offline-command-center/tests -v
-      - run: bash -n offline-command-center/scripts/*.sh
+      - run: for f in offline-command-center/scripts/*.sh; do bash -n "$f" || exit 1; done

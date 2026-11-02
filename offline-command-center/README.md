@@ -94,6 +94,7 @@ To have a local AI do the work: `git checkout -b fix/music-typo`, then
 offline-command-center/scripts/test-gate.sh 1          # runs server tests, app tests, build; records pass/fail
 python3 offline-command-center/occ.py approve 1        # only works after a pass; asks you to type APPROVE 1
 ```
+The gate tests a fresh, separate copy of the branch's latest commit (not whatever you have open), installs packages from your local npm cache, and cleans the copy up afterwards.
 Approval is tied to the exact version that passed. If anything changes afterwards, run the gate again.
 Approval can't run unattended — it needs you at the keyboard.
 
