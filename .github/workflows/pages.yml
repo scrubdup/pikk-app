@@ -39,3 +39,24 @@ jobs:
           publish_branch: gh-pages
           force_orphan: false
           enable_jekyll: false
+      - name: Verify public PIKK Pages CDN serves this exact build
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          base="https://scrubdup.github.io/pikk-app/"
+          for attempt in $(seq 1 24); do
+            html="$(curl -fLsS --connect-timeout 10 --max-time 25 -H 'Cache-Control: no-cache' "${base}?verify=${EXPECTED_SHA}" || true)"
+            bundle="$(printf '%s' "$html" | grep -oE '/pikk-app/assets/index-[[:alnum:]_-]+\\.js' | head -n 1 || true)"
+            if [[ -n "$bundle" ]]; then
+              js="$(curl -fLsS --connect-timeout 10 --max-time 30 -H 'Cache-Control: no-cache' "https://scrubdup.github.io${bundle}" || true)"
+              if [[ "$js" == *"$EXPECTED_SHA"* ]]; then
+                echo "Public Pages verified: ${base} serves ${bundle} built from ${EXPECTED_SHA}"
+                exit 0
+              fi
+            fi
+            echo "Attempt ${attempt}: waiting for the public CDN to serve ${EXPECTED_SHA}"
+            sleep 15
+          done
+          echo "::error::Public Pages delivery of ${EXPECTED_SHA} could not be verified"
+          exit 1
