@@ -379,7 +379,7 @@ describe('Twerk Contest: live and solo only (owner ruling)', () => {
   });
   it('solo verified-female live start is allowed', async () => {
     const u = await verifiedFemale();
-    const r = await call('POST', '/contests/twerk/live', { cookie: u.cookie, body: { title: 'solo', mode: 'solo', participant_count: 1, guests: [] } });
+    const r = await call('POST', '/contests/twerk/live', { cookie: u.cookie, body: { title: 'solo', mode: 'solo', participant_count: 1 } });
     expect(r.status).toBe(201); expect(r.json.entry.kind).toBe('live');
   });
   it('co-host / guest / duo / group fields are refused with 422 solo_only and nothing is created', async () => {
@@ -389,6 +389,15 @@ describe('Twerk Contest: live and solo only (owner ruling)', () => {
       expect(r.status).toBe(422); expect(r.json.error.code).toBe('solo_only');
     }
     expect((await env.DB.prepare(`SELECT COUNT(*) n FROM contest_entries WHERE user_id=?`).bind(u.id).first()).n).toBe(0);
+  });
+  it('any non-whitelisted key (case/spelling variants) is 422 solo_only and nothing is created', async () => {
+    const variants = [{ coHost: 'x' }, { CoHost: 'x' }, { 'co-host': 'x' }, { guestIds: ['a'] }, { cohost_ids: ['a'] }, { Guests: ['a'] }, { collaborators: ['a'] }, { with: 'x' }, { participantCount: 2 }, { participant_count: '2' }, { participant_count: 0 }, { mode: 'SOLO' }, { guests: [] }, { title2: 'x' }];
+    for (const extra of variants) {
+      const u = await verifiedFemale(); // fresh user per variant so the per-user rate limit is not what answers
+      const r = await call('POST', '/contests/twerk/live', { cookie: u.cookie, body: { title: 't', ...extra } });
+      expect(r.status, JSON.stringify(extra)).toBe(422); expect(r.json.error.code).toBe('solo_only');
+      expect((await env.DB.prepare(`SELECT COUNT(*) n FROM contest_entries WHERE user_id=?`).bind(u.id).first()).n).toBe(0);
+    }
   });
   it('guest/co-host invites to a twerk contest live are refused', async () => {
     const u = await verifiedFemale();

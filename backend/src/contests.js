@@ -16,10 +16,10 @@ import { requireString } from './validate.js';
 
 // Owner ruling: Twerk Contest entries are LIVE and SOLO only.
 export const CONTESTS = Object.freeze({ twerk: { adultContestantsOnly: true, contestantGenders: ['female'], liveOnly: true, soloOnly: true } });
-// Any field that would add another person to a solo live entry.
-const MULTI_PERSON_FIELDS = ['cohost', 'cohosts', 'co_host', 'co_hosts', 'guest', 'guests', 'guest_ids', 'guest_handles', 'invitees', 'participants', 'partner', 'partners', 'duo', 'group', 'team', 'members'];
+// Strict whitelist: any key outside this set (coHost, guestIds, with, participantCount, ...) is 422 solo_only.
+const SOLO_ALLOWED_KEYS = new Set(['title', 'mode', 'participant_count']);
 function assertSolo(b) {
-  const extra = MULTI_PERSON_FIELDS.filter((f) => b[f] !== undefined && b[f] !== null && b[f] !== false && !(Array.isArray(b[f]) && b[f].length === 0));
+  const extra = Object.keys(b || {}).filter((k) => !SOLO_ALLOWED_KEYS.has(k));
   if (extra.length || (b.mode !== undefined && b.mode !== 'solo') || (b.participant_count !== undefined && b.participant_count !== 1))
     throw new ApiError(422, 'solo_only', 'Twerk Contest entries are live and solo only: one verified contestant, no co-hosts or guests.', { fields: extra });
 }
