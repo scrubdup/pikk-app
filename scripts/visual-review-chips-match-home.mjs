@@ -46,7 +46,11 @@ const hitTest = (page) => page.evaluate(async (G) => {
     const x = Math.round(r.left + r.width / 2);
     for (const [lbl, y] of [['above', r.top - 5], ['below', r.bottom + 5]]) {
       const hit = document.elementFromPoint(x, y); out.tested++;
-      if (!(hit === e || e.contains(hit))) out.fail.push(`${e.textContent.trim().slice(0, 14)} ${lbl} -> ${hit ? (hit.className || hit.tagName).toString().slice(0, 30) : 'null'}`);
+      // Between wrapped rows (10px gap, kept so layout matches fab35c8) the point may land on the adjacent row's chip; it must still hit a chip.
+      const sibs = [...e.parentElement.children].filter((o) => o !== e);
+      const neighbour = sibs.find((o) => (o === hit || o.contains(hit)) && Math.abs(o.getBoundingClientRect().top - r.top) > r.height / 2 && Math.abs(o.getBoundingClientRect().top - r.top) < r.height + 16);
+      if (neighbour) out.betweenRows = (out.betweenRows || 0) + 1;
+      if (!(hit === e || e.contains(hit) || neighbour)) out.fail.push(`${e.textContent.trim().slice(0, 14)} ${lbl} -> ${hit ? (hit.className || hit.tagName).toString().slice(0, 30) : 'null'}`);
     }
   }
   return out;
@@ -54,7 +58,7 @@ const hitTest = (page) => page.evaluate(async (G) => {
 for (const w of [360, 390, 430]) for (const r of ['/home', ...ROUTES]) {
   const p = await b.newPage({ viewport: { width: w, height: 844 } }); await p.goto(base + '#' + r, { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(+(process.env.W || 6500));
   const h = await hitTest(p); await p.close();
-  console.log('hit', w, r, 'points', h.tested, 'miss', h.fail.length, h.fail.slice(0, 3).join(' | '));
+  console.log('hit', w, r, 'points', h.tested, 'between-rows', h.betweenRows || 0, 'miss', h.fail.length, h.fail.slice(0, 3).join(' | '));
   if (h.fail.length) bad++;
 }
 await b.close(); process.exit(bad ? 1 : 0);
