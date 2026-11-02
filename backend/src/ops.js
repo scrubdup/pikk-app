@@ -1,3 +1,4 @@
+import { jobsPanel } from './jobs.js';
 import { workersPanel } from './heartbeat.js';
 /**
  * PIKK Master Mind phase 1: GET /admin/ops/summary (owner-only via ops.view).
@@ -94,6 +95,7 @@ export async function opsSummary(env, { vaultHealth } = {}) {
 
   panels.ledger = panel('demo', 'stub', null, { reason: 'Stripe is stubbed (webhook returns 503 without a secret); no real revenue is reported.' });
   panels.vault = await vaultPanel(vaultHealth);
+  panels.jobs = await safe(() => jobsPanel(env), 'D1 jobs (read-only)', 1800);
   panels.workers = await safe(() => workersPanel(env), 'D1 worker_heartbeats', 600);
   panels.live = unknown('none', 'No server-side live/stream source yet.');
   panels.broadcast = unknown('none', 'Restream/broadcast is a client prototype; no server source.');

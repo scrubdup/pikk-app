@@ -3,7 +3,7 @@
 export const STATUSES = ['healthy', 'degraded', 'down', 'stale', 'unknown', 'demo'];
 export const PANEL_LABELS = {
   api: 'API', database: 'Database', shield: 'PIKK Shield', support: 'Support', audit: 'Audit log',
-  ledger: 'Ledger / Revenue', vault: 'Vault media', live: 'Live', broadcast: 'Broadcast', costs: 'Costs', backups: 'Backups', workers: 'Workers (heartbeats)',
+  ledger: 'Ledger / Revenue', vault: 'Vault media', live: 'Live', broadcast: 'Broadcast', costs: 'Costs', backups: 'Backups', workers: 'Workers (heartbeats)', jobs: 'Jobs',
 };
 
 export function apiBase(env = {}) {

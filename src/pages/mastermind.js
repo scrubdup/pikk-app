@@ -19,7 +19,9 @@ function detailRows(detail) {
   if (!detail || typeof detail !== 'object') return '';
   const workers = Array.isArray(detail.workers) ? detail.workers.map(w =>
     `<li><span class="muted">${esc(w.worker)}</span> <strong>${esc(w.status)}</strong> <span class="muted">${esc(w.lastBeatAt ? `last beat ${w.ageSec}s ago` : 'no heartbeat recorded')}</span></li>`).join('') : '';
-  return workers + Object.entries(detail).filter(([k]) => k !== 'recent' && k !== 'workers').map(([k, v]) =>
+  const failures = Array.isArray(detail.recentFailures) ? detail.recentFailures.map(f =>
+    `<li><span class="muted">${esc(f.kind)}</span> <strong>${esc(f.state)}</strong> <span class="muted">attempts ${esc(f.attempts)} · ${esc(f.error_code || '')} · ${esc(f.at)}</span></li>`).join('') : '';
+  return workers + failures + Object.entries(detail).filter(([k]) => k !== 'recent' && k !== 'workers' && k !== 'recentFailures').map(([k, v]) =>
     `<li><span class="muted">${esc(k)}</span> <strong>${esc(typeof v === 'object' ? JSON.stringify(v) : v)}</strong></li>`).join('');
 }
 

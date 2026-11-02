@@ -48,7 +48,7 @@ describe('workers panel in /admin/ops/summary', () => {
   });
   it('runScheduled reports ok and increments run_count', async () => {
     await clear();
-    expect(await runScheduled(env)).toEqual({ ok: true, error: null });
+    expect(await runScheduled(env)).toMatchObject({ ok: true, error: null });
     await runScheduled(env);
     expect((await env.DB.prepare(`SELECT run_count FROM worker_heartbeats WHERE worker=?`).bind(CRON_WORKER).first()).run_count).toBe(2);
   });

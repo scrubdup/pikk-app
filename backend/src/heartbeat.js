@@ -1,3 +1,4 @@
+import { enqueue, dueJobs, runJob } from './jobs.js';
 /**
  * PIKK Master Mind phase 2 (slice 1): durable worker heartbeats.
  * The scheduled() handler records its own heartbeat after running read-only checks.
@@ -33,11 +34,22 @@ export async function runChecks(env) {
   } catch { return 'db_query_failed'; }
 }
 
+export const DB_CHECK_KIND = 'db-check';
+export const WINDOW_MS = 5 * 60 * 1000;
+/** Deterministic per-5-minute-window key: duplicate cron deliveries in one window share one job record. */
+export const dbCheckKey = (nowMs) => `${DB_CHECK_KIND}:${new Date(Math.floor(nowMs / WINDOW_MS) * WINDOW_MS).toISOString()}`;
+
 export async function runScheduled(env, now = () => Date.now()) {
   const t0 = now();
-  const err = await runChecks(env);
+  await enqueue(env, { kind: DB_CHECK_KIND, key: dbCheckKey(t0), maxAttempts: 3, now: t0 });
+  let err = null; let ran = 0;
+  for (const { id } of await dueJobs(env, DB_CHECK_KIND, t0)) {
+    let jobErr = null;
+    const r = await runJob(env, id, async () => (jobErr = await runChecks(env)), now);
+    if (r !== 'skipped') { ran++; if (jobErr) err = jobErr; }
+  }
   await recordHeartbeat(env, CRON_WORKER, { status: err ? 'error' : 'ok', durationMs: now() - t0, error: err, at: new Date(now()).toISOString() });
-  return { ok: !err, error: err };
+  return { ok: !err, error: err, ran };
 }
 
 /** Maps a heartbeat row to a panel-style entry. missing => unknown; fresh => healthy (degraded if last run errored);
