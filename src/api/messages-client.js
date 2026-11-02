@@ -14,6 +14,7 @@ async function request(path,{method='GET',body}={}){
 }
 export const messagesApi={
   list:()=>request('/messages/conversations'),
+  unreadCount:()=>request('/messages/unread-count'),
   start:(handle)=>request('/messages/conversations',{method:'POST',body:{handle}}),
   get:(id)=>request('/messages/conversations/'+encodeURIComponent(id)),
   send:(id,message)=>request('/messages/conversations/'+encodeURIComponent(id)+'/messages',{method:'POST',body:{message}}),
