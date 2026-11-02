@@ -13,12 +13,39 @@ import {
   isMutualFollow,
   setThreadFlags,
   updateMessagePrefs,
+  resolveThreadPeerHandle,
 } from '../store.js';
 import { esc, toast, shellPage, timeAgo } from '../ui.js';
 import { navigate } from '../router.js';
 import { messageSearchText, messageResultSummary } from '../message-search.js';
 import { messagesApi, isMessagesApiConfigured } from '../api/messages-client.js';
 import { safetyApi, isSafetyApiConfigured, safetyErrorMessage, LOCAL_ONLY_BLOCK_NOTE, LOCAL_ONLY_REPORT_NOTE } from '../api/safety-client.js';
+
+
+const PEER_HANDLE_RE = /^[A-Za-z0-9_]{3,30}$/;
+/** Normalize a backend user handle (what POST /blocks `handle` and report target_id expect). */
+export function normalizePeerHandle(h) {
+  const v = String(h || '').trim().replace(/^@/, '');
+  return PEER_HANDLE_RE.test(v) ? v : '';
+}
+/** Can this Report/Block reach the server? Needs API + backend session + a real peer handle. */
+export function canUseServerSafety(peerHandle) {
+  return !!normalizePeerHandle(peerHandle) && isSafetyApiConfigured() && getState().user?.authSource === 'backend';
+}
+/** Shared Messages Report/Block handler. Returns a promise of the toast text shown. */
+export function runPeerSafetyAction(action, peerHandle, { notify = toast } = {}) {
+  const handle = normalizePeerHandle(peerHandle);
+  if (!canUseServerSafety(handle)) {
+    const msg = action === 'block' ? 'Blocked · ' + LOCAL_ONLY_BLOCK_NOTE : 'Reported · stub (Guidelines §13) · ' + LOCAL_ONLY_REPORT_NOTE;
+    notify(msg);
+    return Promise.resolve(msg);
+  }
+  const p = action === 'block'
+    ? safetyApi.block(handle).then(() => 'Blocked across PIKK', (err) => 'Hidden here only — server block failed: ' + safetyErrorMessage(err))
+    : safetyApi.report({ targetType: 'user', targetId: handle, category: 'harassment', details: 'Reported from Messages' })
+        .then(() => 'Report sent to PIKK moderators', (err) => 'Report not sent: ' + safetyErrorMessage(err));
+  return p.then((msg) => { notify(msg); return msg; });
+}
 
 function refresh(hash) {
   navigate(hash || '#/messages');
@@ -304,7 +331,7 @@ export function renderPersistentThread(detail, currentUserId='') {
     </div>`;
   }).join('');
   return `<section class="pikk-msg-flow-hero pikk-msg-flow-hero-thread"><span class="pikk-msg-flow-kicker">PIKK CONNECT · DIRECT MESSAGES</span><h2>${esc(peer)}</h2><p>Persistent private conversation stored on PIKK.</p><span class="chip">Backend message thread</span></section>
-    <div class="card msg-thread-head pikk-msg-flow-panel"><button type="button" class="btn ghost" data-remote-inbox>← Inbox</button><h3 style="margin:10px 0 0">${esc(peer)}</h3></div>
+    <div class="card msg-thread-head pikk-msg-flow-panel"><button type="button" class="btn ghost" data-remote-inbox>← Inbox</button><h3 style="margin:10px 0 0">${esc(peer)}</h3>${convo.peer?.handle ? `<div class="row wrap" style="margin-top:8px"><button type="button" class="btn ghost" data-remote-flag="block" data-peer-handle="${esc(convo.peer.handle)}">Block</button><button type="button" class="btn ghost danger" data-remote-flag="report" data-peer-handle="${esc(convo.peer.handle)}">Report</button></div>` : ''}</div>
     <div class="card msg-thread-card pikk-msg-flow-panel">
       <div class="msg-thread" id="remoteMsgThread">${bubbles||'<p class="muted">No messages yet — say hi.</p>'}</div>
       <div class="msg-composer"><input id="remoteMsgInput" placeholder="Message…" maxlength="4000" /><button type="button" class="btn primary" id="remoteMsgSend">Send</button></div>
@@ -362,6 +389,8 @@ async function bindPersistentMessages(root) {
       host.innerHTML=renderPersistentThread(data,user.id);
       await messagesApi.markRead(id).catch(()=>{});
       host.querySelector('[data-remote-inbox]')?.addEventListener('click',()=>refresh('#/messages'));
+      const peerHandle=data?.conversation?.peer?.handle||'';
+      host.querySelectorAll('[data-remote-flag]').forEach(btn=>btn.addEventListener('click',()=>runPeerSafetyAction(btn.dataset.remoteFlag==='block'?'block':'report',peerHandle)));
       const send=async()=>{
         const input=host.querySelector('#remoteMsgInput');
         const message=input?.value?.trim();
@@ -555,25 +584,12 @@ export function bindMessages(root) {
         refresh('#/messages?t=' + encodeURIComponent(thread.id));
       } else if (flag === 'block') {
         const next = setThreadFlags(thread.id, { blocked: !thread.blocked });
-        const handle = thread.peerHandle;
-        if (next.blocked && handle && isSafetyApiConfigured() && getState().user?.authSource === 'backend') {
-          safetyApi.block(handle)
-            .then(() => toast('Blocked across PIKK'))
-            .catch((err) => toast('Hidden here only — server block failed: ' + safetyErrorMessage(err)));
-        } else {
-          toast(next.blocked ? 'Blocked · ' + LOCAL_ONLY_BLOCK_NOTE : 'Unblocked on this device');
-        }
+        if (next.blocked) runPeerSafetyAction('block', resolveThreadPeerHandle(thread));
+        else toast('Unblocked on this device');
         refresh('#/messages?t=' + encodeURIComponent(thread.id));
       } else if (flag === 'report') {
         setThreadFlags(thread.id, { report: true });
-        const target = thread.peerHandle;
-        if (target && isSafetyApiConfigured() && getState().user?.authSource === 'backend') {
-          safetyApi.report({ targetType: 'user', targetId: target, category: 'harassment', details: 'Reported from Messages' })
-            .then(() => toast('Report sent to PIKK moderators'))
-            .catch((err) => toast('Report not sent: ' + safetyErrorMessage(err)));
-        } else {
-          toast('Reported · stub (Guidelines §13) · ' + LOCAL_ONLY_REPORT_NOTE);
-        }
+        runPeerSafetyAction('report', resolveThreadPeerHandle(thread));
         refresh('#/messages?t=' + encodeURIComponent(thread.id));
       }
     });

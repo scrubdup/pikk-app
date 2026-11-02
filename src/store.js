@@ -2010,7 +2010,15 @@ export function isMutualFollow(peerId) {
   return (user.following || []).includes(peerId) && (peer.following || []).includes(user.id);
 }
 
-export function getOrCreateThread(peerId, peerName) {
+/** Backend handle for a DM peer (from synced/backend profile data); '' when unknown. */
+export function resolveThreadPeerHandle(thread) {
+  if (!thread || thread.kind === 'group') return '';
+  const raw = thread.peerHandle || state.profiles?.[thread.peerId]?.handle || '';
+  const h = String(raw).trim().replace(/^@/, '');
+  return /^[A-Za-z0-9_]{3,30}$/.test(h) ? h : '';
+}
+
+export function getOrCreateThread(peerId, peerName, { peerHandle } = {}) {
   const user = state.user;
   if (!user) return { error: 'signin' };
   const id = threadIdFor(peerId);
@@ -2023,14 +2031,23 @@ export function getOrCreateThread(peerId, peerName) {
       participants: [user.id, peerId],
       peerId,
       peerName: peerName || peerId,
+      peerHandle: '',
       messages: [],
       updatedAt: Date.now(),
       request: !mutual,
       muted: false,
       blocked: false,
     };
+    t.peerHandle = resolveThreadPeerHandle({ ...t, peerHandle: peerHandle || '' });
     state = { ...state, threads: { ...state.threads, [id]: t } };
     save(state);
+  } else if (!t.peerHandle && t.kind !== 'group') {
+    const h = resolveThreadPeerHandle({ ...t, peerHandle: peerHandle || '' });
+    if (h) {
+      t = { ...t, peerHandle: h };
+      state = { ...state, threads: { ...state.threads, [id]: t } };
+      save(state);
+    }
   }
   return t;
 }
@@ -4674,7 +4691,8 @@ export function createFanClub({ name, description, graphic, privacy = 'public' }
   const user = state.user;
   if (!user) return { error: 'signin' };
   // Creator/admin TEST MODE gate
-  if (!(isAdmin() || user.role === 'creator' || user.id === 'dbs')) {
+  // Creator/admin gating uses server-verified roles only (never local role/id).
+  if (!(isAdmin() || serverRoles.includes('creator'))) {
     // Allow any signed-in demo user to create in TEST MODE, but tag as creator demo
   }
   const n = String(name || '').trim().slice(0, 48);
