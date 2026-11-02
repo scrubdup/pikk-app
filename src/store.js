@@ -499,6 +499,7 @@ export function syncRemoteAuthUser(remoteUser) {
 }
 
 export function clearAuthenticatedUser() {
+  serverRoles = [];
   state = { ...state, user: null };
   save(state);
 }
@@ -747,13 +748,29 @@ export function shouldShowSplash() {
   return !state.splashSeenAt;
 }
 
-/** TEST MODE admin gate: user.role === 'admin' */
+// Server-verified roles from GET /auth/me (never persisted to localStorage).
+let serverRoles = [];
+export function setServerRoles(roles) {
+  serverRoles = Array.isArray(roles) ? roles.map(String) : [];
+}
+export function getServerRoles() {
+  return serverRoles.slice();
+}
+/** Local demo admin is only honored in a dev build with no backend configured. */
+export function isDemoAdminAllowed() {
+  const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
+  const apiBase = (typeof window !== 'undefined' && typeof window.__PIKK_API_BASE__ === 'string' && window.__PIKK_API_BASE__.trim()) || String(env.VITE_PIKK_API_BASE || '').trim();
+  return env.DEV === true && !apiBase;
+}
+/** Admin is staff-only: the server role wins; localStorage role only counts in dev demo. */
 export function isAdmin() {
-  return !!(state.user && state.user.role === 'admin');
+  if (serverRoles.includes('admin')) return true;
+  return isDemoAdminAllowed() && !!(state.user && state.user.role === 'admin');
 }
 
 /** Persist demo admin role on the signed-in user. */
 export function setAdminRole(on = true) {
+  if (on && !isDemoAdminAllowed()) return { error: 'staff_only' };
   const user = state.user;
   if (!user) return { error: 'signin' };
   const next = { ...user, role: on ? 'admin' : 'fan' };
@@ -1993,7 +2010,15 @@ export function isMutualFollow(peerId) {
   return (user.following || []).includes(peerId) && (peer.following || []).includes(user.id);
 }
 
-export function getOrCreateThread(peerId, peerName) {
+/** Backend handle for a DM peer (from synced/backend profile data); '' when unknown. */
+export function resolveThreadPeerHandle(thread) {
+  if (!thread || thread.kind === 'group') return '';
+  const raw = thread.peerHandle || state.profiles?.[thread.peerId]?.handle || '';
+  const h = String(raw).trim().replace(/^@/, '');
+  return /^[A-Za-z0-9_]{3,30}$/.test(h) ? h : '';
+}
+
+export function getOrCreateThread(peerId, peerName, { peerHandle } = {}) {
   const user = state.user;
   if (!user) return { error: 'signin' };
   const id = threadIdFor(peerId);
@@ -2006,14 +2031,23 @@ export function getOrCreateThread(peerId, peerName) {
       participants: [user.id, peerId],
       peerId,
       peerName: peerName || peerId,
+      peerHandle: '',
       messages: [],
       updatedAt: Date.now(),
       request: !mutual,
       muted: false,
       blocked: false,
     };
+    t.peerHandle = resolveThreadPeerHandle({ ...t, peerHandle: peerHandle || '' });
     state = { ...state, threads: { ...state.threads, [id]: t } };
     save(state);
+  } else if (!t.peerHandle && t.kind !== 'group') {
+    const h = resolveThreadPeerHandle({ ...t, peerHandle: peerHandle || '' });
+    if (h) {
+      t = { ...t, peerHandle: h };
+      state = { ...state, threads: { ...state.threads, [id]: t } };
+      save(state);
+    }
   }
   return t;
 }
@@ -4657,7 +4691,8 @@ export function createFanClub({ name, description, graphic, privacy = 'public' }
   const user = state.user;
   if (!user) return { error: 'signin' };
   // Creator/admin TEST MODE gate
-  if (!(isAdmin() || user.role === 'creator' || user.id === 'dbs')) {
+  // Creator/admin gating uses server-verified roles only (never local role/id).
+  if (!(isAdmin() || serverRoles.includes('creator'))) {
     // Allow any signed-in demo user to create in TEST MODE, but tag as creator demo
   }
   const n = String(name || '').trim().slice(0, 48);

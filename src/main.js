@@ -38,7 +38,7 @@ import {
   notifyLiveOpen,
   notifyLiveClosed,
 } from './player.js';
-import { getState, ensureDemoPosts, markSplash, shouldShowSplash, getUnreadMessageCount, ensureDemoUnreadMessages, syncRemoteAuthUser, clearAuthenticatedUser } from './store.js';
+import { getState, ensureDemoPosts, markSplash, shouldShowSplash, getUnreadMessageCount, ensureDemoUnreadMessages, syncRemoteAuthUser, clearAuthenticatedUser, setServerRoles } from './store.js';
 import { startRouter, onRoute, getRoute } from './router.js';
 import { ICONS, esc, shellPage, toast } from './ui.js';
 import { asset, rewriteAssetUrls } from './asset.js';
@@ -545,8 +545,10 @@ async function restoreBackendSession() {
   try {
     const session = await authApi.me();
     if (session?.user) syncRemoteAuthUser(session.user);
+    setServerRoles(session?.roles || []);
   } catch (err) {
     if (err?.status === 401) {
+      setServerRoles([]);
       if (getState().user?.authSource === 'backend') clearAuthenticatedUser();
       return;
     }
