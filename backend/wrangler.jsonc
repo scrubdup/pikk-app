@@ -12,11 +12,14 @@
   ],
   // PIKK Vault media bucket: LOCAL PLACEHOLDER ONLY (Miniflare/wrangler dev --local). Not provisioned on any account.
   "r2_buckets": [
-    { "binding": "MEDIA", "bucket_name": "pikk-media-local-placeholder" }
+    { "binding": "MEDIA", "bucket_name": "pikk-media-local-placeholder" },
+    // Slice 4: SEPARATE backup bucket, LOCAL PLACEHOLDER ONLY. In production it must be a different bucket with separate access.
+    { "binding": "MEDIA_BACKUP", "bucket_name": "pikk-media-backup-local-placeholder" }
   ],
   // PIKK Vault slice 3: Story expiry sweeper + delayed job retries. Cron Triggers are free on the Workers Free plan.
   // Must match PROCESSING.sweeperCron in src/media-config.js. Local test: wrangler dev --test-scheduled, then GET /__scheduled
-  "triggers": { "crons": ["*/15 * * * *"] },
+  // Slice 4: daily backup export at 03:30 UTC (must match BACKUP.cron).
+  "triggers": { "crons": ["*/15 * * * *", "30 3 * * *"] },
   "vars": {
     "ALLOWED_ORIGIN": "https://scrubdup.github.io",
     "COOKIE_SAMESITE": "None",

@@ -8,6 +8,9 @@ export default defineConfig(async () => {
     plugins: [cloudflareTest({
       wrangler: { configPath: './wrangler.jsonc' },
       miniflare: {
+        // Slice 4: isolated restore target (test-only; never in wrangler.jsonc).
+        d1Databases: ['RESTORE_DB'],
+        r2Buckets: ['RESTORE_MEDIA'],
         bindings: {
           TEST_MIGRATIONS: migrations,
           EXPOSE_VERIFY_TOKEN: 'true',

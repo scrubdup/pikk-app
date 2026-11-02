@@ -11,6 +11,8 @@ import { newId } from './crypto.js';
 import { audit, auditStmt } from './audit.js';
 import { mediaRoute } from './media.js';
 import { scheduledTick } from './processing.js';
+import { runBackup } from './backup.js';
+import { BACKUP } from './media-config.js';
 import { musicUploadRoute } from './music-upload.js';
 import { messagesRoute } from './messages.js';
 import { supportRoute } from './tickets.js';
@@ -341,6 +343,8 @@ export default {
   },
   // PIKK Vault slice 3: free cron trigger (wrangler.jsonc triggers.crons). Story expiry sweep + job retries.
   async scheduled(controller, env, ectx) {
-    ectx.waitUntil(scheduledTick(env).catch((e) => console.error('vault scheduled failed', e && e.stack || e)));
+    // Slice 4: the daily backup cron runs the backup export; every other cron runs the sweeper/drain tick.
+    const job = controller && controller.cron === BACKUP.cron ? runBackup(env, 'cron') : scheduledTick(env);
+    ectx.waitUntil(job.catch((e) => console.error('vault scheduled failed', e && e.stack || e)));
   },
 };
