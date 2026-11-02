@@ -5037,3 +5037,15 @@ html body .pikk-home-media-title {
     font-weight: 900;
   }
 }
+
+
+/* t-owner-20261101c — lower the seven mobile nav buttons closer to the browser-safe edge. */
+@media (max-width: 767px) {
+  html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 {
+    transform: translateY(5px);
+    padding-bottom: 0;
+  }
+  html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a {
+    padding-bottom: 4px;
+  }
+}
