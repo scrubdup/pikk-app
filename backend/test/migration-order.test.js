@@ -8,7 +8,8 @@
 //   delete the entry once that migration lands.
 import { describe, it, expect } from 'vitest';
 import { env } from 'cloudflare:test';
-import reserved from '../migrations/RESERVED.json';
+import reservedFile from '../migrations/RESERVED.json';
+const reserved = Object.fromEntries(Object.entries(reservedFile).filter(([k]) => !k.startsWith('_')));
 
 const names = env.TEST_MIGRATIONS.map((m) => m.name);
 const parse = (n) => /^(\d{4})_[a-z0-9_]+\.sql$/.exec(n);
@@ -25,6 +26,12 @@ describe('migration order', () => {
   it('RESERVED.json keys are 4-digit numbers', () => {
     const bad = Object.keys(reserved).filter((k) => !/^\d{4}$/.test(k));
     expect(bad, `bad RESERVED.json keys: ${bad.join(', ')}`).toEqual([]);
+  });
+
+  it('no reserved number also has a real .sql file (remove the reservation when the file lands)', () => {
+    const real = new Set(names.map((n) => parse(n)?.[1]).filter(Boolean));
+    const overlap = Object.keys(reserved).filter((k) => real.has(k));
+    expect(overlap, `reserved numbers that already have a migration file: ${overlap.join(', ')}`).toEqual([]);
   });
 
   it('has no duplicate numeric prefixes', () => {
