@@ -118,6 +118,31 @@ class OccTest(unittest.TestCase):
         self.assertEqual(occ.run_gate(self.conn, ok, self.repo, [("check", ["sh", "check.sh"], ".")])[1], "pass")
         self.assertEqual(self.worktrees(), before)
 
+    def test_startup_cleans_leftover_gate_worktrees(self):
+        before = self.worktrees()
+        root = Path(self.tmp.name, "tmproot"); root.mkdir()
+        stale = root / (occ.GATE_PREFIX + "crashed")
+        self.git("worktree", "add", "--detach", str(stale), "HEAD")
+        keep = Path(self.tmp.name, "other-wt")
+        self.git("worktree", "add", "--detach", str(keep), "HEAD")
+        orphan = root / (occ.GATE_PREFIX + "orphan"); orphan.mkdir()
+        removed = occ.cleanup_stale_worktrees(self.repo, root)
+        self.assertEqual(removed, [str(stale.resolve())])
+        self.assertFalse(stale.exists()); self.assertFalse(orphan.exists()); self.assertTrue(keep.exists())
+        self.assertEqual(self.worktrees(), before + 1)
+
+    def test_signal_during_gate_removes_worktree(self):
+        import signal
+        before = self.worktrees()
+        tid = occ.add_task(self.conn, "fix", branch="feature/x")
+
+        def interrupted(cmd, cwd=None):
+            signal.raise_signal(signal.SIGTERM)
+        with self.assertRaises(SystemExit):
+            occ.run_gate(self.conn, tid, self.repo, STEPS, interrupted)
+        self.assertEqual(self.worktrees(), before)
+        self.assertEqual(signal.getsignal(signal.SIGTERM), signal.SIG_DFL)
+
     def test_approve_requires_passing_gate(self):
         tid = self.gated(FAIL)
         with self.assertRaises(SystemExit):

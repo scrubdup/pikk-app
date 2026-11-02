@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import shutil
+import signal
 import sqlite3
 import subprocess
 import sys
@@ -149,6 +150,34 @@ def add_progress(conn, task_id, note, agent=None, percent=None):
     conn.commit()
 
 
+GATE_PREFIX = "occ-gate-"
+
+
+def remove_worktree(repo, path):
+    subprocess.run(["git", "-C", str(repo), "worktree", "remove", "--force", str(path)], capture_output=True)
+    shutil.rmtree(path, ignore_errors=True)
+    subprocess.run(["git", "-C", str(repo), "worktree", "prune"], capture_output=True)
+
+
+def cleanup_stale_worktrees(repo, tmp_root=None):
+    """Prune, then remove any leftover occ gate worktrees (e.g. from a crash). Returns removed paths."""
+    tmp_root = Path(tmp_root or tempfile.gettempdir()).resolve()
+    subprocess.run(["git", "-C", str(repo), "worktree", "prune"], capture_output=True)
+    out = subprocess.run(["git", "-C", str(repo), "worktree", "list", "--porcelain"],
+                         capture_output=True, text=True).stdout
+    removed = []
+    for line in out.splitlines():
+        if not line.startswith("worktree "):
+            continue
+        path = Path(line[len("worktree "):]).resolve()
+        if path.name.startswith(GATE_PREFIX) and path.parent == tmp_root:
+            remove_worktree(repo, path)
+            removed.append(str(path))
+    for leftover in tmp_root.glob(GATE_PREFIX + "*"):  # dirs git no longer tracks
+        shutil.rmtree(leftover, ignore_errors=True)
+    return removed
+
+
 def run_gate(conn, task_id, repo, commands=None, runner=subprocess.run):
     """Run every gate command in a clean temporary worktree of the branch head; record pass/fail for that sha."""
     task = get_task(conn, task_id)
@@ -156,12 +185,18 @@ def run_gate(conn, task_id, repo, commands=None, runner=subprocess.run):
         raise SystemExit("error: task has no branch to test")
     check_branch(task["branch"])
     repo = Path(repo)
+    cleanup_stale_worktrees(repo)
     sha = git_head(repo, task["branch"])
     results, ok = [], sha is not None
     if sha is None:
         results.append({"step": "resolve branch", "passed": False, "rc": "branch not found"})
     else:
-        tmp = tempfile.mkdtemp(prefix="occ-gate-")
+        tmp = tempfile.mkdtemp(prefix=GATE_PREFIX)
+
+        def on_signal(signum, _frame):
+            remove_worktree(repo, tmp)
+            raise SystemExit(128 + signum)
+        old = {sig: signal.signal(sig, on_signal) for sig in (signal.SIGTERM, signal.SIGINT)}
         try:
             add = subprocess.run(["git", "-C", str(repo), "worktree", "add", "--detach", tmp, sha],
                                  capture_output=True, text=True)
@@ -180,9 +215,9 @@ def run_gate(conn, task_id, repo, commands=None, runner=subprocess.run):
                     if not passed:
                         break
         finally:
-            subprocess.run(["git", "-C", str(repo), "worktree", "remove", "--force", tmp], capture_output=True)
-            shutil.rmtree(tmp, ignore_errors=True)
-            subprocess.run(["git", "-C", str(repo), "worktree", "prune"], capture_output=True)
+            for sig, handler in old.items():
+                signal.signal(sig, handler)
+            remove_worktree(repo, tmp)
     result = "pass" if ok else "fail"
     cur = conn.execute("INSERT INTO gate_runs(task_id, branch, commit_sha, result, details) VALUES (?,?,?,?,?)",
                        (task_id, task["branch"], sha, result, json.dumps(results)))
