@@ -15,4 +15,6 @@ async function request(path,{method='GET',body}={}){
 export const accountApi={
   me:()=>request('/auth/me'),
   updateSignupRoles:(roles)=>request('/account/signup-roles',{method:'POST',body:{signup_roles:roles}}),
+  listRoleReviews:(status='')=>request('/admin/signup-roles'+(status?'?status='+encodeURIComponent(status):'')),
+  reviewRole:({handle,role,status,reason})=>request('/admin/signup-roles/review',{method:'POST',body:{handle,role,status,reason}}),
 };
