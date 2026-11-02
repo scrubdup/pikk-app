@@ -285,7 +285,7 @@ const LIVE_DISCOVERY_CATEGORIES = [
   ['Education', 'Tutorials, learning and study sessions', '📚'],
   ['News & Commentary', 'Current events and opinions', '📰'],
   ['Comedy & Entertainment', 'Comedy, variety and entertainment', '🎭'],
-  ['Comedy & Roast Battles', '1v1, tag team, open mic and tournaments', '🎤'],
+  ['Comedy & Roast Battles', '1v1, open mic and tournaments', '🎤'],
 ];
 
 function renderCategoriesPanel() {
