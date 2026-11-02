@@ -34,6 +34,13 @@ describe('persistent account profiles', () => {
     expect(pub.json.user.email).toBeUndefined();
   });
 
+  it('returns 404 for an unknown handle', async () => {
+    const u=await newUser();
+    const res=await call('GET','/users/no_such_user_zz9',{cookie:u.cookie,ip:freshIp()});
+    expect(res.status).toBe(404);
+    expect(res.json.error.code).toBe('not_found');
+  });
+
   it('validates avatar URL and field lengths', async () => {
     const u=await newUser();
     const bad=await call('POST','/account/profile',{
