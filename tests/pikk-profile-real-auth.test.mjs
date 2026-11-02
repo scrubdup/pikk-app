@@ -43,3 +43,11 @@ test('configured real API retires legacy browser-local demo identity', () => {
   assert.match(profile, /cachedUser && cachedUser\.authSource !== 'backend'/);
   assert.match(profile, /clearAuthenticatedUser\(\)/);
 });
+
+
+test('unverified backend Profile can request another verification email', () => {
+  assert.match(profile, /id="resendVerifyBtn"/);
+  assert.match(profile, /authApi\.resendVerification\(\)/);
+  assert.match(profile, /Verification email sent/);
+  assert.match(profile, /Verification email service is not configured yet/);
+});
