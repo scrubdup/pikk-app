@@ -94,11 +94,22 @@ html body :is(.pikk-home-filterbar, .home-stage-tabs, .live-disc-tabs, .live-cat
   line-height: 1.2;
   position: relative;
 }
-/* t222u — invisible 44px tap area (34px visual + 5px above/below, 2px each side); groups keep >=10px row gap so areas don't overlap. */
+/* t222u — invisible tap area: 34px visual + 6px beyond the border above/below (46px hit box), 2px each side); groups keep >=10px row gap so areas don't overlap. */
 html body :is(.pikk-home-filterbar, .home-stage-tabs, .live-disc-tabs, .live-cat-chips, .admin-type-tabs, .pikk-viral-tabs, .shop-chips, .pikk-video-filters, .pikk-music-categories) > :is(a, button)::before {
-  content: ""; position: absolute; inset: calc((var(--pikk-chip-h) - var(--pikk-chip-tap)) / 2) -2px; border-radius: 999px; background: transparent;
+  content: ""; position: absolute; inset: calc((var(--pikk-chip-h) - var(--pikk-chip-tap)) / 2 - var(--pikk-chip-bw, 1px) - 1px) -2px; border-radius: 999px; background: transparent;
 }
-html body :is(.pikk-home-filterbar, .home-stage-tabs, .live-disc-tabs, .live-cat-chips, .admin-type-tabs, .pikk-viral-tabs, .shop-chips, .pikk-video-filters, .pikk-music-categories) { row-gap: 10px; column-gap: max(6px, var(--pikk-chip-col-gap, 6px)); }
+/* Scroll rows clip overflow on both axes: each chip row gets +6px padding above/below for the tap area, and -6px margin
+   cancels it so the page doesn't move (original padding/margin per row, measured at 390px, kept underneath). */
+html body :is(.pikk-home-filterbar, .home-stage-tabs, .live-disc-tabs, .live-cat-chips, .admin-type-tabs, .pikk-viral-tabs, .shop-chips, .pikk-video-filters, .pikk-music-categories) { row-gap: 12px; column-gap: max(6px, var(--pikk-chip-col-gap, 6px)); }
+html body .pikk-home-filterbar { padding-top: 8px !important; padding-bottom: 11px !important; margin-top: -6px !important; margin-bottom: 8px !important; }
+html body .home-stage-tabs { padding-top: 6px !important; padding-bottom: 10px !important; margin-top: -6px !important; margin-bottom: 6px !important; }
+html body .live-disc-tabs { padding-top: 6px !important; padding-bottom: 10px !important; margin-top: -6px !important; margin-bottom: 4px !important; }
+html body .live-cat-chips { padding-top: 6px !important; padding-bottom: 6px !important; margin-top: -6px !important; margin-bottom: 8px !important; }
+html body .pikk-music-categories { padding-top: 9px !important; padding-bottom: 15px !important; margin-top: -2px !important; margin-bottom: 7px !important; }
+html body .pikk-video-filters { padding-top: 9px !important; padding-bottom: 13px !important; margin-top: -6px !important; margin-bottom: 9px !important; }
+html body .shop-chips { padding-top: 6px !important; padding-bottom: 14px !important; margin-top: -6px !important; margin-bottom: 6px !important; }
+html body .admin-type-tabs { padding-top: 6px !important; padding-bottom: 6px !important; margin-top: -6px !important; margin-bottom: 8px !important; }
+html body .pikk-viral-tabs { padding-top: 6px !important; padding-bottom: 18px !important; margin-top: -6px !important; margin-bottom: -6px !important; }
 /* t222u — round avatars / story circles everywhere wear Home's red · white(chrome) · blue ring. */
 html body :is(.meta > .avatar, .shop-avatar-frame, .pikk-ring) {
   padding: 3px; border: 0 !important; border-radius: 50% !important;

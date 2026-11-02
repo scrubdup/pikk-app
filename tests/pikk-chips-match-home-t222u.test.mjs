@@ -4,7 +4,9 @@ test('t222u: tab groups on every page use Home chip geometry tokens; avatars use
   for (const t of ['--pikk-chip-fs: 11px', '--pikk-chip-fw: 750', '--pikk-chip-pad: 8px 10px', '--pikk-chip-h: 34px']) assert.ok(css.includes(t), t);
   for (const g of ['.home-stage-tabs', '.live-disc-tabs', '.admin-type-tabs', '.pikk-viral-tabs', '.shop-chips', '.pikk-video-filters', '.pikk-music-categories', '.live-cat-chips']) assert.ok(css.includes(g), g);
   assert.ok(css.includes('--pikk-chip-tap: 44px'));
-  assert.match(css, /> :is\(a, button\)::before \{\n  content: ""; position: absolute; inset: calc\(\(var\(--pikk-chip-h\) - var\(--pikk-chip-tap\)\) \/ 2\) -2px/);
+  assert.ok(css.includes('inset: calc((var(--pikk-chip-h) - var(--pikk-chip-tap)) / 2 - var(--pikk-chip-bw, 1px) - 1px) -2px'), 'tap area reaches past the border');
+  assert.match(css, /\.pikk-video-filters \{ padding-top: 9px !important;[^}]*margin-top: -6px !important/);
+  assert.ok(existsSync(new URL('../scripts/visual-review-connect-tap.mjs', import.meta.url)));
   assert.match(css, /--pikk-ring-bg: linear-gradient\(135deg, var\(--pikk-red[^)]*\), #c0c6cf, var\(--pikk-blue/);
   assert.match(css, /\.meta > \.avatar, \.shop-avatar-frame/);
   assert.ok(existsSync(new URL('../scripts/visual-review-chips-match-home.mjs', import.meta.url)));
