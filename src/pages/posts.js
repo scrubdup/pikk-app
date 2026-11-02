@@ -82,7 +82,7 @@ export function renderPersistentPosts(posts=[], { focusId='', currentHandle='' }
       <div class="meta">
         <div class="avatar">${esc((p.display_name || handle || '?')[0].toUpperCase())}</div>
         <div class="spacer">
-          <div class="who">@${esc(handle)} <span class="chip">Persistent</span> <span class="chip">${esc(p.kind || 'text')}</span></div>
+          <div class="who"><a href="#/user?h=${encodeURIComponent(handle)}" data-user-link="${esc(handle)}">@${esc(handle)}</a> <span class="chip">Persistent</span> <span class="chip">${esc(p.kind || 'text')}</span></div>
           <div class="when">${new Date(p.created_at).toLocaleString()}</div>
         </div>
         ${canFollow ? `<button class="btn ghost persistent-follow" data-handle="${esc(handle)}">Follow</button>` : ''}

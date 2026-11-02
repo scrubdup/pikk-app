@@ -4690,11 +4690,7 @@ export function ensureFanClubsSeeded({ force = false } = {}) {
 export function createFanClub({ name, description, graphic, privacy = 'public' } = {}) {
   const user = state.user;
   if (!user) return { error: 'signin' };
-  // Creator/admin TEST MODE gate
-  // Creator/admin gating uses server-verified roles only (never local role/id).
-  if (!(isAdmin() || serverRoles.includes('creator'))) {
-    // Allow any signed-in demo user to create in TEST MODE, but tag as creator demo
-  }
+  // TEST MODE: any signed-in user may create a demo club (no creator gate; roles are server-only).
   const n = String(name || '').trim().slice(0, 48);
   if (!n) return { error: 'name' };
   const priv = ['public', 'members', 'paid'].includes(privacy) ? privacy : 'public';

@@ -43,7 +43,7 @@ test('safety client maps to backend /reports and /blocks with honest fallback la
 });
 
 test('Messages only claims server block/report on success', () => {
-  const msg = read('src/pages/messages.js');
+  const msg = read('src/pages/messages.js') + read('src/safety-actions.js');
   assert.match(msg, /safetyApi\.block\(handle\)/);
   assert.match(msg, /Blocked across PIKK/);
   assert.match(msg, /LOCAL_ONLY_BLOCK_NOTE/);

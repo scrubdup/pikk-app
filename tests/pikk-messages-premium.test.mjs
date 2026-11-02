@@ -23,7 +23,7 @@ test('Messages retains actual demo messaging and moderation stub controls', () =
   for (const marker of ['sendMessage(', 'sendGroupMessage(', 'getOrCreateThread(', 'ensureDemoGroupThread(', 'markThreadRead(', 'setThreadFlags(', 'updateMessagePrefs(', 'msgSend', 'msgSendPriority', 'msgBackInbox', 'data-start-peer', 'data-flag']) {
     assert.ok(page.includes(marker), marker);
   }
-  assert.match(page, /Reported · stub/);
+  assert.match(page + readFileSync(new URL('../src/safety-actions.js', import.meta.url), 'utf8'), /Reported · stub/);
 });
 
 test('Messages visual is isolated, responsive, keyboard accessible and preserves seven tabs/player', () => {
