@@ -1,5 +1,5 @@
 // Checker #370: measure RENDERED heights of Roast vote-name and rematch Yes/No buttons (must be >=44px)
-// at 360/390/430px in 1v1 and Tag-Team. Requires `npm run build` first.
+// at 360/390/430px in Roast 1v1 (the only Roast mode, owner ruling t461u). Requires `npm run build` first.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
@@ -26,20 +26,15 @@ try {
   await mkdir('visual-review', { recursive: true });
   const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}) });
   try {
-    for (const width of [360, 390, 430]) for (const mode of ['1v1', 'tag']) {
+    for (const width of [360, 390, 430]) for (const mode of ['1v1']) {
       const ctx = await browser.newContext({ viewport: { width, height: 1600 }, deviceScaleFactor: 1, reducedMotion: 'reduce', isMobile: true, hasTouch: true });
       const page = await ctx.newPage();
       await page.goto(base + '#/roast-arena', { waitUntil: 'domcontentloaded', timeout: 30000 });
       await page.locator('#splash').waitFor({ state: 'hidden', timeout: 20000 }).catch(() => {});
-      const r = page.locator(mode === '1v1' ? '#roast-1v1' : '#roast-tagteam');
+      const r = page.locator('#roast-1v1');
       await r.locator('[data-roast="invite"]').waitFor({ timeout: 20000 });
-      if (mode === '1v1') {
-        await r.locator('[data-consent="challenger"]').check(); await r.locator('[data-roast="invite"]').click();
-        await r.locator('[data-consent="opponent"]').check(); await r.locator('[data-roast="accept"]').click();
-      } else {
-        await r.locator('[data-consent="inviter"]').check(); await r.locator('[data-roast="invite"]').click();
-        for (let i = 0; i < 3; i++) { const btn = r.locator('[data-roast="accept"]').first(); const id = await btn.getAttribute('data-member-id'); await r.locator(`[data-consent="${id}"]`).check(); await btn.click(); }
-      }
+      await r.locator('[data-consent="challenger"]').check(); await r.locator('[data-roast="invite"]').click();
+      await r.locator('[data-consent="opponent"]').check(); await r.locator('[data-roast="accept"]').click();
       await r.locator('[data-roast="skip"]').click();
       const vote = await heights(r, '[data-roast-vote]');
       assert.equal(vote.length, 2, `${mode}@${width} vote buttons`);
