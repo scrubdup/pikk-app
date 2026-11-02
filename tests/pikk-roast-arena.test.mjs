@@ -41,7 +41,7 @@ test('Roast Arena 1v1 preview is labeled TEST MODE with placeholder tiles', () =
   assert.match(arena, /id="roast-1v1"/);
   assert.match(arena, /TEST MODE/);
   assert.match(arena, /no camera connected/);
-  assert.doesNotMatch(arena, /owner verification needed/, 'only Tag-Team carried this flag; Tag-Team is removed (t461u)');
+  assert.doesNotMatch(arena, /owner verification needed/, 'no unverified Roast items remain (t461u: Roast is 1v1 only)');
   assert.match(arena, /Report \(stub\)/);
   assert.match(arena, /recorded locally only/);
   assert.doesNotMatch(arena, /giftbattle|live-gift-battle/i);
