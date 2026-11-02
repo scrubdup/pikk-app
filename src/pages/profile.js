@@ -51,6 +51,12 @@ export function renderProfile(route) {
   // Public profile by id, including the signed-in owner's read-only preview.
   if (viewingOther || isOwnPreview) {
     const profile = getProfile(viewId);
+    if (!profile && isPikkApiConfigured() && viewingOther) {
+      return shellPage(
+        'Profile',
+        `<section id="backendPublicProfile" data-handle="${esc(viewId)}"><div class="card muted">Loading @${esc(viewId)}…</div></section>`
+      );
+    }
     if (!profile) {
       return shellPage(
         'Profile',
@@ -241,6 +247,28 @@ export function renderProfile(route) {
 }
 
 export function bindProfile(root) {
+  const backendPublic = root.querySelector('#backendPublicProfile');
+  if (backendPublic && isPikkApiConfigured()) {
+    const handle = backendPublic.dataset.handle || '';
+    accountApi.publicProfile(handle).then((data) => {
+      const p = data?.user;
+      if (!p) throw new Error('User not found');
+      const avatar = p.avatar_url
+        ? `<img class="avatar" src="${esc(p.avatar_url)}" alt="" style="object-fit:cover" />`
+        : `<div class="avatar">${esc((p.display_name || p.handle || '?')[0].toUpperCase())}</div>`;
+      backendPublic.innerHTML = `
+        <section class="pikk-profile-cover" aria-label="Public PIKK profile">
+          <div class="pikk-profile-cover-inner">
+            <span class="pikk-profile-cover-kicker">PIKK · PUBLIC PROFILE</span>
+            ${avatar}
+            <div><h2 style="margin:0">${esc(p.display_name || p.handle)}</h2><p class="muted" style="margin:4px 0 0">@${esc(p.handle)}</p><p class="muted" style="margin:6px 0 0">${esc(p.bio || '')}</p></div>
+          </div>
+          <div class="row wrap pikk-profile-shortcuts"><a class="btn" href="#/posts">Posts feed</a><a class="btn ghost" href="#/messages?view=new">Message</a><a class="btn ghost" href="#/profile">My profile</a></div>
+        </section>`;
+    }).catch((err) => {
+      backendPublic.innerHTML = `<div class="card muted">${esc(err?.message || 'User not found')}<br/><a class="btn" href="#/profile">Back</a></div>`;
+    });
+  }
   if (isPikkApiConfigured()) {
     const cachedUser = getState().user;
     if (cachedUser && cachedUser.authSource !== 'backend') {
