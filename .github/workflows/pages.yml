@@ -47,7 +47,7 @@ jobs:
           base="https://scrubdup.github.io/pikk-app/"
           for attempt in $(seq 1 24); do
             html="$(curl -fLsS --connect-timeout 10 --max-time 25 -H 'Cache-Control: no-cache' "${base}?verify=${EXPECTED_SHA}" || true)"
-            bundle="$(printf '%s' "$html" | grep -oE '/pikk-app/assets/index-[[:alnum:]_-]+\\.js' | head -n 1 || true)"
+            bundle="$(printf '%s' "$html" | grep -oE '/pikk-app/assets/index-[[:alnum:]_-]+\.js' | head -n 1 || true)"
             if [[ -n "$bundle" ]]; then
               js="$(curl -fLsS --connect-timeout 10 --max-time 30 -H 'Cache-Control: no-cache' "https://scrubdup.github.io${bundle}" || true)"
               if [[ "$js" == *"$EXPECTED_SHA"* ]]; then
