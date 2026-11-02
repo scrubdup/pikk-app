@@ -7,7 +7,7 @@ import { requireString, requirePositiveInt, validateSignupRoles } from './valida
 import { rateLimit } from './ratelimit.js';
 import { balance, transfer } from './ledger.js';
 import { stripeWebhook } from './webhook.js';
-import { newId } from './crypto.js';
+import { newId, sha256Hex } from './crypto.js';
 import { audit, auditStmt } from './audit.js';
 import { musicUploadRoute } from './music-upload.js';
 import { messagesRoute } from './messages.js';
@@ -242,6 +242,30 @@ async function route(req, env, ctx) {
     const amount = requirePositiveInt(b, 'amount');
     const memo = b.memo === undefined ? null : requireString(b, 'memo', { max: 200 });
     return json(200, await transfer(env, req, s.user, to, amount, memo));
+  }
+
+  if (m === 'POST' && p === '/admin/bootstrap') {
+    const s = requireVerified(ctx);
+    await rateLimit(env, `admin-bootstrap:${ip}:${s.user.id}`, 5, 3600);
+    if (!env.BOOTSTRAP_ADMIN_TOKEN || String(env.BOOTSTRAP_ADMIN_TOKEN).length < 32) {
+      throw new ApiError(503, 'bootstrap_not_configured', 'Admin bootstrap is not configured');
+    }
+    const existingAdmin = await env.DB.prepare(`SELECT 1 AS found FROM user_roles WHERE role='admin' LIMIT 1`).first();
+    if (existingAdmin) throw new ApiError(409, 'bootstrap_closed', 'Admin bootstrap is already closed');
+    const b = await readJson(req);
+    const token = requireString(b, 'token', { min: 32, max: 256 });
+    const [providedHash, expectedHash] = await Promise.all([sha256Hex(token), sha256Hex(String(env.BOOTSTRAP_ADMIN_TOKEN))]);
+    if (providedHash !== expectedHash) {
+      await audit(env, { actor: s.user.id, action: 'admin.bootstrap_failed', target: s.user.id, ip });
+      throw new ApiError(403, 'bootstrap_denied', 'Bootstrap token is invalid');
+    }
+    const now = new Date().toISOString();
+    await env.DB.batch([
+      env.DB.prepare(`INSERT OR IGNORE INTO user_roles(user_id,role,granted_by,granted_at) VALUES (?, 'admin', ?, ?)`)
+        .bind(s.user.id, s.user.id, now),
+      auditStmt(env, { actor: s.user.id, action: 'admin.bootstrap_claimed', target: s.user.id, ip, meta: { once: true } }),
+    ]);
+    return json(200, { ok: true, role: 'admin', bootstrap_closed: true });
   }
 
   if ((m === 'POST' || m === 'DELETE') && p === '/admin/roles') {
