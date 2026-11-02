@@ -12,9 +12,17 @@ try {
     const page = await browser.newPage({ viewport: { width, height }, reducedMotion: 'reduce' });
     const errors = [];
     page.on('pageerror', e => errors.push(String(e)));
-    await page.goto(base + '#/profile', { waitUntil: 'domcontentloaded' });
-    await page.locator('#signinName').fill('PIKK QA');
-    await page.locator('#signinBtn').click();
+    // Seeded local session (the Profile demo login form was removed in 7859454). CI runs without a
+    // backend API configured, so the store treats this local user as signed in.
+    await page.addInitScript(() => {
+      if (localStorage.getItem('dbs_v1')) return;
+      localStorage.setItem('dbs_v1', JSON.stringify({ user: {
+        id: 'u_pikk_qa', username: 'PIKK QA', bio: 'Visual review seeded session', avatar: '',
+        followers: [], following: ['dbs'], membership: null,
+        memberships: { skeetPlus: false, backstage: false, innerCircle: false },
+        purchasedTracks: [], createdAt: Date.now(),
+      } }));
+    });
     await page.goto(base + '#/messages', { waitUntil: 'domcontentloaded' });
     await page.locator('.pikk-messages-hero').waitFor();
     assert.equal(await page.locator('#pikkMsgSearch').count(), 1);
