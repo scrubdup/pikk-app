@@ -96,4 +96,39 @@ describe('auth', () => {
     expect(duration).toBeLessThanOrEqual(720 * 3600 * 1000);
   });
 
+
+  it('resends verification for an authenticated unverified user and invalidates the old token', async () => {
+    const signup = await call('POST', '/auth/signup', {
+      body: { email: 'resend@example.com', password: 'resend pass 123', handle: 'resend_user', display_name: 'Resend User' },
+      ip: freshIp(),
+    });
+    expect(signup.status).toBe(201);
+    const oldToken = signup.json.verification.token;
+
+    const resend = await call('POST', '/auth/resend-verification', {
+      cookie: signup.cookie,
+      body: {},
+      ip: freshIp(),
+    });
+    expect(resend.status).toBe(200);
+    expect(resend.json.verification.delivery).toBe('exposed_for_local_testing');
+    const newToken = resend.json.verification.token;
+    expect(newToken).toBeTruthy();
+    expect(newToken).not.toBe(oldToken);
+
+    const oldAttempt = await call('POST', '/auth/verify', { body: { token: oldToken }, ip: freshIp() });
+    expect(oldAttempt.status).toBe(400);
+
+    const freshAttempt = await call('POST', '/auth/verify', { body: { token: newToken }, ip: freshIp() });
+    expect(freshAttempt.status).toBe(200);
+  });
+
+  it('resend verification requires authentication and returns already_verified for verified users', async () => {
+    expect((await call('POST', '/auth/resend-verification', { body: {}, ip: freshIp() })).status).toBe(401);
+    const u = await newUser();
+    const r = await call('POST', '/auth/resend-verification', { cookie: u.cookie, body: {}, ip: freshIp() });
+    expect(r.status).toBe(200);
+    expect(r.json.verification.delivery).toBe('already_verified');
+  });
+
 });
