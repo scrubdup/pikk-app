@@ -8,7 +8,9 @@ const gb = await import('../src/live-gift-battle.js');
 const rd = (f) => readFileSync(new URL('../src/' + f, import.meta.url), 'utf8');
 
 test('viewer Gift Battle explainer/overlay is not on the streamer Battles page (#/giftbattles)', () => {
-  assert.equal(gb.renderGiftBattleExplainer(), '', 'no scope (Battles page) renders nothing');
+  for (const x of [gb.renderGiftBattleExplainer(), gb.renderGiftBattleExplainer('battles')]) {
+    assert.match(x, /id="sbExplainer"/); assert.doesNotMatch(x, /gbExplainer|Gift Battle/);
+  }
   assert.match(gb.renderGiftBattleExplainer('live'), /id="gbExplainer"/);
   assert.match(gb.renderGiftBattleExplainer('room'), /id="gbExplainer"/);
   const page = rd('pages/giftbattles.js');
@@ -32,4 +34,18 @@ test("Live 'Challenge @gifter' pop enters the 30s first-tap flow and starts the 
   const empty = parseHTML('<div></div>').document.querySelector('div');
   assert.equal(gb.challengeGifter(empty, 'x'), false);
   root.innerHTML = ''; // slot leaves the DOM -> its 1s ticker clears itself
+});
+
+test('signed-out #/giftbattles renders a non-empty Streamer Battles explainer about votes, with no gift battle / gift scoring words', async () => {
+  mem.delete('dbs_v1');
+  globalThis.location = { hash: '#/giftbattles' };
+  const { renderGiftBattles } = await import('../src/pages/giftbattles.js');
+  const html = renderGiftBattles();
+  const { document: d } = parseHTML(`<main>${html}</main>`);
+  const ex = d.querySelector('#sbExplainer');
+  assert.ok(ex && ex.textContent.trim().length > 80, 'explainer present and non-empty');
+  assert.match(ex.textContent, /vote/i);
+  assert.doesNotMatch(ex.textContent, /gift|coins?\b|points?\b|send more/i);
+  assert.ok(ex.querySelector('a[href="#/profile"][data-sb-signin]'), 'sign-in prompt when signed out');
+  assert.equal(d.querySelector('#gbExplainer'), null);
 });
