@@ -36,3 +36,10 @@ test('Profile restores and revalidates backend cookie sessions through /auth/me'
   assert.match(profile, /err\?\.status === 401/);
   assert.match(profile, /clearAuthenticatedUser\(\)/);
 });
+
+
+test('configured real API retires legacy browser-local demo identity', () => {
+  assert.match(profile, /state\.user\.authSource !== 'backend' \? null : state\.user/);
+  assert.match(profile, /cachedUser && cachedUser\.authSource !== 'backend'/);
+  assert.match(profile, /clearAuthenticatedUser\(\)/);
+});
