@@ -3,14 +3,25 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:net';
 import { chromium } from 'playwright';
-const base = 'http://127.0.0.1:4173/pikk-app/';
-const server = spawn('npx', ['vite', 'preview', '--host', '127.0.0.1', '--port', '4173', '--strictPort'], { env: { ...process.env, VITE_BASE: '/pikk-app/' }, stdio: 'inherit' });
+// Never measure a foreign server: use a port that is free right now (ROAST_TAPS_PORT overrides),
+// start vite with --strictPort, and fail if our own server exits or the port is already taken.
+export const portIsFree = (port) => new Promise((res) => { const s = createServer().once('error', () => res(false)).once('listening', () => s.close(() => res(true))).listen(port, '127.0.0.1'); });
+const freePort = () => new Promise((res, rej) => { const s = createServer().once('error', rej).listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => res(port)); }); });
+const port = Number(process.env.ROAST_TAPS_PORT) || await freePort();
+if (!(await portIsFree(port))) { console.error(`roast-taps: port ${port} is busy; refusing to measure a foreign server`); process.exit(2); }
+const base = `http://127.0.0.1:${port}/pikk-app/`;
+const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', String(port), '--strictPort'], { env: { ...process.env, VITE_BASE: '/pikk-app/' }, stdio: 'inherit' });
+let serverExit = null;
+server.on('exit', (code) => { serverExit = code ?? 'signal'; });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const heights = async (root, sel) => root.locator(sel).evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height * 10) / 10));
 const results = [];
 try {
-  let ready = false; for (let i = 0; i < 60; i++) { try { if ((await fetch(base)).ok) { ready = true; break; } } catch {} await sleep(250); }
+  let ready = false;
+  for (let i = 0; i < 60 && serverExit === null; i++) { try { if ((await fetch(base)).ok) { ready = true; break; } } catch {} await sleep(250); }
+  assert.equal(serverExit, null, `our vite preview exited early (code ${serverExit}); port ${port} busy or build missing`);
   assert.ok(ready, 'Vite preview unavailable');
   await mkdir('visual-review', { recursive: true });
   const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}) });
@@ -43,4 +54,4 @@ try {
     }
   } finally { await browser.close(); }
   console.log(JSON.stringify(results));
-} finally { server.kill(); setTimeout(() => process.exit(process.exitCode || 0), 200); }
+} catch (e) { console.error(e); process.exitCode = 1; } finally { server.kill(); setTimeout(() => process.exit(process.exitCode || 0), 200); }
