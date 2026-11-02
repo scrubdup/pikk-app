@@ -1,0 +1,79 @@
+name: PIKK Connect Menu Visual Review
+
+on:
+  pull_request:
+    paths:
+      - 'src/section-menus.js'
+      - 'tests/pikk-connect-menu-unique.test.mjs'
+      - '.github/workflows/pikk-connect-menu-visual.yml'
+
+jobs:
+  connect-menu-mobile-desktop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install and test
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Install browser
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Start PIKK
+        run: |
+          npm run dev -- --host 127.0.0.1 > /tmp/pikk-vite.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/pikk-vite.log
+          exit 1
+      - name: Verify Connect menu and capture mobile/desktop screenshots
+        run: |
+          mkdir -p visual-review
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { chromium } from 'playwright';
+
+          const browser = await chromium.launch();
+          try {
+            for (const [width, height, name] of [[390, 844, 'mobile'], [1440, 900, 'desktop']]) {
+              const page = await browser.newPage({ viewport: { width, height } });
+              await page.goto('http://127.0.0.1:5173/#/connect', { waitUntil: 'domcontentloaded' });
+              const trigger = page.locator('#tabbar a[href="#/connect"]');
+              await trigger.waitFor();
+              await page.waitForTimeout(6500); // Initial PIKK splash must finish.
+              assert.equal(await page.locator('#tabbar a').count(), 7, 'seven tabs stay intact');
+              await trigger.click();
+              const panel = page.locator('#pikkConnectMenu');
+              await panel.waitFor({ state: 'visible' });
+              assert.equal(await panel.locator('a[href="#/communities"]').count(), 1);
+              assert.equal(await panel.getByText('PIKK Communities', { exact: true }).count(), 1);
+              assert.equal(await panel.getByText('Communities', { exact: true }).count(), 0);
+              assert.equal(await panel.locator('a[href="#/messages"]').count(), 1);
+              const sheet = await panel.locator('.pikk-create-sheet').boundingBox();
+              assert.ok(sheet && sheet.x >= -1 && sheet.x + sheet.width <= width + 1,
+                'Connect menu sheet stays within the viewport');
+              await page.screenshot({ path: 'visual-review/connect-menu-' + name + '.png', fullPage: true });
+              await page.keyboard.press('Escape');
+              assert.equal(await panel.isHidden(), true, 'Escape closes the sheet');
+              assert.equal(await trigger.getAttribute('aria-expanded'), 'false');
+              await page.close();
+            }
+          } finally {
+            await browser.close();
+          }
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pikk-connect-menu-mobile-desktop
+          path: visual-review/*.png
+          if-no-files-found: warn

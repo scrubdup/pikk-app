@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/data.js'
       - 'src/main.js'
+      - 'src/pages/support.js'
       - 'src/styles.css'
       - 'tests/**'
       - '.github/workflows/pikk-navigation-visual.yml'
@@ -38,6 +39,8 @@ jobs:
           npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size "390,844" --wait-for-timeout 6500 --full-page "http://127.0.0.1:5173/#/home" visual-review/home-mobile.png
           npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 6500 --full-page "http://127.0.0.1:5173/#/home" visual-review/home-desktop.png
           npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size "390,844" --wait-for-timeout 6500 --full-page "http://127.0.0.1:5173/#/games" visual-review/arcade-mobile.png
+          npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size "390,844" --wait-for-timeout 6500 --full-page "http://127.0.0.1:5173/#/support" visual-review/support-mobile.png
+          npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 6500 --full-page "http://127.0.0.1:5173/#/support" visual-review/support-desktop.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:

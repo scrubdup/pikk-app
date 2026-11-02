@@ -1,12 +1,14 @@
 {
-  // PIKK API Worker. LOCAL ONLY: not deployed. database_id is a placeholder until the owner
-  // provisions D1 on a permanent Cloudflare account.
+  // PIKK API Worker. D1 database provisioned by the owner; Worker itself is not yet deployed.
   "name": "pikk-api",
   "main": "src/index.js",
   "compatibility_date": "2026-10-25",
   "compatibility_flags": ["nodejs_compat"],
+  "build": {
+    "command": "npx wrangler d1 migrations apply DB --remote"
+  },
   "d1_databases": [
-    { "binding": "DB", "database_name": "pikk-db", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
+    { "binding": "DB", "database_name": "pikk-db", "database_id": "d545246b-49f7-4a0a-92b4-b18c570baef8", "migrations_dir": "migrations" }
   ],
   // PIKK Vault media bucket: LOCAL PLACEHOLDER ONLY (Miniflare/wrangler dev --local). Not provisioned on any account.
   "r2_buckets": [
@@ -16,8 +18,10 @@
     "ALLOWED_ORIGIN": "https://scrubdup.github.io",
     "COOKIE_SAMESITE": "None",
     "SESSION_TTL_HOURS": "720",
-    "EXPOSE_VERIFY_TOKEN": "false"
+    "EXPOSE_VERIFY_TOKEN": "false",
+    "PUBLIC_APP_URL": "https://scrubdup.github.io/pikk-app/"
   }
-  // Secrets (set via `wrangler secret put`, never committed): STRIPE_WEBHOOK_SECRET, VAULT_SIGNING_KEY (>=32 chars)
+  // Secrets (set via `wrangler secret put`, never committed): RESEND_API_KEY, STRIPE_WEBHOOK_SECRET, VAULT_SIGNING_KEY (>=32 chars)
+  // Set EMAIL_FROM to a verified sender, e.g. "PIKK <verify@your-domain.example>", before enabling production email.
   // Optional var: VAULT_ACCESS_URL_TTL_SEC (default 300)
 }

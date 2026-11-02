@@ -22,6 +22,7 @@ test('Dating navigation has four accessible working targets and never claims mat
  assert.match(page,/aria-pressed/);
  assert.match(page,/No real matches are being created here/);
  assert.match(page,/Camera and microphone permissions are never requested/);
- assert.match(page,/href="#\/community"/);
+ assert.match(page,/href="#\/communities"/);
+ assert.doesNotMatch(page,/href="#\/community"/);
  assert.match(page,/href="#\/messages"/);
 });

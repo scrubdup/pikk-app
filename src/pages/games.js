@@ -7,7 +7,7 @@ export function renderGames() {
       <div class="pikk-arcade-heading">
         <div>
           <p class="kicker">Play · Compete · Hang out</p>
-          <div class="pikk-arcade-brand"><img src="${esc(arcadeArtSrc({ artwork: '/brand/pikk-official-approved.jpg' }))}" alt="PIKK" loading="eager" decoding="async"/><span>ARCADE</span></div>
+          <div class="pikk-arcade-brand"><img src="${esc(arcadeArtSrc({ artwork: '/brand/pikk-logo-official.png' }))}" alt="PIKK" loading="eager" decoding="async"/><span>ARCADE</span></div>
           <p>15 original game concepts. Find your favorites, see the art, and follow their development.</p>
         </div>
         <span class="pikk-arcade-icon" aria-hidden="true">🎮</span>
@@ -15,7 +15,16 @@ export function renderGames() {
       <p class="pikk-arcade-disclosure">ALL GAMES COMING SOON · Gallery previews, not playable releases. Play Chips have no cash value or cash-out.</p>
     </section>
     <div class="pikk-arcade-toolbar"><strong>15 upcoming games</strong><span>PLAY • COMPETE • HANG OUT</span></div>
-    <div class="pikk-arcade-grid">
+    <div class="pikk-arcade-search">
+      <label for="pikkArcadeSearch">Find a game</label>
+      <div class="pikk-arcade-search-row">
+        <input id="pikkArcadeSearch" type="search" placeholder="Search all 15 games..." autocomplete="off" aria-controls="pikkArcadeGrid" aria-describedby="pikkArcadeSearchHint" />
+        <button type="button" class="btn ghost" id="pikkArcadeSearchClear" hidden>Clear</button>
+      </div>
+      <p id="pikkArcadeSearchHint" class="muted">Search names and descriptions. All games are previews.</p>
+      <p id="pikkArcadeSearchStatus" class="muted" role="status" aria-live="polite">Showing all 15 games</p>
+    </div>
+    <div class="pikk-arcade-grid" id="pikkArcadeGrid">
       ${PIKK_GAMES.map((game, index) => `
         <article class="pikk-arcade-card pikk-game-${esc(game.theme)}">
           <div class="pikk-arcade-card-header"><span class="pikk-arcade-number">${index+1}</span><h3>${esc(game.name)}</h3></div>
@@ -30,6 +39,7 @@ export function renderGames() {
           </div>
         </article>`).join('')}
     </div>
+    <p id="pikkArcadeNoMatches" class="pikk-arcade-no-matches muted" hidden>No games match your search. Try another name or description.</p>
     <dialog id="pikkArcadeLightbox" class="pikk-arcade-lightbox" aria-labelledby="pikkArcadePreviewTitle" aria-describedby="pikkArcadePreviewDescription">
       <div class="pikk-arcade-lightbox-panel">
         <div class="pikk-arcade-lightbox-top">
@@ -66,13 +76,62 @@ export function arcadePreviewAt(index) {
   };
 }
 
+/** Search the original catalog without changing its order or concept artwork. */
+export function arcadeMatchesQuery(game, query) {
+  const term = String(query || '').trim().toLowerCase();
+  return !term || [game.name, game.description].join(' ').toLowerCase().includes(term);
+}
+
+/** Keep full-size browsing inside the same search results as the visible gallery. */
+export function arcadePreviewIndexes(query) {
+  return PIKK_GAMES.flatMap((game, index) => arcadeMatchesQuery(game, query) ? [index] : []);
+}
+
 /** Route-scoped events: listeners are attached to replaced nodes, not the persistent #app. */
 export function bindGames(root) {
   const gallery = root.querySelector('.pikk-arcade-grid');
+  if (!gallery) return;
+  const search = root.querySelector('#pikkArcadeSearch');
+  if (search) {
+    const cards = [...(gallery.querySelectorAll?.('.pikk-arcade-card') || [])];
+    const clear = root.querySelector('#pikkArcadeSearchClear');
+    const status = root.querySelector('#pikkArcadeSearchStatus');
+    const empty = root.querySelector('#pikkArcadeNoMatches');
+    const update = () => {
+      const query = search.value;
+      let visible = 0;
+      cards.forEach((card, index) => {
+        const match = arcadeMatchesQuery(PIKK_GAMES[index], query);
+        card.hidden = !match;
+        if (match) visible++;
+      });
+      if (clear) clear.hidden = !query;
+      if (empty) empty.hidden = visible !== 0;
+      if (status) status.textContent = query.trim()
+        ? 'Showing ' + visible + ' of ' + PIKK_GAMES.length + ' games'
+        : 'Showing all ' + PIKK_GAMES.length + ' games';
+    };
+    search.addEventListener('input', update);
+    search.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !search.value || event.isComposing) return;
+      event.preventDefault();
+      search.value = '';
+      update();
+    });
+    clear?.addEventListener('click', () => {
+      search.value = '';
+      update();
+      search.focus();
+    });
+    update();
+  }
   const dialog = root.querySelector('#pikkArcadeLightbox');
-  if (!gallery || !dialog || typeof dialog.showModal !== 'function') return;
+  if (!dialog || typeof dialog.showModal !== 'function') return;
   let active = 0;
   let opener = null;
+  let visiblePreviews = arcadePreviewIndexes('');
+  const previousButton = dialog.querySelector('[data-arcade-prev]');
+  const nextButton = dialog.querySelector('[data-arcade-next]');
   const image = dialog.querySelector('[data-arcade-full-image]');
   const title = dialog.querySelector('[data-arcade-title]');
   const description = dialog.querySelector('[data-arcade-description]');
@@ -87,29 +146,43 @@ export function bindGames(root) {
     title.textContent = preview.title;
     description.textContent = preview.description;
     players.textContent = preview.players + (preview.players === '1' ? ' Player · Preview only' : ' Players · Preview only');
-    counter.textContent = String(active + 1).padStart(2, '0') + ' / ' + preview.total;
+    counter.textContent = String(visiblePreviews.indexOf(active) + 1).padStart(2, '0')
+      + ' / ' + String(visiblePreviews.length).padStart(2, '0');
+  };
+
+  const advance = (direction) => {
+    const position = visiblePreviews.indexOf(active);
+    if (position === -1 || visiblePreviews.length < 2) return;
+    const nextPosition = (position + direction + visiblePreviews.length) % visiblePreviews.length;
+    show(visiblePreviews[nextPosition]);
   };
 
   gallery.addEventListener('click', (event) => {
     const button = event.target.closest('[data-game-preview]');
     if (!button) return;
     opener = button;
-    show(button.dataset.gamePreview);
+    const index = Number(button.dataset.gamePreview);
+    visiblePreviews = arcadePreviewIndexes(search?.value);
+    // A stale programmatic click must never expose other hidden search results.
+    if (!visiblePreviews.includes(index)) visiblePreviews = [index];
+    if (previousButton) previousButton.disabled = visiblePreviews.length < 2;
+    if (nextButton) nextButton.disabled = visiblePreviews.length < 2;
+    show(index);
     dialog.showModal();
   });
   dialog.addEventListener('click', (event) => {
     if (event.target === dialog || event.target.closest('[data-arcade-close]')) {
       dialog.close();
     } else if (event.target.closest('[data-arcade-prev]')) {
-      show(active - 1);
+      advance(-1);
     } else if (event.target.closest('[data-arcade-next]')) {
-      show(active + 1);
+      advance(1);
     }
   });
   dialog.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
-      show(active + (event.key === 'ArrowRight' ? 1 : -1));
+      advance(event.key === 'ArrowRight' ? 1 : -1);
     }
   });
   dialog.addEventListener('close', () => {

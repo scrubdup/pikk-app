@@ -23,5 +23,5 @@ test('skip shortcut is visible only with keyboard focus and preserves app chrome
   for (const id of ['dbs-sticky-player', 'tabbar', 'spPlay', 'menuBtn']) {
     assert.ok(html.includes('id="' + id + '"'), id);
   }
-  assert.match(html, /brand\/pikk-official-approved\.jpg/);
+  assert.match(html, /brand\/pikk-logo-official\.png/);
 });

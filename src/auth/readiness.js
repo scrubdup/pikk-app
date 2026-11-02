@@ -16,17 +16,21 @@ export function canAccessProtectedAction(authState) {
   return authState === AUTH_STATES.AUTHENTICATED;
 }
 
-export function authReadiness() {
+export function authReadiness({ apiConfigured = false } = {}) {
   return {
-    productionAuthAvailable: false,
-    signupEnabled: false,
+    backendImplemented: true,
+    productionAuthAvailable: !!apiConfigured,
+    signupEnabled: !!apiConfigured,
+    loginEnabled: !!apiConfigured,
+    logoutEnabled: !!apiConfigured,
+    serverSessionEnabled: !!apiConfigured,
+    emailVerificationImplemented: true,
     passwordResetEnabled: false,
-    serverSessionEnabled: false,
     requiredBeforeLaunch: [
-      'Backend identity provider with verified email',
-      'Server-validated sessions and authorization',
-      'Secure logout and account recovery',
-      'Abuse prevention and rate limiting',
+      'Configure the public Worker API endpoint in the frontend',
+      'Verify signup/login/logout/session end to end in production',
+      'Configure email delivery for verification links',
+      'Add secure account recovery/password reset',
       'Account deletion and legacy demo-data migration',
     ],
   };

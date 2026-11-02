@@ -11,7 +11,12 @@ try{
     const page=await context.newPage();
     const errors=[];
     page.on('pageerror',error=>errors.push(error.message));
-    for(const route of ['home','videos']){
+    // t336u: sponsored placements moved off Home to #/promote; Home must show none.
+    await page.goto('http://127.0.0.1:5173/#/home',{waitUntil:'domcontentloaded'});
+    await page.locator('#tabbar a').first().waitFor({state:'visible',timeout:20000});
+    await page.waitForTimeout(2500);
+    assert.equal(await page.locator('.pikk-ad-slot').count(),0,'home has no sponsored slots');
+    for(const route of ['videos']){
       await page.goto('http://127.0.0.1:5173/#/'+route,{waitUntil:'domcontentloaded'});
       await page.locator('#tabbar a').first().waitFor({state:'visible',timeout:20000});
       await page.waitForTimeout(3600);

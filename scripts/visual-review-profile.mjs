@@ -32,10 +32,27 @@ try{
         assert.deepEqual(errors,[],name+' '+phase+' browser errors');
         await page.screenshot({path:'visual-review/profile-'+name+'-'+phase+'.png',fullPage:true,animations:'disabled'});
       };
-      assert.equal(await page.locator('#signinBtn').isVisible(),true);
+      assert.equal(await page.locator('#signupAccountBtn').isVisible(),true);
+      assert.equal(await page.locator('#loginAccountBtn').isVisible(),true);
       await verify('guest');
-      await page.locator('#signinName').fill('PIKKVisualTest');
-      await page.locator('#signinBtn').click();
+      // Seed a QA-only legacy profile after the real guest auth screen has been reviewed.
+      // This keeps own/public profile screenshots covered without restoring the removed demo login UI.
+      await page.evaluate(() => {
+        localStorage.setItem('dbs_v1', JSON.stringify({
+          user: {
+            id: 'u_pikkvisualtest',
+            username: 'PIKKVisualTest',
+            bio: 'Visual QA profile',
+            avatar: '',
+            followers: [],
+            following: ['dbs'],
+            memberships: { skeetPlus: false, backstage: false, innerCircle: false },
+            purchasedTracks: [],
+            createdAt: Date.now()
+          }
+        }));
+      });
+      await page.reload({waitUntil:'domcontentloaded'});
       await page.locator('.pikk-profile-cover[aria-label="Your PIKK profile"]').waitFor({state:'visible',timeout:10000});
       assert.equal(await page.locator('#saveProfile').isVisible(),true);
       assert.equal(await page.locator('.pikk-profile-stats>div').count(),3);

@@ -34,7 +34,7 @@ try {
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.goto(base + '#/signup', { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.getByText('Everyone creates a PIKK account to participate', { exact: false }).waitFor({ state: 'visible', timeout: 20000 });
+      await page.getByText('Everyone uses one PIKK account', { exact: false }).waitFor({ state: 'visible', timeout: 20000 });
       await page.locator('#splash').waitFor({ state: 'hidden', timeout: 15000 });
       assert.equal(await page.getByText('Everyone creates a DatBoiSkeet account', { exact: false }).count(), 0);
       assert.equal(await page.locator('#tabbar a').count(), 7);

@@ -26,6 +26,7 @@ test('Shop category shortcuts and original search filters remain available', () 
   }
   assert.ok(filterPikkShopProducts(MERCH, 'All', 'buffalo').length > 0);
   assert.ok(html.includes('id="pikkShopSearch"'));
+  assert.match(html, /id="pikkShopSearch"[^>]*aria-controls="pikkShopProducts"[^>]*aria-describedby="pikkShopCount"/);
   assert.ok(html.includes('id="pikkShopEmpty"'));
   assert.ok(html.includes('data-shop-scroll'));
 });
@@ -36,5 +37,5 @@ test('Shop retains external-checkout disclosure and approved seven-tab navigatio
   assert.match(html, /External merchant checkout/);
   assert.match(html, /No PIKK in-app payments/);
   assert.ok(html.includes('target="_blank" rel="noopener noreferrer"'));
-  assert.deepEqual(TABBAR.map((tab) => tab.label), ['Music','Videos','Create','Connect','Dating','Shop','Games']);
+  assert.deepEqual(TABBAR.map((tab) => tab.label), ['Music','Videos','Connect','Create','Dating','Games','Shop']);
 });

@@ -4,7 +4,6 @@ import {
   endLiveDemo,
   sendLiveChat,
   sendLiveSupport,
-  bumpLiveViewers,
   getLiveHistory,
   listHotLives,
   simulateLiveSpike,
@@ -43,19 +42,22 @@ import { esc, toast, shellPage, timeAgo, ytEmbedSrc } from '../ui.js';
 import { navigate, getRoute } from '../router.js';
 import { notifyLiveOpen, notifyLiveClosed } from '../player.js';
 import { giftStickerHtml, getGiftSticker } from '../gift-stickers.js';
-import { renderLiveDiscoveryDirectory } from '../live-discovery.js';
+import { renderLiveDiscoveryDirectory, mountLiveDirectorySearch, liveDiscoveryRefreshHref } from '../live-discovery.js';
+import { renderGiftForAllControls, bindGiftForAll, renderWinnersStrip, nameHtml as gbNameHtml, hasWinnerBadge as gbHasBadge, loadRecords as gbLoad } from '../live-gift-battle.js';
+import { renderGoLiveCategoryFields, bindGoLiveCategoryFields, readGoLiveFields, renderGroupRoomsPanel, bindGroupRooms } from '../live-rooms.js';
 
 /** t197u discovery tabs — preserve ?tab= on soft refresh */
 function getLiveDiscTab() {
   const q = (getRoute().query || {}).tab;
   if (q === 'live' || q === 'channels') return 'channels';
-  if (q === 'following' || q === 'categories') return q;
+  if (q === 'following' || q === 'categories' || q === 'rooms') return q;
   return 'channels';
 }
 
 function refresh() {
   const tab = getLiveDiscTab();
-  navigate(tab === 'channels' ? '#/live' : `#/live?tab=${tab}`);
+  const category = getRoute().query?.category || '';
+  navigate(liveDiscoveryRefreshHref(tab, category));
 }
 
 function fmtMoney(n) {
@@ -97,6 +99,7 @@ function renderLiveDiscoveryTabs(active = 'channels') {
     { id: 'clips', href: '#/shorts', label: 'Clips' },
     { id: 'channels', href: '#/live?tab=channels', label: 'Channels' },
     { id: 'categories', href: '#/live?tab=categories', label: 'Categories' },
+    { id: 'rooms', href: '#/live?tab=rooms', label: 'Group Rooms' },
   ];
   const btns = tabs
     .map((t) => {
@@ -150,7 +153,7 @@ function renderFollowingPanel(user) {
   const followChips = following.length
     ? following
         .slice(0, 12)
-        .map((f) => `<a class="chip" href="#/profile">${esc('@' + (f.username || f.id))}</a>`)
+        .map((f) => `<a class="chip" href="#/profile/${encodeURIComponent(f.id)}">${esc('@' + (f.username || f.id))}</a>`)
         .join('')
     : '<span class="muted">Nobody followed yet · DEMO</span>';
 
@@ -174,9 +177,9 @@ function renderFollowingPanel(user) {
       .map((live) => {
         return `
         <article class="hot-live-card${live.house ? ' is-house' : ''}" data-live-id="${esc(live.id)}">
-          <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching">
+          <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching (example data)">
             <span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span>
-            <span class="live-hoodie-viewers">${esc(fmtCount(live.viewers))}</span>
+            <span class="live-hoodie-viewers">${esc(fmtCount(live.viewers))}</span><span class="chip pikk-example-tag" title="Example data · not real viewers">Example</span>
           </div>
           <div class="hot-live-body">
             <div class="hot-live-host">@${esc(live.hostName)}</div>
@@ -320,15 +323,15 @@ function renderHotLivesRail(category = '') {
       const hot = recentlySpiked(live);
       return `
       <article class="hot-live-card${hot ? ' is-hot' : ''}${live.house ? ' is-house' : ''}" data-live-id="${esc(live.id)}">
-        <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching">
+        <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching (example data)">
           <span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span>
-          <span class="live-hoodie-viewers" title="${esc(fmtCount(live.viewers))} watching">${esc(fmtCount(live.viewers))}</span>
+          <span class="live-hoodie-viewers" title="${esc(fmtCount(live.viewers))} watching · example">${esc(fmtCount(live.viewers))}</span><span class="chip pikk-example-tag" title="Example data · not real viewers">Example</span>
         </div>
         <div class="hot-live-body">
           <div class="hot-live-host">@${esc(live.hostName)}</div>
           <div class="hot-live-title">${esc(live.title)}</div>
           <div class="hot-live-chips">
-            <span class="chip">${esc(fmtCount(live.viewers))} watching</span>
+            <span class="chip">${esc(fmtCount(live.viewers))} watching · Example</span>
             ${live.house ? '<span class="chip chip-ok">House</span>' : ''}
             ${hot ? '<span class="chip live-chip"><span class="dot" aria-hidden="true"></span> HOT</span>' : ''}
           </div>
@@ -538,12 +541,11 @@ function renderStage(live) {
     : Math.max(0, Math.floor((Date.now() - live.startedAt) / 1000));
   const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
   const ss = String(elapsed % 60).padStart(2, '0');
-  const viewersLabel = fmtCount(live.viewers || 0);
   const liveHoodie = live.endedAt
     ? `<div class="live-stage-meta"><span class="chip">Ended · ${timeAgo(live.endedAt)}</span></div>`
-    : `<div class="live-hoodie live-hoodie--stage" aria-label="Live · ${esc(viewersLabel)} watching">
+    : `<div class="live-hoodie live-hoodie--stage" aria-label="Live demo · no real viewers">
           <span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span>
-          <span class="live-hoodie-viewers" id="liveViewers" title="${esc(viewersLabel)} watching">${esc(viewersLabel)}</span>
+          <span class="live-hoodie-viewers" id="liveViewers" title="TEST MODE demo stream">Demo · no real viewers</span>
         </div>
         <div class="live-stage-meta">
           <span class="chip">${mm}:${ss}</span>
@@ -553,8 +555,8 @@ function renderStage(live) {
     .slice(-40)
     .map(
       (m) => `
-      <div class="live-chat-row ${m.support ? 'support' : ''}">
-        <strong>${esc(m.username)}</strong>
+      <div class="live-chat-row ${m.support ? 'support' : ''}${gbHasBadge(gbLoad(), m.username) ? ' pikk-gb-hl' : ''}">
+        <strong>${gbNameHtml(m.username)}</strong>
         <span>${esc(m.text)}</span>
       </div>`
     )
@@ -564,7 +566,7 @@ function renderStage(live) {
     <div class="card live-stage">
       <div class="live-stage-frame" role="img" aria-label="Fake stream stage · TEST MODE">
         <div class="live-stage-brand">
-          <img src="/brand/pikk-official-approved.jpg" alt="PIKK" />
+          <img src="/brand/pikk-logo-official.png" alt="PIKK" />
           <div>
             <div class="live-stage-title">${esc(live.title)}</div>
             <div class="muted" style="font-size:12px">@${esc(live.hostName)} · Follow DatBoiSkeet</div>
@@ -589,14 +591,15 @@ function renderStage(live) {
           : `<div class="row wrap" style="margin-top:10px;gap:8px">
                <button class="btn" id="liveTip" data-kind="tip" data-amt="1">Tip $1 · demo</button>
                <button class="btn ghost" id="liveFocusGifts">Gifts tray</button>
-               <button class="btn ghost" id="liveBumpViewers">Refresh viewers</button>
                <button class="btn ghost danger" id="liveEnd">End stream</button>
-             </div>`
+             </div>
+             ${renderGiftForAllControls('live')}`
       }
     </div>
 
     <div class="card live-chat-card">
       <h3>Live chat</h3>
+      ${renderWinnersStrip('live')}
       <div class="live-chat" id="liveChat">${chat || '<p class="muted">No messages yet.</p>'}</div>
       ${
         live.endedAt
@@ -728,6 +731,7 @@ function renderGoLiveForm(user) {
       <div class="field"><label>Stream title</label>
         <input id="liveTitle" maxlength="80" placeholder="e.g. Listening session · Long Story Short" value="PIKK Live · ${esc(user.username)}" />
       </div>
+      ${renderGoLiveCategoryFields()}
       <div class="field"><label>Today's goal name <span class="muted">(optional)</span></label>
         <input id="liveGoalNameGo" maxlength="80" placeholder="e.g. Studio session fund" />
       </div>
@@ -955,6 +959,7 @@ export function renderLive() {
   let tabPanel = channelsPanel;
   if (tab === 'following') tabPanel = renderFollowingPanel(user);
   else if (tab === 'categories') tabPanel = renderCategoriesPanel();
+  else if (tab === 'rooms') tabPanel = renderGroupRoomsPanel({ user, goalHtml: user && !active ? renderLiveDailyGoalCard({ hostId: user.id, hostName: user.username }, user) : (user ? '<p class="muted small">Your Live daily goal is shown above while you are live (TEST MODE).</p>' : '<p class="muted small">Sign in to set a room donation goal (reuses the Live daily goal · TEST MODE).</p>') });
 
   const body = `
     ${renderLiveDiscoveryTabs(tab)}
@@ -1149,6 +1154,7 @@ function mountSongRequestForm(root) {
 }
 
 export function bindLive(root) {
+  mountLiveDirectorySearch(root);
   root.querySelectorAll('.hot-live-watch').forEach((btn) => {
     btn.addEventListener('click', () => {
       notifyLiveOpen();
@@ -1177,9 +1183,14 @@ export function bindLive(root) {
     });
   });
 
+  bindGoLiveCategoryFields(root);
+  bindGroupRooms(root, { toast, me: getState().user?.username || 'You' });
+  bindGiftForAll(root, { toast, me: getState().user?.username || 'You' });
   root.querySelector('#liveStart')?.addEventListener('click', () => {
     const title = root.querySelector('#liveTitle')?.value?.trim();
-    const res = startLiveDemo(title);
+    const goFields = readGoLiveFields(root);
+    if (!goFields.category) return toast('Pick one Go Live category');
+    const res = startLiveDemo(title, goFields);
     if (res?.error === 'signin') return toast('Sign in first');
     if (res?.error === 'already_live') return toast('Already live');
     const gName = root.querySelector('#liveGoalNameGo')?.value?.trim();
@@ -1211,12 +1222,6 @@ export function bindLive(root) {
     refresh();
   });
 
-  root.querySelector('#liveBumpViewers')?.addEventListener('click', () => {
-    const live = bumpLiveViewers();
-    const el = root.querySelector('#liveViewers');
-    if (el && live) el.textContent = fmtCount(live.viewers || 0);
-    toast('Viewers updated (stub)');
-  });
 
   root.querySelector('#liveTip')?.addEventListener('click', (e) => {
     const btn = e.currentTarget;

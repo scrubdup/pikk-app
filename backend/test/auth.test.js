@@ -8,7 +8,7 @@ describe('auth', () => {
     expect(r.status).toBe(201);
     const sc = r.res.headers.get('Set-Cookie');
     expect(sc).toMatch(/^__Host-pikk_session=/);
-    expect(sc).toMatch(/HttpOnly/); expect(sc).toMatch(/Secure/); expect(sc).toMatch(/SameSite=(None|Lax|Strict)/); expect(sc).toMatch(/Path=\//);
+    expect(sc).toMatch(/HttpOnly/); expect(sc).toMatch(/Secure/); expect(sc).toMatch(/SameSite=(None|Lax|Strict)/); expect(sc).toMatch(/Path=\//); expect(sc).toMatch(/Partitioned/);
     expect(r.json.user.email).toBe('a@example.com');
     const cred = await env.DB.prepare('SELECT * FROM credentials WHERE email = ?').bind('a@example.com').first();
     expect(cred.password_hash).not.toContain('longpassword1');
@@ -88,4 +88,47 @@ describe('auth', () => {
     const r = await call('GET', '/nope');
     expect(r.status).toBe(404); expect(r.json.error.code).toBe('not_found');
   });
+  it('session lifetime never exceeds 30 days', async () => {
+    const u = await newUser();
+    const row = await env.DB.prepare('SELECT created_at, expires_at FROM sessions WHERE user_id = ?').bind(u.id).first();
+    const duration = Date.parse(row.expires_at) - Date.parse(row.created_at);
+    expect(duration).toBeGreaterThan(0);
+    expect(duration).toBeLessThanOrEqual(720 * 3600 * 1000);
+  });
+
+
+  it('resends verification for an authenticated unverified user and invalidates the old token', async () => {
+    const signup = await call('POST', '/auth/signup', {
+      body: { email: 'resend@example.com', password: 'resend pass 123', handle: 'resend_user', display_name: 'Resend User' },
+      ip: freshIp(),
+    });
+    expect(signup.status).toBe(201);
+    const oldToken = signup.json.verification.token;
+
+    const resend = await call('POST', '/auth/resend-verification', {
+      cookie: signup.cookie,
+      body: {},
+      ip: freshIp(),
+    });
+    expect(resend.status).toBe(200);
+    expect(resend.json.verification.delivery).toBe('exposed_for_local_testing');
+    const newToken = resend.json.verification.token;
+    expect(newToken).toBeTruthy();
+    expect(newToken).not.toBe(oldToken);
+
+    const oldAttempt = await call('POST', '/auth/verify', { body: { token: oldToken }, ip: freshIp() });
+    expect(oldAttempt.status).toBe(400);
+
+    const freshAttempt = await call('POST', '/auth/verify', { body: { token: newToken }, ip: freshIp() });
+    expect(freshAttempt.status).toBe(200);
+  });
+
+  it('resend verification requires authentication and returns already_verified for verified users', async () => {
+    expect((await call('POST', '/auth/resend-verification', { body: {}, ip: freshIp() })).status).toBe(401);
+    const u = await newUser();
+    const r = await call('POST', '/auth/resend-verification', { cookie: u.cookie, body: {}, ip: freshIp() });
+    expect(r.status).toBe(200);
+    expect(r.json.verification.delivery).toBe('already_verified');
+  });
+
 });
