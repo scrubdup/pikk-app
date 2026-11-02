@@ -1,5 +1,5 @@
 import { ApiError, json, errorResponse, corsHeaders, readJson, clientIp } from './http.js';
-import { signup, login, logout, verifyEmail, loadSession, requireAuth, requireVerified, requireActive } from './auth.js';
+import { signup, login, logout, verifyEmail, resendVerification, loadSession, requireAuth, requireVerified, requireActive } from './auth.js';
 import { requirePermission, GRANTABLE_ROLES } from './permissions.js';
 import { assertNotBlocked, NOT_BLOCKED_SQL } from './blocks.js';
 import { safetyRoute, ageVerificationWebhook } from './safety.js';
@@ -42,6 +42,11 @@ async function route(req, env, ctx) {
   if (m === 'POST' && p === '/auth/login') return withCookie(await login(env, req, await readJson(req)));
   if (m === 'POST' && p === '/auth/logout') return withCookie(await logout(env, req, ctx));
   if (m === 'POST' && p === '/auth/verify') return json(200, await verifyEmail(env, req, await readJson(req)));
+  if (m === 'POST' && p === '/auth/resend-verification') {
+    const s = requireActive(ctx);
+    await rateLimit(env, `verify-email:${s.user.id}`, 3, 3600);
+    return json(200, await resendVerification(env, req, s));
+  }
   if (m === 'GET' && p === '/auth/me') { const s = requireAuth(ctx); return json(200, { user: s.user, roles: s.roles, signup_roles: s.signupRoles }); }
   if (m === 'POST' && p === '/account/signup-roles') {
     // PR #110: roles can be added or changed later. Declarations only; approval/monetization handled separately.
