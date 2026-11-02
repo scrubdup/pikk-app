@@ -47,3 +47,10 @@ test('home official-video cards use strong blue chrome and bright white titles',
   'font-weight: 900'
  ]) assert.ok(css.includes(token), token);
 });
+
+
+test('mobile tabbar sits lower while keeping seven destinations visible',()=>{
+ const css=readFileSync(new URL('../src/styles.css', import.meta.url),'utf8');
+ assert.ok(css.includes('transform: translateY(5px)'));
+ assert.ok(css.includes('padding-bottom: 0'));
+});
