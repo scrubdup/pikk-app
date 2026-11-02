@@ -80,6 +80,12 @@ try {
     await page.screenshot({ path: 'visual-review/shop-' + name + '-hats.png', fullPage: false });
     await page.locator('#pikkShopSearch').fill('not-a-real-hat-98765');
     assert.equal(await page.locator('#pikkShopProducts .pikk-shop-product:visible').count(), 0);
+    // IME composition Escape must not clear an unfinished international-language search.
+    await page.locator('#pikkShopSearch').evaluate(el => el.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true, cancelable: true })
+    ));
+    assert.equal(await page.locator('#pikkShopSearch').inputValue(), 'not-a-real-hat-98765',
+      name + ' composing Escape must preserve search text');
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#pikkShopSearch').inputValue(), '', name + ' Escape clears search');
     assert.equal(await page.locator('.pikk-shop-category[data-category="Hats"]').getAttribute('aria-pressed'), 'true', name + ' Escape keeps category');
