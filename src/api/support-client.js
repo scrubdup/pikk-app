@@ -57,6 +57,7 @@ export const supportApi = {
     body: { category: supportCategoryForApi(category), subject, message },
   }),
   listTickets: () => request('/support/tickets'),
+  staffList: () => request('/support/staff/tickets'),
   getTicket: (id) => request('/support/tickets/' + encodeURIComponent(id)),
   reply: (id, message) => request('/support/tickets/' + encodeURIComponent(id) + '/messages', {
     method: 'POST',
