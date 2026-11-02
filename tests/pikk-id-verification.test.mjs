@@ -61,7 +61,7 @@ test('gender values: one source of truth matches DB CHECK, frontend options and 
   const sent = [...g.genderOptionsHtml().matchAll(/value="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(sent, [...g.GENDERS]);
   assert.equal(g.GENDER_LABELS.nonbinary, 'Non-binary'); assert.equal(g.GENDER_LABELS.undisclosed, 'Prefer not to say');
-  const mig = read('backend/migrations/0012_id_verification.sql');
+  const mig = read('backend/migrations/0013_id_verification.sql');
   const check = mig.match(/gender IN \(([^)]+)\)/)[1].match(/'([^']+)'/g).map((x) => x.slice(1, -1));
   assert.deepEqual(check, [...g.GENDERS]);
   const prof = read('src/pages/profile.js');
