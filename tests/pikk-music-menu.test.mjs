@@ -35,13 +35,16 @@ test('Music menu is keyboard accessible and dismisses on route changes', () => {
   assert.match(menu, /if \(restoreFocus\) trigger\?\.focus\(\)/);
 });
 
-test('Music focus routes show actual songs, albums and playlists without inventing uploads', () => {
+test('Music focus routes show actual songs, albums and playlists with honest backend upload gating', () => {
   assert.match(music, /route\.query\?\.view/);
   assert.match(music, /release\.type === 'album'/);
   assert.match(music, /release\.type === 'single' \|\| release\.type === 'song'/);
   assert.match(music, /YOUTUBE_CHANNEL_PLAYLISTS\.map/);
   assert.match(music, /Not available yet · TEST MODE/);
   assert.match(music, /The producer beat marketplace and licensing checkout are still in development/);
-  assert.match(music, /Creator music uploads require secure storage/);
+  assert.match(music, /isMusicUploadApiConfigured\(\)/);
+  assert.match(music, /Upload private draft/);
+  assert.match(music, /media storage is not connected yet\. No file was uploaded/);
+  assert.match(music, /Drafts are not automatically published or monetized/);
   assert.match(music, /\$\{focusedViewCard\}/);
 });
