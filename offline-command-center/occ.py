@@ -13,6 +13,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -151,52 +152,107 @@ def add_progress(conn, task_id, note, agent=None, percent=None):
 
 
 GATE_PREFIX = "occ-gate-"
+OWNER_FILE = "owner.json"      # inside each gate folder: {"pid", "started", "repo_common_dir"}
+ORPHAN_AGE_SEC = 3600          # an ownerless gate folder must be this old before cleanup
 
 
-def remove_worktree(repo, path):
-    subprocess.run(["git", "-C", str(repo), "worktree", "remove", "--force", str(path)], capture_output=True)
-    shutil.rmtree(path, ignore_errors=True)
-    subprocess.run(["git", "-C", str(repo), "worktree", "prune"], capture_output=True)
+def git_common_dir(repo):
+    out = subprocess.run(["git", "-C", str(repo), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                         capture_output=True, text=True)
+    return str(Path(out.stdout.strip()).resolve()) if out.returncode == 0 else None
 
 
-def cleanup_stale_worktrees(repo, tmp_root=None):
-    """Prune, then remove any leftover occ gate worktrees (e.g. from a crash). Returns removed paths."""
-    tmp_root = Path(tmp_root or tempfile.gettempdir()).resolve()
-    subprocess.run(["git", "-C", str(repo), "worktree", "prune"], capture_output=True)
+def pid_alive(pid):
+    try:
+        os.kill(int(pid), 0)
+    except ProcessLookupError:
+        return False
+    except (PermissionError, OSError, ValueError, OverflowError):
+        return True   # exists but not ours, or unknown: treat as alive (never delete on doubt)
+    return True
+
+
+def registered_worktrees(repo):
     out = subprocess.run(["git", "-C", str(repo), "worktree", "list", "--porcelain"],
                          capture_output=True, text=True).stdout
+    return {Path(l[len("worktree "):]).resolve() for l in out.splitlines() if l.startswith("worktree ")}
+
+
+def remove_gate_dir(repo, folder):
+    folder = Path(folder)
+    subprocess.run(["git", "-C", str(repo), "worktree", "remove", "--force", str(folder / "wt")],
+                   capture_output=True)
+    shutil.rmtree(folder, ignore_errors=True)
+    subprocess.run(["git", "-C", str(repo), "worktree", "prune"], capture_output=True)
+
+
+def is_gate_folder(path, tmp_root):
+    """Only folders named occ-gate-* sitting directly in the temp folder are ever considered."""
+    return path.name.startswith(GATE_PREFIX) and path.parent == tmp_root
+
+
+def cleanup_stale_worktrees(repo, tmp_root=None, now=None):
+    """Remove leftover gate folders that belong to THIS repo and whose gate is no longer running.
+
+    - With an owner file: removed only if it names this repo's git common dir AND its PID is dead.
+    - Without one: removed only if older than ORPHAN_AGE_SEC AND its worktree is registered in this repo.
+    Folders of other repos, live gates, and anything not named occ-gate-* directly in tmp_root are kept.
+    """
+    tmp_root = Path(tmp_root or tempfile.gettempdir()).resolve()
+    now = time.time() if now is None else now
+    ours = git_common_dir(repo)
+    subprocess.run(["git", "-C", str(repo), "worktree", "prune"], capture_output=True)
+    registered = registered_worktrees(repo)
+    candidates = {p.parent if p.name == "wt" else p for p in registered}
+    if tmp_root.is_dir():
+        candidates |= {p.resolve() for p in tmp_root.iterdir() if p.is_dir()}
     removed = []
-    for line in out.splitlines():
-        if not line.startswith("worktree "):
+    for folder in sorted(candidates):
+        if not is_gate_folder(folder, tmp_root):
             continue
-        path = Path(line[len("worktree "):]).resolve()
-        if path.name.startswith(GATE_PREFIX) and path.parent == tmp_root:
-            remove_worktree(repo, path)
-            removed.append(str(path))
-    for leftover in tmp_root.glob(GATE_PREFIX + "*"):  # dirs git no longer tracks
-        shutil.rmtree(leftover, ignore_errors=True)
+        owner_path = folder / OWNER_FILE
+        if owner_path.exists():
+            try:
+                owner = json.loads(owner_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if owner.get("repo_common_dir") != ours or pid_alive(owner.get("pid")):
+                continue
+        else:
+            try:
+                age = now - folder.stat().st_mtime
+            except OSError:
+                continue
+            if age < ORPHAN_AGE_SEC or not ({folder, folder / "wt"} & registered):
+                continue
+        remove_gate_dir(repo, folder)
+        removed.append(str(folder))
     return removed
 
 
-def run_gate(conn, task_id, repo, commands=None, runner=subprocess.run):
+def run_gate(conn, task_id, repo, commands=None, runner=subprocess.run, tmp_root=None):
     """Run every gate command in a clean temporary worktree of the branch head; record pass/fail for that sha."""
     task = get_task(conn, task_id)
     if not task["branch"]:
         raise SystemExit("error: task has no branch to test")
     check_branch(task["branch"])
     repo = Path(repo)
-    cleanup_stale_worktrees(repo)
+    cleanup_stale_worktrees(repo, tmp_root)
     sha = git_head(repo, task["branch"])
     results, ok = [], sha is not None
     if sha is None:
         results.append({"step": "resolve branch", "passed": False, "rc": "branch not found"})
     else:
-        tmp = tempfile.mkdtemp(prefix=GATE_PREFIX)
+        folder = tempfile.mkdtemp(prefix=GATE_PREFIX, dir=tmp_root)
+        Path(folder, OWNER_FILE).write_text(json.dumps(
+            {"pid": os.getpid(), "started": time.time(), "repo_common_dir": git_common_dir(repo)}), encoding="utf-8")
+        tmp = str(Path(folder) / "wt")
 
         def on_signal(signum, _frame):
-            remove_worktree(repo, tmp)
+            remove_gate_dir(repo, folder)
             raise SystemExit(128 + signum)
-        old = {sig: signal.signal(sig, on_signal) for sig in (signal.SIGTERM, signal.SIGINT)}
+        sigs = [signal.SIGTERM, signal.SIGINT] + ([signal.SIGHUP] if hasattr(signal, "SIGHUP") else [])
+        old = {sig: signal.signal(sig, on_signal) for sig in sigs}
         try:
             add = subprocess.run(["git", "-C", str(repo), "worktree", "add", "--detach", tmp, sha],
                                  capture_output=True, text=True)
@@ -217,7 +273,7 @@ def run_gate(conn, task_id, repo, commands=None, runner=subprocess.run):
         finally:
             for sig, handler in old.items():
                 signal.signal(sig, handler)
-            remove_worktree(repo, tmp)
+            remove_gate_dir(repo, folder)
     result = "pass" if ok else "fail"
     cur = conn.execute("INSERT INTO gate_runs(task_id, branch, commit_sha, result, details) VALUES (?,?,?,?,?)",
                        (task_id, task["branch"], sha, result, json.dumps(results)))

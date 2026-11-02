@@ -1,8 +1,10 @@
 import io
+import json
 import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -118,18 +120,76 @@ class OccTest(unittest.TestCase):
         self.assertEqual(occ.run_gate(self.conn, ok, self.repo, [("check", ["sh", "check.sh"], ".")])[1], "pass")
         self.assertEqual(self.worktrees(), before)
 
-    def test_startup_cleans_leftover_gate_worktrees(self):
-        before = self.worktrees()
-        root = Path(self.tmp.name, "tmproot"); root.mkdir()
-        stale = root / (occ.GATE_PREFIX + "crashed")
-        self.git("worktree", "add", "--detach", str(stale), "HEAD")
-        keep = Path(self.tmp.name, "other-wt")
-        self.git("worktree", "add", "--detach", str(keep), "HEAD")
-        orphan = root / (occ.GATE_PREFIX + "orphan"); orphan.mkdir()
-        removed = occ.cleanup_stale_worktrees(self.repo, root)
-        self.assertEqual(removed, [str(stale.resolve())])
-        self.assertFalse(stale.exists()); self.assertFalse(orphan.exists()); self.assertTrue(keep.exists())
+    # ---- leftover-gate cleanup (Checker REJECT @3cdf4d1) ----
+    def dead_pid(self):
+        p = subprocess.Popen(["true"]); p.wait()
+        return p.pid
+
+    def make_gate_dir(self, root, name, owner="this", pid=None, register=True):
+        folder = Path(root, name); folder.mkdir(parents=True)
+        if register:
+            self.git("worktree", "add", "--detach", str(folder / "wt"), "HEAD")
+        if owner is not None:
+            common = occ.git_common_dir(self.repo) if owner == "this" else owner
+            (folder / occ.OWNER_FILE).write_text(json.dumps(
+                {"pid": pid if pid is not None else self.dead_pid(), "started": 0, "repo_common_dir": common}))
+        return folder
+
+    def root(self):
+        r = Path(self.tmp.name, "tmproot"); r.mkdir(exist_ok=True)
+        return r.resolve()
+
+    def test_cleanup_removes_dead_owned_gate_only(self):
+        root, before = self.root(), self.worktrees()
+        dead = self.make_gate_dir(root, occ.GATE_PREFIX + "dead")
+        live = self.make_gate_dir(root, occ.GATE_PREFIX + "live", pid=os.getpid())
+        other = self.make_gate_dir(root, occ.GATE_PREFIX + "otherrepo", owner="/elsewhere/.git", register=False)
+        self.assertEqual(occ.cleanup_stale_worktrees(self.repo, root), [str(dead)])
+        self.assertFalse(dead.exists()); self.assertTrue(live.exists()); self.assertTrue(other.exists())
         self.assertEqual(self.worktrees(), before + 1)
+
+    def test_cleanup_ownerless_needs_age_and_registration(self):
+        root = self.root()
+        old_reg = self.make_gate_dir(root, occ.GATE_PREFIX + "oldreg", owner=None)
+        young_reg = self.make_gate_dir(root, occ.GATE_PREFIX + "young", owner=None)
+        old_unreg = self.make_gate_dir(root, occ.GATE_PREFIX + "oldunreg", owner=None, register=False)
+        past = time.time() - 2 * occ.ORPHAN_AGE_SEC
+        for f in (old_reg, old_unreg):
+            os.utime(f, (past, past))
+        self.assertEqual(occ.cleanup_stale_worktrees(self.repo, root), [str(old_reg)])
+        self.assertTrue(young_reg.exists()); self.assertTrue(old_unreg.exists())
+
+    def test_cleanup_ignores_non_prefixed_folder_in_tmp_root(self):
+        root = self.root()
+        keep = self.make_gate_dir(root, "user-worktree")
+        self.assertEqual(occ.cleanup_stale_worktrees(self.repo, root), [])
+        self.assertTrue(keep.exists())
+
+    def test_cleanup_ignores_prefixed_folder_outside_tmp_root(self):
+        root = self.root()
+        keep = self.make_gate_dir(Path(self.tmp.name, "elsewhere"), occ.GATE_PREFIX + "mine")
+        self.assertEqual(occ.cleanup_stale_worktrees(self.repo, root), [])
+        self.assertTrue(keep.exists())
+
+    def test_run_gate_does_startup_cleanup(self):
+        root = self.root()
+        dead = self.make_gate_dir(root, occ.GATE_PREFIX + "crashed")
+        tid = occ.add_task(self.conn, "fix", branch="feature/x")
+        occ.run_gate(self.conn, tid, self.repo, STEPS, PASS, tmp_root=root)
+        self.assertFalse(dead.exists())
+
+    def test_concurrent_gates_do_not_delete_each_other(self):
+        root = self.root()
+        a = occ.add_task(self.conn, "A", branch="feature/x")
+        b = occ.add_task(self.conn, "B", branch="feature/x")
+        seen = {}
+
+        def runner_a(cmd, cwd=None):
+            seen["b"] = occ.run_gate(self.conn, b, self.repo, STEPS, PASS, tmp_root=root)[1]  # B starts mid-A
+            return SimpleNamespace(returncode=0 if Path(cwd).is_dir() and Path(cwd, "check.sh").exists() else 1)
+        _, result_a = occ.run_gate(self.conn, a, self.repo, STEPS, runner_a, tmp_root=root)
+        self.assertEqual((result_a, seen["b"]), ("pass", "pass"))
+        self.assertEqual(list(root.iterdir()), [])
 
     def test_signal_during_gate_removes_worktree(self):
         import signal
@@ -142,6 +202,16 @@ class OccTest(unittest.TestCase):
             occ.run_gate(self.conn, tid, self.repo, STEPS, interrupted)
         self.assertEqual(self.worktrees(), before)
         self.assertEqual(signal.getsignal(signal.SIGTERM), signal.SIG_DFL)
+
+    def test_sighup_handled_where_available(self):
+        import signal
+        if not hasattr(signal, "SIGHUP"):
+            self.skipTest("no SIGHUP on this platform")
+        before = self.worktrees()
+        tid = occ.add_task(self.conn, "fix", branch="feature/x")
+        with self.assertRaises(SystemExit):
+            occ.run_gate(self.conn, tid, self.repo, STEPS, lambda c, cwd=None: signal.raise_signal(signal.SIGHUP))
+        self.assertEqual(self.worktrees(), before)
 
     def test_approve_requires_passing_gate(self):
         tid = self.gated(FAIL)
