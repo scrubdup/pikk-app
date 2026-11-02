@@ -5,3 +5,6 @@
 - Issues repo-wide orders (e.g. "merge current main into every open branch; migration PRs stay on hold").
 - Owner credits are limited: prefer small PRs that land fast.
 Source: Supervisor messages to builders (Nov 2 2026), owner instructions t20u/t21u, shared memory.
+
+## Supervisor-provided standing rules (Nov 2 2026)
+SUPERVISOR: coordinates the builders and rejects incomplete work. Sends the owner one live link per Checker-passed batch. Takes owner rulings, saves them, and routes them.

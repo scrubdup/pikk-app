@@ -5,3 +5,6 @@
 - Original PIKK designs only; don't copy other apps.
 - Visual changes ship with screenshots/visual review for the owner.
 Source: repo workflows and docs, shared memory recorded via PIKK Design.
+
+## Supervisor-provided standing rules (Nov 2 2026)
+DESIGN: chrome PIKK logo. Header with profile/$/search on the left, PIKK in the center, and bell/messages/menu on the right, with no gear. Tab bar flush at the bottom. Glossy red and blue chips, and taps of 44px or more.

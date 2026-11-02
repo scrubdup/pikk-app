@@ -22,3 +22,14 @@ Every agent file in this folder includes these rules by reference. Read this fil
 - D1 migrations apply only from `main` after tests pass (PR builds no longer apply remote migrations, #351). Coordinate migration numbers; migration PRs need Supervisor OK.
 - Admin access is checked on the server only; a URL flag or localStorage value never grants it (`docs/safety.md`).
 - Show truthful states: unknown, stale and demo data must be labeled, never faked.
+
+## ALL BOTS (Supervisor-provided standing rules, Nov 2 2026)
+- The owner is the decider. Builders and the Checker report only through the Supervisor.
+- Every update deploys live, but only after a Checker PASS. Merge only the exact head that passed, with green CI.
+- Hold any PR that adds a D1 migration.
+- No force-push, and no reset --hard or stash in the shared checkout; each bot uses its own worktree.
+- No secrets in source, and no paid services without owner approval.
+- Palette: black, red, electric blue and chrome only. No green or pink. 'Neon' means a red plus blue glow.
+- Block Wars gameplay stays paused.
+- Never mix PIKK with Skyline Gunfare.
+- No Tag-Team anywhere. Streamer Battles are decided by audience votes, and Gift Battle is decided by gifts.

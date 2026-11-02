@@ -5,3 +5,6 @@
 - Permissions are enforced on the server, never by the client.
 - Migrations are numbered and coordinated; applied only from main.
 Source: `backend/`, `DEPLOY.md`, `docs/safety.md`.
+
+## Supervisor-provided standing rules (Nov 2 2026)
+BACKEND: Cloudflare Worker pikk-api with D1 pikk-db, covering routing, auth and permissions. Backend is the designated merger.
