@@ -14,7 +14,13 @@ function makePosts(v,user,topic,sort){
   let a=v.posts.filter(p=>!v.hidden.includes(p.id)&&(topic==='all'||p.topic===topic));
   const score=p=>Object.entries(v.votes).reduce((n,x)=>n+(x[0].startsWith(p.id+':')?Number(x[1])||0:0),0);
   a.sort((x,y)=>sort==='top'?score(y)-score(x):sort==='discussed'?(y.replies?.length||0)-(x.replies?.length||0):y.when-x.when);
-  if(!a.length)return '<div class="pikk-forum-empty">No discussions yet. Start the first conversation on this browser.</div>';
+  if(!a.length){
+    const name=TOPICS.find(t=>t[0]===topic)?.[1]||'this community';
+    const message=topic==='all'
+      ? 'No discussions yet. Start the first conversation on this browser.'
+      : 'No discussions in '+esc(name)+' yet. Choose All discussions to browse other topics, or start a conversation here.';
+    return '<div class="pikk-forum-empty" role="status">'+message+'</div>';
+  }
   return a.map(p=>{
     const label=TOPICS.find(t=>t[0]===p.topic)?.[1]||'Community';
     const replies=Array.isArray(p.replies)?p.replies:[];

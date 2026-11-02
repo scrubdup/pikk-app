@@ -72,6 +72,10 @@ try {
     await page.screenshot({ path: 'visual-review/communities-'+name+'-reply-posted.png', fullPage: true });
     await page.locator('.pikk-forum-topic-cards [data-ftopic="business"]').click();
     assert.equal(await page.locator('.pikk-forum-post').count(), 0);
+    const empty = page.locator('.pikk-forum-empty');
+    assert.equal(await empty.getAttribute('role'), 'status', 'Empty topic result is announced to assistive technology');
+    assert.equal(await empty.textContent(), 'No discussions in Business & Money yet. Choose All discussions to browse other topics, or start a conversation here.');
+    await page.screenshot({ path: 'visual-review/communities-'+name+'-empty-topic.png', fullPage: true });
     await page.locator('.pikk-forum-topic-cards [data-ftopic="music"]').click();
     assert.equal(await page.locator('.pikk-forum-post').count(), 1);
     await page.locator('[data-fsort="top"]').click();

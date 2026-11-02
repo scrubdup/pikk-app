@@ -48,3 +48,12 @@ test('voting keeps keyboard focus and identifies the post; reply input has a lab
  assert.match(view,/button\.dataset\.id===voteId && button\.dataset\.fvote===direction/);
  assert.match(view,/\?\.focus\(\)/);
 });
+
+test('empty topic filters identify the selected community without claiming the entire forum is empty',()=>{
+ assert.match(view,/topic==='all'/);
+ assert.match(view,/No discussions yet\. Start the first conversation on this browser\./);
+ assert.match(view,/No discussions in /);
+ assert.match(view,/Choose All discussions to browse other topics/);
+ assert.match(view,/esc\(name\)/);
+ assert.match(view,/class="pikk-forum-empty" role="status"/);
+});
