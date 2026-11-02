@@ -28,6 +28,6 @@ test('Master Mind does not use the unsafe client admin gate or local mock data',
   for (const src of [page, lib]) {
     assert.ok(!/admin=1|setAdminRole|localStorage|indexedDB|media-db/i.test(src));
   }
-  assert.ok(page.includes('brand/pikk-official-approved.jpg'), 'uses official PIKK logo asset');
+  assert.ok(page.includes('brand/pikk-logo-official.png'), 'uses official PIKK logo asset');
   assert.ok(!/hida/i.test(page));
 });

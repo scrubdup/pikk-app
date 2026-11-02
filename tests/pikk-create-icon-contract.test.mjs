@@ -1,16 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { CREATE_MENU_ITEMS } from '../src/create-menu.js';
 
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const data = readFileSync(new URL('../src/data.js', import.meta.url), 'utf8');
 
-test('center Create button keeps approved play triangle plus arrow icon (owner master requirements)', () => {
-  assert.match(main, /t\.href === '#\/create' \? '<svg/);
-  assert.match(main, /<path d="M9 5 L25 16 L9 27 Z" fill="currentColor"\/>/);
-  assert.match(main, /<path d="M24 5v11m0 0-4-4m4 4 4-4"/);
-  assert.doesNotMatch(main, /M16 7v18M7 16h18/);
+test('center Create icon is the play button + white cursor cropped from the approved PIKK logo', () => {
+  assert.match(main, /t\.href === '#\/create' \? `<img class="pikk-create-logo-icon" src="\$\{asset\('\/brand\/pikk-logo-badge\.png'\)\}"/);
+  assert.ok(existsSync(new URL('../public/brand/pikk-logo-badge.png', import.meta.url)));
+  assert.ok(existsSync(new URL('../public/brand/pikk-logo-official.png', import.meta.url)), 'source logo unchanged');
 });
 
 test('Create remains the primary fourth tab and opens its menu', () => {
@@ -18,9 +17,9 @@ test('Create remains the primary fourth tab and opens its menu', () => {
   assert.ok(match, 'TABBAR definition must exist');
   const entries = [...match[1].matchAll(/\{ href: '([^']+)', label: '([^']+)'[^}]*\}/g)];
   assert.equal(entries.length, 7);
-  assert.equal(entries[2][1], '#/create');
-  assert.equal(entries[2][2], 'Create');
-  assert.match(entries[2][0], /primary: true/);
+  assert.equal(entries[3][1], '#/create');
+  assert.equal(entries[3][2], 'Create');
+  assert.match(entries[3][0], /primary: true/);
   assert.match(main, /ensureCreateMenu\(\)/);
   assert.match(main, /aria-controls="pikkCreateMenu"/);
   assert.ok(CREATE_MENU_ITEMS.some(item => item.href === '#/live?go=1'));

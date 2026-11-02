@@ -4,9 +4,11 @@ on:
     branches: [main]
     paths:
       - 'src/pages/pikk-shop.js'
+      - 'src/pages/shop.js'
       - 'src/styles.css'
       - 'scripts/visual-review-shop.mjs'
       - 'tests/pikk-shop-reference-visual.test.mjs'
+      - 'tests/pikk-profile-shop-filter-focus.test.mjs'
       - '.github/workflows/pikk-shop-visual.yml'
 permissions:
   contents: read
@@ -40,5 +42,7 @@ jobs:
         if: always()
         with:
           name: pikk-shop-visual-review
-          path: visual-review/shop-*.png
+          path: |
+            visual-review/shop-*.png
+            visual-review/profile-shop-*.png
           if-no-files-found: warn

@@ -11,7 +11,7 @@ export function renderDating() {
         <h2>Find your vibe. <span>Make it mutual.</span></h2>
         <p>Explore connections through mutual interest, shared communities and conversations when our real adult eligibility and safety services are ready.</p>
         <div class="pikk-dating-hero-actions">
-          <a class="btn primary" href="#/community">Explore communities</a>
+          <a class="btn primary" href="#/communities">Explore communities</a>
           <a class="btn ghost" href="#/profile">Your profile</a>
         </div>
         <small>No real matches are being created here · TEST MODE</small>
@@ -25,7 +25,7 @@ export function renderDating() {
       <button type="button" data-dating-jump="dating-safety" aria-pressed="false">Safety</button>
     </nav>
     <section class="pikk-dating-experience-grid" id="dating-experiences" tabindex="-1" aria-label="Ways to connect">
-      <a class="pikk-dating-experience" href="#/community"><span aria-hidden="true">♧</span><strong>Meet through interests</strong><small>Community discovery</small></a>
+      <a class="pikk-dating-experience" href="#/communities"><span aria-hidden="true">♧</span><strong>Meet through interests</strong><small>Community discovery</small></a>
       <a class="pikk-dating-experience" href="#/connect#connect-random-chat"><span aria-hidden="true">◉</span><strong>Random Chat</strong><small>Separate from dating · Preview</small></a>
       <a class="pikk-dating-experience" href="#/messages"><span aria-hidden="true">✉</span><strong>Messages</strong><small>Your existing inbox</small></a>
     </section>
@@ -41,7 +41,7 @@ export function renderDating() {
       <h3>Choose your experience</h3>
       <p class="muted">Dating is for romantic mutual matches. Random Chat is for spontaneous conversations and friendships. These are separate opt-in experiences.</p>
       <div class="row wrap" style="gap:8px">
-        <a class="btn primary" href="#/dating" aria-current="page">Dating · current section</a>
+        <a class="chip pikk-chip on" href="#/dating" aria-current="page">Dating · current section</a>
         <a class="btn ghost" href="#/connect#connect-random-chat">Random Chat · 18+ TEST MODE</a>
       </div>
       <p class="muted small">Random Chat never automatically creates a dating match. No camera is started when you open either page.</p>

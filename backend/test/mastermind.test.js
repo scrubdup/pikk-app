@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { call, newUser, makeAdmin, staff, grantRole } from './helpers.js';
+import { bootstrapOwner } from '../src/bootstrap.js';
 import opsSource from '../src/ops.js?raw';
 
 const TOKEN = 'owner_bootstrap_local_test_only_not_a_real_secret_0123456789';
@@ -109,4 +110,18 @@ describe('one-time owner bootstrap', () => {
     const again = await call('POST', '/bootstrap/owner', { body: { handle: (await newUser()).handle }, headers: { Authorization: `Bearer ${TOKEN}` } });
     expect(again.status).toBe(409);
   });
+});
+
+describe('owner bootstrap is disabled without a strong secret', () => {
+
+  const req = (tok) => new Request('https://api.test/bootstrap/owner', { method: 'POST', headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ handle: 'nobody_here' }) });
+  for (const [label, secret] of [['unset', undefined], ['empty', ''], ['under 32 chars', 'short_test_only_fake_token_31ch']]) {
+    it(`returns 404 when OWNER_BOOTSTRAP_TOKEN is ${label}`, async () => {
+      if (secret) expect(secret.length).toBeLessThan(32);
+      const before = (await env.DB.prepare(`SELECT COUNT(*) AS n FROM audit_log`).first()).n;
+      await expect(bootstrapOwner({ ...env, OWNER_BOOTSTRAP_TOKEN: secret }, req(secret || 'anything'), '10.9.9.9'))
+        .rejects.toMatchObject({ status: 404, code: 'not_found' });
+      expect((await env.DB.prepare(`SELECT COUNT(*) AS n FROM audit_log`).first()).n).toBe(before);
+    });
+  }
 });

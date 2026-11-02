@@ -35,7 +35,7 @@ export function renderPanels(summary, now = Date.now()) {
 export function renderMastermind() {
   return shellPage('PIKK Master Mind', `
     <div class="mastermind">
-      <header class="row wrap mastermind-head"><img src="${esc(asset('brand/pikk-official-approved.jpg'))}" alt="PIKK" width="40" height="40" loading="eager"/>
+      <header class="row wrap mastermind-head"><img src="${esc(asset('brand/pikk-logo-official.png'))}" alt="PIKK" width="40" height="40" loading="eager"/>
         <p class="muted">Owner-only, read-only operations view. Every status comes from the server; unknown means unknown.</p></header>
       <div id="mastermindBody">${stateCard('loading')}</div>
     </div>`, { badge: 'READ-ONLY' });

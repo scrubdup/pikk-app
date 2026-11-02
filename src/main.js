@@ -1,5 +1,12 @@
+import { renderTerms, bindTerms, renderPrivacy } from './pages/legal.js';
+import { renderSettings, bindSettings } from './pages/settings.js';
+import { getSettings, applyAppearance } from './settings-store.js';
+import { SPLASH_HOLD_MS, SPLASH_FADE_MS, SPLASH_CLICK_MS } from './splash-config.js';
+import { renderTwerkContest, bindTwerkContest } from './pages/contest.js';
 import './styles.css';
 import './pikk-mockup.css';
+import './pikk-pages.css';
+import './pikk-duotone.css';
 import './skip-content.css';
 import './page-announcement.css';
 import './featured-promos.css';
@@ -16,9 +23,11 @@ import './openmic-premium.css';
 import './shield.css';
 import './ai-artists.css';
 import './dating-premium.css';
+import './support.css';
 import { SECTION_MENU_ITEMS, closeSectionMenus, toggleSectionMenu } from './section-menus.js';
 import { CREATE_MENU_GROUPS } from './create-menu.js';
 import { DRAWER_GROUPS, TABBAR } from './data.js';
+import { drawerGroups } from './nav-sections.js';
 import {
   initDbsPlayer,
   onRouteForPlayer,
@@ -29,25 +38,39 @@ import {
   notifyLiveOpen,
   notifyLiveClosed,
 } from './player.js';
-import { getState, ensureDemoPosts, markSplash, shouldShowSplash, getUnreadMessageCount, ensureDemoUnreadMessages } from './store.js';
+import { getState, ensureDemoPosts, markSplash, shouldShowSplash, getUnreadMessageCount, ensureDemoUnreadMessages, syncRemoteAuthUser, clearAuthenticatedUser } from './store.js';
 import { startRouter, onRoute, getRoute } from './router.js';
-import { ICONS, esc } from './ui.js';
+import { ICONS, esc, shellPage, toast } from './ui.js';
 import { asset, rewriteAssetUrls } from './asset.js';
 import { markActiveTab } from './tabbar-state.js';
 import { updateRouteIdentity } from './page-announcement.js';
 import { applyDrawerState } from './drawer-state.js';
 import { toggleMusicMenu, closeMusicMenu } from './music-menu.js';
+import { authApi, isPikkApiConfigured } from './api/auth-client.js';
+import { messagesApi, isMessagesApiConfigured } from './api/messages-client.js';
 
 import { renderHome, bindHome } from './pages/home.js';
 import { renderUpdates, bindUpdates } from './pages/updates.js';
 import { renderAdmin, bindAdmin } from './pages/admin.js';
 import { renderMastermind, bindMastermind } from './pages/mastermind.js';
 import { renderPosts, bindPosts } from './pages/posts.js';
+import { renderPromote, bindPromote } from './pages/promote.js';
+import { renderDonate, bindDonate } from './pages/donate.js';
+import { renderPayments, bindPayments } from './pages/payments.js';
+import { decoratePlayCounts, recordPlay } from './play-counter.js';
+import { renderStory, bindStory, renderCrew, bindCrew, renderFavorites, bindFavorites } from './pages/circle.js';
+import './circle.css';
+import './pikk-chips.css';
+import './pikk-splash.css';
 import { renderMusic, bindMusic } from './pages/music.js';
 import { renderAIArtists, bindAIArtists } from './pages/ai-artists.js';
 import { renderShield, bindShield } from './pages/shield.js';
+import { renderSupport, bindSupport } from './pages/support.js';
+import { renderSupportStaff, bindSupportStaff } from './pages/support-staff.js';
+import { renderCreatorReview, bindCreatorReview } from './pages/creator-review.js';
 import { renderMerch, bindMerch } from './pages/merch.js';
 import { renderProfile, bindProfile } from './pages/profile.js';
+import { renderVerifyEmail, bindVerifyEmail } from './pages/verify-email.js';
 import { renderClippers, bindClippers } from './pages/clippers.js';
 import { renderLive, bindLive } from './pages/live.js';
 import { renderViralLive, bindViralLive } from './pages/viral-live.js';
@@ -82,6 +105,7 @@ import {
   renderCommunity,
   bindCommunity,
   renderSignup,
+  bindSignup,
   renderLaunch,
   renderPhases,
   renderShare,
@@ -91,16 +115,33 @@ import {
   renderNotFound,
 } from './pages/shells.js';
 
+/* #/create deep link (or a tap before JS binds) renders the same real Create options as the sheet. */
+function renderCreatePage() {
+  return shellPage('Create on PIKK', `<div class="pikk-create-page">${createMenuMarkup()}
+    <p class="muted" style="font-size:11px;margin:10px 0 0">TEST MODE · uploads depend on available prototype tools</p></div>`);
+}
+
 const ROUTES = {
   '/home': { render: renderHome, bind: bindHome },
+  '/create': { render: renderCreatePage },
+  '/promote': { render: renderPromote, bind: bindPromote },
+  '/donate': { render: renderDonate, bind: bindDonate },
+  '/payments': { render: renderPayments, bind: bindPayments },
+  '/story': { render: renderStory, bind: bindStory },
+  '/crew': { render: renderCrew, bind: bindCrew },
+  '/favorites': { render: renderFavorites, bind: bindFavorites },
   '/updates': { render: renderUpdates, bind: bindUpdates },
   '/posts': { render: renderPosts, bind: bindPosts },
   '/music': { render: renderMusic, bind: bindMusic },
   '/ai-artists': { render: renderAIArtists, bind: bindAIArtists },
   '/shield': { render: renderShield, bind: bindShield },
+  '/support': { render: renderSupport, bind: bindSupport },
+  '/support-staff': { render: renderSupportStaff, bind: bindSupportStaff },
+  '/creator-review': { render: renderCreatorReview, bind: bindCreatorReview },
   '/vault': { render: renderMusic, bind: bindMusic },
   '/merch': { render: renderMerch, bind: bindMerch },
   '/profile': { render: renderProfile, bind: bindProfile },
+  '/verify-email': { render: renderVerifyEmail, bind: bindVerifyEmail },
   '/clippers': { render: renderClippers, bind: bindClippers },
   '/videos': { render: renderVideos, bind: bindVideos },
   '/live': { render: renderLive, bind: bindLive },
@@ -113,9 +154,14 @@ const ROUTES = {
   '/admin': { render: renderAdmin, bind: bindAdmin },
   '/mastermind': { render: renderMastermind, bind: bindMastermind },
   '/guidelines': { render: renderGuidelines },
+  '/settings': { render: renderSettings, bind: bindSettings },
+  '/contest': { render: renderTwerkContest, bind: bindTwerkContest }, // only contest today: #/contest/twerk
+  '/contest/twerk': { render: renderTwerkContest, bind: bindTwerkContest },
   '/community': { render: renderCommunity, bind: bindCommunity },
   '/communities': { render: renderCommunities, bind: bindCommunities },
-  '/signup': { render: renderSignup },
+  '/signup': { render: renderSignup, bind: bindSignup },
+  '/terms': { render: renderTerms, bind: bindTerms },
+  '/privacy': { render: renderPrivacy },
   '/messages': { render: renderMessages, bind: bindMessages },
   '/shop': { render: renderPikkShop, bind: bindPikkShop },
   '/profile-shop': { render: renderShop, bind: bindShop },
@@ -165,7 +211,7 @@ function buildTabbar() {
     const pathOnly = '/' + raw.replace(/^\//, '').split(/[?#]/)[0];
     const label = esc(t.label);
     const primaryClass = t.primary ? ' class="tab-primary"' : '';
-    return `<a${primaryClass} href="${t.href}" data-path="${pathOnly}" aria-label="${label}"${t.href === '#/create' ? ' aria-haspopup="dialog" aria-controls="pikkCreateMenu" aria-expanded="false"' : t.href === '#/music' ? ' aria-haspopup="dialog" aria-controls="pikkMusicMenu" aria-expanded="false"' : SECTION_MENU_ITEMS[pathOnly.slice(1)] ? ` aria-haspopup="dialog" aria-controls="pikk${label}Menu" aria-expanded="false"` : ''}><span class="tab-ico">${t.href === '#/create' ? '<svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><path d="M9 5 L25 16 L9 27 Z" fill="currentColor"/><path d="M24 5v11m0 0-4-4m4 4 4-4" stroke="white" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>' : (ICONS[t.icon] || '')}</span><span>${label}</span></a>`;
+    return `<a${primaryClass} href="${t.href}" data-path="${pathOnly}" aria-label="${label}"${t.href === '#/create' ? ' aria-haspopup="dialog" aria-controls="pikkCreateMenu" aria-expanded="false"' : t.href === '#/music' ? ' aria-haspopup="dialog" aria-controls="pikkMusicMenu" aria-expanded="false"' : SECTION_MENU_ITEMS[pathOnly.slice(1)] ? ` aria-haspopup="dialog" aria-controls="pikk${label}Menu" aria-expanded="false"` : ''}><span class="tab-ico">${t.href === '#/create' ? `<img class="pikk-create-logo-icon" src="${asset('/brand/pikk-logo-badge.png')}" alt="" width="40" height="29" decoding="async" />` : (ICONS[t.icon] || '')}</span><span>${label}</span></a>`;
   }).join('');
   for (const name of Object.keys(SECTION_MENU_ITEMS)) {
     el.querySelector(`a[href="#/${name}"]`)?.addEventListener('click', event => {
@@ -204,6 +250,16 @@ function createMenuMarkup() {
     return `<section class="pikk-create-menu-group" aria-label="${esc(group.title)}"><h3>${esc(group.title)}</h3><div class="pikk-create-options pikk-create-grid">${tiles}</div></section>`;
   }).join('');
 }
+
+// t394: mark the active quick-nav rail chip (shared glossy selected token)
+const syncRail = () => {
+  const path = (location.hash.replace(/^#/, '') || '/home').split(/[?#]/)[0];
+  document.querySelectorAll('.pikk-explore-rail a').forEach((a) => {
+    const on = a.getAttribute('href').slice(1) === path;
+    if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
+};
+window.addEventListener('hashchange', syncRail); syncRail();
 
 function ensureCreateMenu() {
   let panel = document.getElementById('pikkCreateMenu');
@@ -273,7 +329,7 @@ function buildDrawer() {
   const activeHash = '#' + (route.raw || route.path);
   const activePath = '#' + route.path;
 
-  const groupsHtml = DRAWER_GROUPS.map((g) => {
+  const groupsHtml = drawerGroups().map((g) => {
     if (g.href) {
       const on = g.href === activePath || g.href === activeHash ? ' on' : '';
       return `<a class="drawer-direct${on}" href="${g.href}">${esc(g.label)}</a>`;
@@ -284,6 +340,7 @@ function buildDrawer() {
     const activeCls = hasActive ? ' has-active' : '';
     const children = links
       .map((l) => {
+        if (!l.href) return `<span class="drawer-link drawer-soon" aria-disabled="true">${esc(l.label)} <small>· ${esc(/planned/i.test(l.detail || '') ? 'Planned' : 'Coming Soon')}</small></span>`;
         const on = l.href === activePath || l.href === activeHash ? ' on' : '';
         return `<a class="drawer-link${on}" href="${l.href}">${esc(l.label)}</a>`;
       })
@@ -299,7 +356,7 @@ function buildDrawer() {
     );
   }).join('');
 
-  el.innerHTML = `<h2>PIKK Network</h2>${groupsHtml}<a class="drawer-direct" href="#/updates">What's New · App Updates</a>`;
+  el.innerHTML = `<h2 class="drawer-brand"><img src="${asset('/brand/pikk-logo-official.png')}" alt="" width="140" height="33" decoding="async" /><span>PIKK Network</span></h2>${groupsHtml}`;
 }
 
 function setDrawer(open, restoreFocus = false) {
@@ -334,7 +391,7 @@ function updateChrome(route) {
    * Sign in lives on Profile (#/profile) only. Signed-out Messages → #/messages. */
   const headerMsg = document.getElementById('headerMsg');
   if (headerMsg) headerMsg.hidden = false;
-  if (getState().user) {
+  if (getState().user && !isMessagesApiConfigured()) {
     try {
       ensureDemoUnreadMessages();
     } catch (_) {
@@ -345,16 +402,10 @@ function updateChrome(route) {
 }
 
 /** t290u/t291u · header Messages unread badge (Messages always visible) */
-function refreshHeaderMsgBadge() {
+function paintHeaderMsgBadge(unread) {
   const badge = document.getElementById('headerMsgBadge');
   const link = document.getElementById('headerMsg');
   if (!badge || !link) return;
-  let unread = 0;
-  try {
-    unread = getUnreadMessageCount();
-  } catch (_) {
-    unread = 0;
-  }
   if (unread > 0) {
     const n = unread > 99 ? '99+' : String(unread);
     badge.textContent = n;
@@ -367,6 +418,22 @@ function refreshHeaderMsgBadge() {
   }
 }
 
+function refreshHeaderMsgBadge() {
+  if (isMessagesApiConfigured() && getState().user?.authSource === 'backend') {
+    messagesApi.unreadCount()
+      .then((data) => paintHeaderMsgBadge(Number(data?.unread || 0)))
+      .catch(() => paintHeaderMsgBadge(0));
+    return;
+  }
+  let unread = 0;
+  try {
+    unread = getUnreadMessageCount();
+  } catch (_) {
+    unread = 0;
+  }
+  paintHeaderMsgBadge(unread);
+}
+
 function render(route) {
   // Route changes always dismiss the drawer without stealing focus from navigation.
   setDrawer(false);
@@ -376,6 +443,7 @@ function render(route) {
   app.innerHTML = html;
   rewriteAssetUrls(app);
   entry?.bind?.(app);
+  decoratePlayCounts(app);
   updateChrome(route);
   updateRouteIdentity(route, app, document.getElementById('pikkRouteAnnouncer'));
   onRouteForPlayer(route.path);
@@ -412,11 +480,12 @@ function hideSplash() {
   if (!splash || splash.classList.contains('hide')) return;
   splash.classList.add('hide');
   markSplash();
-  setTimeout(() => splash.remove(), 500);
+  setTimeout(() => splash.remove(), SPLASH_FADE_MS);
 }
 
 /** §19 t178u — play tuning-fork chime once; swallow autoplay blocks. */
 function playSplashChime() {
+  if (!getSettings().splashChime) return;
   const el = document.getElementById('splashChime');
   if (!el) return;
   const tryPlay = () => {
@@ -464,7 +533,23 @@ function wireMessagesUnreadBadge() {
   });
 }
 
-function boot() {
+async function restoreBackendSession() {
+  if (!isPikkApiConfigured()) return;
+  const cached = getState().user;
+  if (cached && cached.authSource !== 'backend') clearAuthenticatedUser();
+  try {
+    const session = await authApi.me();
+    if (session?.user) syncRemoteAuthUser(session.user);
+  } catch (err) {
+    if (err?.status === 401) {
+      if (getState().user?.authSource === 'backend') clearAuthenticatedUser();
+      return;
+    }
+    console.warn('PIKK startup session check failed', err);
+  }
+}
+
+async function boot() {
   // Do not use a #app anchor: PIKK uses the URL hash for routing.
   document.getElementById('pikkSkipContent')?.addEventListener('click', () => {
     document.getElementById('app')?.focus();
@@ -504,25 +589,55 @@ function boot() {
     location.hash = '/notifications';
   });
 
+  await restoreBackendSession();
   onRoute(render);
   startRouter();
 
-  // Splash §19 t178u: official logo + tuning fork · hold ~3s when shown.
+  // Splash §19 t178u: official logo + tuning fork · hold 5s (t393u) when shown.
   // Subsequent visits skip via shouldShowSplash(); ?holdSplash=1 for evidence.
-  if (!shouldShowSplash() && !new URLSearchParams(location.search).has('holdSplash')) {
+  applyAppearance();
+  if ((!shouldShowSplash() || !getSettings().showSplash) && !new URLSearchParams(location.search).has('holdSplash')) {
     const splash = document.getElementById('splash');
     if (splash) splash.remove();
   } else {
-    playSplashChime();
+    // t407u: chime synced to the cursor click on the play button
+    setTimeout(() => playSplashChime(), SPLASH_CLICK_MS);
     let done = false;
     const ready = () => {
       if (done) return;
       done = true;
       hideSplash();
     };
-    // Fixed 3s hold from boot (user ask t178u); same as safety max.
-    setTimeout(ready, 3000);
+    // Fixed 5s hold (t393u) from boot (user ask t178u); same as safety max.
+    setTimeout(ready, SPLASH_HOLD_MS);
   }
 }
 
 boot();
+
+// Coming Soon / Planned tiles: tapping shows an honest "Coming Soon" toast instead of doing nothing.
+const COMING_SOON_SELECTOR = '.pikk-menu-planned, .pikk-create-tile-planned, .drawer-soon, .pikk-notif-planned, [data-coming-soon]';
+function comingSoonToast(el) {
+  const title = (el.querySelector('.pikk-menu-title, strong')?.textContent || el.firstChild?.textContent || '').trim();
+  toast(title ? `${title} · Coming Soon` : 'Coming Soon');
+}
+document.addEventListener('click', (e) => {
+  const el = e.target.closest?.(COMING_SOON_SELECTOR);
+  if (el) { e.preventDefault(); comingSoonToast(el); }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const el = e.target.closest?.(COMING_SOON_SELECTOR);
+  if (el) { e.preventDefault(); comingSoonToast(el); }
+});
+new MutationObserver(() => {
+  document.querySelectorAll(COMING_SOON_SELECTOR).forEach((el) => {
+    if (!el.hasAttribute('tabindex')) { el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button'); }
+  });
+}).observe(document.body, { childList: true, subtree: true });
+
+// t347u: a story-rail open counts as one story view (same shared counter; impressions never count).
+document.addEventListener('click', (e) => {
+  const c = e.target.closest?.('.pikk-home-circle-strip .pikk-home-circle');
+  if (c) recordPlay('story:' + (c.getAttribute('href') || c.textContent.trim()), { kind: 'story', opened: true, source: c.closest('[data-promoted]') ? 'promote' : 'organic' });
+});
