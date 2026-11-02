@@ -8,7 +8,7 @@ describe('auth', () => {
     expect(r.status).toBe(201);
     const sc = r.res.headers.get('Set-Cookie');
     expect(sc).toMatch(/^__Host-pikk_session=/);
-    expect(sc).toMatch(/HttpOnly/); expect(sc).toMatch(/Secure/); expect(sc).toMatch(/SameSite=(None|Lax|Strict)/); expect(sc).toMatch(/Path=\//);
+    expect(sc).toMatch(/HttpOnly/); expect(sc).toMatch(/Secure/); expect(sc).toMatch(/SameSite=(None|Lax|Strict)/); expect(sc).toMatch(/Path=\//); expect(sc).toMatch(/Partitioned/);
     expect(r.json.user.email).toBe('a@example.com');
     const cred = await env.DB.prepare('SELECT * FROM credentials WHERE email = ?').bind('a@example.com').first();
     expect(cred.password_hash).not.toContain('longpassword1');
