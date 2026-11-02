@@ -41,7 +41,9 @@ function peopleList(title, people) {
 
 export function renderProfile(route) {
   const viewId = route?.parts?.[1] || null;
-  const { user, posts } = getState();
+  const state = getState();
+  const user = isPikkApiConfigured() && state.user && state.user.authSource !== 'backend' ? null : state.user;
+  const { posts } = state;
   const isOwnPreview = !!(viewId && user && viewId === user.id && route?.query?.view === 'public');
   const viewingOther = !!viewId && (!user || viewId !== user.id);
 
@@ -239,6 +241,9 @@ export function renderProfile(route) {
 export function bindProfile(root) {
   if (isPikkApiConfigured()) {
     const cachedUser = getState().user;
+    if (cachedUser && cachedUser.authSource !== 'backend') {
+      clearAuthenticatedUser();
+    }
     if (!cachedUser || cachedUser.authSource === 'backend') {
       authApi.me().then((session) => {
         if (!session?.user) return;
