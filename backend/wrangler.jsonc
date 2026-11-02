@@ -19,6 +19,7 @@
   ],
   // PIKK Vault slice 3: Story expiry sweeper + delayed job retries. Cron Triggers are free on the Workers Free plan.
   // Must match PROCESSING.sweeperCron in src/media-config.js. Local test: wrangler dev --test-scheduled, then GET /__scheduled
+  // Vault cron work is OFF unless the var VAULT_CRON_ENABLED is "true" (unset by default: the trigger fires, runVaultCron no-ops).
   "triggers": { "crons": ["*/15 * * * *"] },
   "vars": {
     "ALLOWED_ORIGIN": "https://scrubdup.github.io",
