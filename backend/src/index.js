@@ -15,6 +15,9 @@ import { audit, auditStmt } from './audit.js';
 import { musicUploadRoute } from './music-upload.js';
 import { messagesRoute } from './messages.js';
 import { supportRoute } from './tickets.js';
+import { idvStatus, startIdv, idvWebhook } from './idv/index.js';
+import { getConsent, postConsent } from './idv/consent.js';
+import { contestRoute } from './contests.js';
 
 const HANDLE = /^[a-zA-Z0-9_]{3,30}$/;
 
@@ -41,6 +44,7 @@ async function route(req, env, ctx) {
 
   if (m === 'POST' && p === '/webhooks/stripe') return stripeWebhook(env, req);
   if (m === 'POST' && p === '/webhooks/age-verification') return ageVerificationWebhook(env, req);
+  { const w = m === 'POST' && p.match(/^\/webhooks\/idv\/([a-z]{2,20})$/); if (w) return idvWebhook(env, req, w[1], ip); }
 
   // CSRF: every state-changing browser request must come from the allowed origin.
   if (m !== 'GET' && m !== 'HEAD' && req.headers.get('Origin') !== env.ALLOWED_ORIGIN)
@@ -62,6 +66,12 @@ async function route(req, env, ctx) {
       media_storage: !!env.MEDIA,
     },
   });
+
+  if (m === 'GET' && p === '/verification/age') return idvStatus(env, ctx);
+  if (m === 'POST' && p === '/verification/age/start') return startIdv(env, req, ctx);
+  if (m === 'GET' && p === '/verification/age/consent') return getConsent(env, ctx);
+  if (m === 'POST' && p === '/verification/age/consent') return postConsent(env, req, ctx);
+  if (p.startsWith('/contests/') || p === '/account/gender' || p === '/admin/account/gender') { const r = await contestRoute(env, req, ctx, m, p); if (r) return r; }
 
   if (p.startsWith('/auth/')) await rateLimit(env, `auth:${ip}`, 10, 60);
   if (m === 'POST' && p === '/auth/signup') return withCookie(await signup(env, req, await readJson(req)));

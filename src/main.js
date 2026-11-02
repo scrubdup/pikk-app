@@ -67,6 +67,8 @@ import { renderMusic, bindMusic } from './pages/music.js';
 import { renderAIArtists, bindAIArtists } from './pages/ai-artists.js';
 import { renderShield, bindShield } from './pages/shield.js';
 import { renderSupport, bindSupport } from './pages/support.js';
+import { renderVerifyAge, bindVerifyAge } from './pages/verify-age.js';
+import { renderBiometricPolicy, bindBiometricPolicy } from './pages/biometric-policy.js';
 import { renderSupportStaff, bindSupportStaff } from './pages/support-staff.js';
 import { renderCreatorReview, bindCreatorReview } from './pages/creator-review.js';
 import { renderMerch, bindMerch } from './pages/merch.js';
@@ -137,6 +139,8 @@ const ROUTES = {
   '/ai-artists': { render: renderAIArtists, bind: bindAIArtists },
   '/shield': { render: renderShield, bind: bindShield },
   '/support': { render: renderSupport, bind: bindSupport },
+  '/verify-age': { render: renderVerifyAge, bind: bindVerifyAge },
+  '/biometric-policy': { render: renderBiometricPolicy, bind: bindBiometricPolicy },
   '/support-staff': { render: renderSupportStaff, bind: bindSupportStaff },
   '/creator-review': { render: renderCreatorReview, bind: bindCreatorReview },
   '/vault': { render: renderMusic, bind: bindMusic },

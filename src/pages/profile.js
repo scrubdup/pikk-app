@@ -12,6 +12,7 @@ import {
   setAdminRole,
 } from '../store.js';
 import { esc, toast, shellPage } from '../ui.js';
+import { GENDER_LABELS, genderOptionsHtml } from '../../backend/src/genders.js';
 import { navigate } from '../router.js';
 import { profileRouteHref } from '../profile-links.js';
 import { authApi, isPikkApiConfigured } from '../api/auth-client.js';
@@ -133,6 +134,7 @@ export function renderProfile(route) {
         <div class="field"><label>Username</label><input id="signupHandle" autocomplete="username" maxlength="30" placeholder="3–30 letters, numbers or _" /></div>
         <div class="field"><label>Email</label><input id="signupEmail" type="email" autocomplete="email" /></div>
         <div class="field"><label>Password</label><input id="signupPassword" type="password" autocomplete="new-password" minlength="10" placeholder="10+ characters, including a letter and number" /></div>
+        <div class="field"><label for="signupGender">Gender</label><select id="signupGender" required>${genderOptionsHtml()}</select><small class="muted">Chosen once at signup and cannot be changed later.</small></div>
         <button class="btn primary block" id="signupAccountBtn">Create PIKK account</button>
       </div>
       <div class="card">
@@ -163,7 +165,7 @@ export function renderProfile(route) {
   const followers = listFollowers(user.id);
   const following = listFollowing(user.id);
   const m = user.memberships || {};
-  const body = `
+  let body = `
     <section class="pikk-profile-cover" aria-label="Your PIKK profile">
       <div class="pikk-profile-cover-inner">
         <span class="pikk-profile-cover-kicker">PIKK · MY PROFILE</span>
@@ -237,10 +239,36 @@ export function renderProfile(route) {
       </div>
     </div>
   `;
+  const genderCard = `<div class="card" id="accountGenderCard">
+      <h3>Account gender</h3>
+      <p id="accountGenderValue"><span class="chip">Loading…</span></p>
+      <p class="muted" style="font-size:12px">Chosen at signup and saved on the PIKK server. It cannot be changed. If it was entered by mistake, contact <a href="#/support">Support</a>.</p>
+      <div id="accountGenderLegacy" hidden>
+        <p class="muted" style="font-size:12px">Your account was created before gender was asked at signup. You can set it once; it locks immediately.</p>
+        <div class="row wrap" style="gap:8px"><select id="accountGender" aria-label="Account gender">${genderOptionsHtml()}</select><button type="button" class="btn" id="saveAccountGender">Set once</button></div>
+      </div></div>`;
+  body += genderCard;
   return shellPage('Profile', body);
 }
 
 export function bindProfile(root) {
+  import('../api/verification-client.js').then(async (api) => {
+    const out = root.querySelector('#accountGenderValue');
+    if (!out) return;
+    if (!api.isVerificationApiConfigured()) { out.innerHTML = '<span class="chip">Account server not connected</span>'; return; }
+    try {
+      const g = await api.verificationApi.getGender();
+      if (g?.gender) out.innerHTML = `<span class="chip">${esc(GENDER_LABELS[g.gender] || g.gender)} · locked</span>`;
+      else { out.innerHTML = '<span class="chip">Not set</span>'; root.querySelector('#accountGenderLegacy').hidden = false; }
+    } catch (_) { out.innerHTML = '<span class="chip">Sign in to see</span>'; }
+  });
+  root.querySelector('#saveAccountGender')?.addEventListener('click', async () => {
+    const g = root.querySelector('#accountGender')?.value;
+    if (!g) return;
+    if (!confirm('Gender can only be set once and cannot be changed. Continue?')) return;
+    try { const api = await import('../api/verification-client.js'); await api.verificationApi.setGender(g); toast('Saved · locked'); refresh('#/profile'); }
+    catch (err) { toast(err?.code === 'gender_locked' ? 'Gender is locked. Contact Support if it was entered by mistake.' : err?.code === 'api_not_configured' ? 'Account server not connected yet' : (err?.message || 'Could not save')); }
+  });
   if (isPikkApiConfigured()) {
     const cachedUser = getState().user;
     if (cachedUser && cachedUser.authSource !== 'backend') {
@@ -264,8 +292,11 @@ export function bindProfile(root) {
     }
   }
   root.querySelector('#signupAccountBtn')?.addEventListener('click', async () => {
+    const gender = root.querySelector('#signupGender')?.value || '';
+    if (!gender) { toast('Choose your gender. It cannot be changed later.'); return; }
     try {
       const result = await authApi.signup({
+        gender,
         displayName: root.querySelector('#signupDisplay')?.value?.trim(),
         handle: root.querySelector('#signupHandle')?.value?.trim(),
         email: root.querySelector('#signupEmail')?.value?.trim(),

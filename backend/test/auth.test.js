@@ -4,7 +4,7 @@ import { call, newUser, freshIp, ORIGIN } from './helpers.js';
 
 describe('auth', () => {
   it('signup sets a hardened session cookie and stores only a PBKDF2 hash', async () => {
-    const r = await call('POST', '/auth/signup', { body: { email: 'A@Example.com', password: 'longpassword1', handle: 'alice_1', display_name: 'Alice' }, ip: freshIp() });
+    const r = await call('POST', '/auth/signup', { body: { email: 'A@Example.com', password: 'longpassword1', handle: 'alice_1', display_name: 'Alice', gender: 'female' }, ip: freshIp() });
     expect(r.status).toBe(201);
     const sc = r.res.headers.get('Set-Cookie');
     expect(sc).toMatch(/^__Host-pikk_session=/);
@@ -18,7 +18,7 @@ describe('auth', () => {
   });
 
   it('rejects invalid input with standard JSON errors', async () => {
-    const r = await call('POST', '/auth/signup', { body: { email: 'nope', password: 'short', handle: 'x', display_name: '' }, ip: freshIp() });
+    const r = await call('POST', '/auth/signup', { body: { email: 'nope', password: 'short', handle: 'x', display_name: '', gender: 'female' }, ip: freshIp() });
     expect(r.status).toBe(422);
     expect(r.json.error.code).toBe('validation_failed');
     expect(Object.keys(r.json.error.details).sort()).toEqual(['display_name', 'email', 'handle', 'password']);
@@ -29,7 +29,7 @@ describe('auth', () => {
 
   it('rejects duplicate email/handle', async () => {
     const u = await newUser();
-    const r = await call('POST', '/auth/signup', { body: { email: u.email, password: 'another pass 9', handle: 'other_handle', display_name: 'X' }, ip: freshIp() });
+    const r = await call('POST', '/auth/signup', { body: { email: u.email, password: 'another pass 9', handle: 'other_handle', display_name: 'X', gender: 'female' }, ip: freshIp() });
     expect(r.status).toBe(409);
   });
 
@@ -58,7 +58,7 @@ describe('auth', () => {
   });
 
   it('verification tokens are single-use', async () => {
-    const r = await call('POST', '/auth/signup', { body: { email: 'v@example.com', password: 'verify me 123', handle: 'verify_me', display_name: 'V' }, ip: freshIp() });
+    const r = await call('POST', '/auth/signup', { body: { email: 'v@example.com', password: 'verify me 123', handle: 'verify_me', display_name: 'V', gender: 'female' }, ip: freshIp() });
     const t = r.json.verification.token;
     expect((await call('POST', '/auth/verify', { body: { token: t }, ip: freshIp() })).status).toBe(200);
     const again = await call('POST', '/auth/verify', { body: { token: t }, ip: freshIp() });
@@ -99,7 +99,7 @@ describe('auth', () => {
 
   it('resends verification for an authenticated unverified user and invalidates the old token', async () => {
     const signup = await call('POST', '/auth/signup', {
-      body: { email: 'resend@example.com', password: 'resend pass 123', handle: 'resend_user', display_name: 'Resend User' },
+      body: { email: 'resend@example.com', password: 'resend pass 123', handle: 'resend_user', display_name: 'Resend User', gender: 'female' },
       ip: freshIp(),
     });
     expect(signup.status).toBe(201);
