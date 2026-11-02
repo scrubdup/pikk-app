@@ -1,5 +1,5 @@
 /* polish-profile (t221u): even action grids and unclipped fields at 360/390/430. */
 html body .pikk-profile-creator-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-html body .pikk-profile-creator-actions .btn { width: 100%; justify-content: center; text-align: center; min-height: 40px; padding: 8px 6px; font-size: 13px; white-space: nowrap; margin: 0; }
+html body .pikk-profile-creator-actions .btn { width: 100%; justify-content: center; text-align: center; min-height: 44px; padding: 8px 6px; font-size: 13px; white-space: nowrap; margin: 0; }
 html body #app .field input::placeholder { color: #8a919c; }
 html body #app .field input { text-overflow: ellipsis; }

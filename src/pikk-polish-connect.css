@@ -14,3 +14,5 @@ html body #app #connectMonkey .btn:disabled, html body #app .connect-multistream
   border: 1px solid rgba(47, 107, 255, .55) !important;
   box-shadow: inset 0 -2px 0 rgba(255, 49, 55, .55) !important; color: #c0c6cf !important; opacity: .82;
 }
+/* Checker #363: 44px tap targets on Start + secondary controls. */
+html body #app #connectMonkey :is(.connect-btn-start, .connect-btn-next, .connect-btn-end, .connect-controls .btn) { min-height: 44px; }
