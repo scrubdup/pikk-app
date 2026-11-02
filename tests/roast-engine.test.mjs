@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRoastInvite, respondRoastInvite, createRoastMatch, tickRoastMatch, castRoastVote, castRematchVote, sendRoastTestGift, recordRoastReport, ROAST_APPROVED_TIMINGS as TIMINGS, ROAST_REMATCH_TEST_TIMING_OWNER_VERIFICATION_NEEDED as REMATCH, ROAST_APPROVED_RULES as RULES, startRematch, ROUND_SECONDS, VOTE_SECONDS } from '../src/roast-engine.js';
+import { createRoastInvite, respondRoastInvite, createRoastMatch, tickRoastMatch, castRoastVote, castRematchVote, sendRoastTestGift, recordRoastReport, ROAST_APPROVED_TIMINGS as TIMINGS, ROAST_VOTE_TEST_TIMING_OWNER_VERIFICATION_NEEDED as VOTEFLAG, roastVoteTurnout, ROAST_REMATCH_TEST_TIMING_OWNER_VERIFICATION_NEEDED as REMATCH, ROAST_APPROVED_RULES as RULES, startRematch, ROUND_SECONDS, VOTE_SECONDS } from '../src/roast-engine.js';
 const advance = (m, n) => { for (let i = 0; i < n; i++) m = tickRoastMatch(m); return m; };
 const V = ['v1', 'v2', 'v3'];
 const accepted = () => respondRoastInvite(createRoastInvite({ inviterId: 'a', inviteeId: 'b', consentAccepted: true }), { accept: true, consentAccepted: true });
@@ -8,7 +8,8 @@ const newMatch = () => createRoastMatch(accepted(), { eligibleViewerIds: V });
 const playRound = (m, votes) => { m = advance(m, ROUND_SECONDS); for (const [c, v] of votes) m = castRoastVote(m, c, v); return advance(m, VOTE_SECONDS); };
 
 test('approved timings and rules are separate from the still-unverified rematch window', () => {
-  assert.deepEqual({ ...TIMINGS }, { roundSeconds: 60, voteSeconds: 10, baseRounds: 3 });
+  assert.deepEqual({ ...TIMINGS }, { roundSeconds: 60, baseRounds: 3 });
+  assert.deepEqual({ ...VOTEFLAG }, { voteSeconds: 10 }); assert.equal(VOTE_SECONDS, VOTEFLAG.voteSeconds); assert.ok(Object.isFrozen(VOTEFLAG));
   assert.deepEqual({ ...REMATCH }, { rematchSeconds: 10 });
   assert.deepEqual({ ...RULES }, { tiebreakerRounds: 1, contestantsMayVote: false, rematchRequiresAllContestants: true });
   assert.ok(Object.isFrozen(TIMINGS) && Object.isFrozen(REMATCH) && Object.isFrozen(RULES));
@@ -184,4 +185,34 @@ test('tag-team rematch requires every member', () => {
   for (let r = 0; r < 3; r++) d = playRound(d, [[1, 'v1']]);
   d = castRematchVote(d, false, 'a2');
   assert.equal(d.rematch, 'declined');
+});
+
+test('vote turnout counts eligible room viewers minus contestants', () => {
+  const m0 = createRoastMatch(accepted(), { eligibleViewerIds: ['v1', 'v2', 'v3', 'a', 'v1'] });
+  assert.deepEqual(roastVoteTurnout(m0), { voted: 0, eligible: 3 }, 'contestant a and duplicate v1 removed');
+  let m = advance(m0, ROUND_SECONDS);
+  m = castRoastVote(m, 0, 'v1'); m = castRoastVote(m, 0, 'v1'); m = castRoastVote(m, 1, 'v3');
+  assert.deepEqual(roastVoteTurnout(m), { voted: 2, eligible: 3 });
+  m = advance(m, VOTE_SECONDS + ROUND_SECONDS);
+  assert.deepEqual(roastVoteTurnout(m), { voted: 0, eligible: 3 }, 'resets each round');
+  const t = createRoastMatch(allAccept(tagInvite()), { eligibleViewerIds: ['v1', 'v2', 'a1', 'b2'] });
+  assert.deepEqual(roastVoteTurnout(t), { voted: 0, eligible: 2 });
+});
+test('engine reads ROAST_APPROVED_RULES: contestants cannot vote', () => {
+  let m = advance(createRoastMatch(accepted(), { eligibleViewerIds: V }), ROUND_SECONDS);
+  m = castRoastVote({ ...m, eligibleViewerIds: [...m.eligibleViewerIds, 'a'] }, 0, 'a');
+  assert.deepEqual(m.votes, [0, 0], 'contestant rejected even if smuggled into the eligible list');
+  let open = advance(createRoastMatch(accepted(), { eligibleViewerIds: [...V, 'a'], rules: { ...RULES, contestantsMayVote: true } }), ROUND_SECONDS);
+  open = castRoastVote(open, 0, 'a');
+  assert.deepEqual(open.votes, [1, 0], 'flipping the rule changes behavior, proving it is read');
+});
+test('engine reads ROAST_APPROVED_RULES: tiebreaker round count', () => {
+  const tieAll = (m, n) => { for (let i = 0; i < n; i++) m = playRound(m, [[0, 'v1'], [1, 'v2']]); return m; };
+  const one = tieAll(newMatch(), 4);
+  assert.equal(one.result, 'tie'); assert.equal(one.tiebreakersPlayed, 1);
+  const none = tieAll(createRoastMatch(accepted(), { eligibleViewerIds: V, rules: { ...RULES, tiebreakerRounds: 0 } }), 3);
+  assert.equal(none.result, 'tie'); assert.equal(none.round, 3);
+  let two = tieAll(createRoastMatch(accepted(), { eligibleViewerIds: V, rules: { ...RULES, tiebreakerRounds: 2 } }), 4);
+  assert.equal(two.phase, 'round'); assert.equal(two.round, 5);
+  two = tieAll(two, 1); assert.equal(two.result, 'tie'); assert.equal(two.tiebreakersPlayed, 2);
 });
