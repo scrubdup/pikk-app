@@ -238,7 +238,7 @@ export function bindShop(root) {
       // to the selected category so users can keep browsing without starting over.
       const selected = [...document.querySelectorAll('.shop-chip')]
         .find((chip) => chip.dataset.cat === activeCat);
-      selected?.focus({ preventScroll: true });
+      selected?.focus();
     });
   });
 
