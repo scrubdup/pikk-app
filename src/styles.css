@@ -4998,3 +4998,42 @@ html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary > span:last
     padding-bottom: calc(var(--tab-h) + 14px);
   }
 }
+
+
+/* t-owner-20261101b — make Home official-video treatment visibly match top chrome. */
+html body .pikk-home-media-card {
+  border: 2px solid #2f6bff !important;
+  box-shadow:
+    0 0 0 1px rgba(47,107,255,.75),
+    0 0 18px rgba(47,107,255,.58),
+    0 0 8px rgba(255,49,55,.22),
+    0 7px 18px rgba(0,0,0,.62) !important;
+}
+html body .pikk-home-media-badge {
+  background: #ef252c !important;
+  border: 2px solid #2f6bff !important;
+  color: #fff !important;
+  box-shadow:
+    0 0 0 1px rgba(47,107,255,.75),
+    0 0 12px rgba(47,107,255,.72),
+    0 0 9px rgba(255,49,55,.50) !important;
+  text-shadow: 0 1px 2px #000;
+}
+html body .pikk-home-media-title {
+  color: #fff !important;
+  font-weight: 900;
+  text-shadow:
+    0 2px 3px #000,
+    0 0 5px rgba(255,255,255,.35),
+    0 0 8px rgba(47,107,255,.42),
+    0 0 5px rgba(255,49,55,.22) !important;
+}
+@media (max-width: 560px) {
+  html body .pikk-home-media-card { border-width: 2px !important; }
+  html body .pikk-home-media-badge { border-width: 2px !important; }
+  html body .pikk-home-media-title,
+  html body .pikk-home-media-card.is-featured .pikk-home-media-title {
+    color: #fff !important;
+    font-weight: 900;
+  }
+}
