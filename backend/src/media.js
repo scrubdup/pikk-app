@@ -8,7 +8,7 @@ import { contentRoute } from './media-content.js';
 import { NOT_BLOCKED_SQL } from './blocks.js';
 import { MEDIA_LIMITS, STORY_TTL_HOURS, ACCESS_POLICIES, UPLOAD_RATE, VAULT_VERSION } from './media-config.js';
 import { sniff } from './magic.js';
-import { vaultKey, vaultDelete, assertVaultKey } from './vault-keys.js';
+import { vaultKey, vaultDelete, assertVaultKeyFor } from './vault-keys.js';
 
 const ID = '(med_[A-Za-z0-9_-]{8,64})';
 const now = () => new Date().toISOString();
@@ -66,7 +66,7 @@ async function ownedMedia(env, ctx, id) {
   const s = requireVerified(ctx);
   const r = await env.DB.prepare(`SELECT * FROM media WHERE id=? AND owner_id=? AND deleted_at IS NULL`).bind(id, s.user.id).first();
   if (!r) throw notFound(); // never reveal other users' uploads
-  assertVaultKey(r.object_key); // never touch a non-vault/ key (shared bucket with music/)
+  assertVaultKeyFor(r.object_key, r); // key must be vault/<media_type>/<owner_id>/<id> of THIS row
   return { s, r };
 }
 
