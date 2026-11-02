@@ -1,0 +1,37 @@
+name: PIKK Explore Search and Clear Visual Review
+on:
+  pull_request:
+    paths:
+      - 'src/pages/explore.js'
+      - 'tests/pikk-explore-clear.test.mjs'
+      - 'scripts/visual-review-explore-flow.mjs'
+      - '.github/workflows/pikk-explore-visual.yml'
+permissions:
+  contents: read
+jobs:
+  screenshots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies and Chromium
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Run regression tests and build
+        run: |
+          npm test
+          npm run build
+      - name: Verify Explore searches and Clear on mobile and desktop
+        run: node scripts/visual-review-explore-flow.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pikk-explore-search-clear-visual-review
+          path: visual-review/explore-flow-*.png
+          if-no-files-found: warn

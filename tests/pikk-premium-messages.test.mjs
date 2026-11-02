@@ -17,8 +17,13 @@ test('inbox has functional search, quick chat, group and empty search results', 
     'pikkNewChatTop', 'pikkGroupTop', 'pikkMsgNoResults', 'data-open-thread', 'dataset.search']) {
     assert.ok(messages.includes(token), token);
   }
-  assert.match(messages, /row\.hidden = !!query/);
-  assert.match(messages, /empty\.hidden = !query \|\| shown > 0/);
+  assert.match(messages, /row\.hidden = !\(matchesSearch && matchesUnread\)/);
+  assert.match(messages, /empty\.hidden = shown > 0/);
+  assert.match(messages, /pikkMsgUnreadOnly/);
+  assert.match(messages, /data-unread/);
+  assert.match(messages, /row\.dataset\.unread === 'true'/);
+  assert.match(messages, /No unread conversations/);
+  assert.match(css, /\.pikk-msg-tools input\[type="checkbox"\]/);
   assert.match(css, /\.msg-inbox \.msg-thread-row\[hidden\]\{display:none!important\}/);
   assert.match(css, /\.pikk-msg-no-results\[hidden\]\{display:none!important\}/);
 });

@@ -1,0 +1,30 @@
+import { defineConfig } from 'vitest/config';
+import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-plugin';
+import path from 'node:path';
+
+export default defineConfig(async () => {
+  const migrations = await readD1Migrations(path.join(import.meta.dirname, 'migrations'));
+  return {
+    plugins: [cloudflareTest({
+      wrangler: { configPath: './wrangler.jsonc' },
+      miniflare: {
+        // Slice 4: isolated restore target (test-only; never in wrangler.jsonc).
+        d1Databases: ['RESTORE_DB'],
+        // Local-only R2 (Miniflare in-memory). Deliberately NOT in wrangler.jsonc; see comment there.
+        r2Buckets: { MEDIA: 'pikk-media-local-placeholder', MEDIA_BACKUP: 'pikk-media-backup-local-placeholder', RESTORE_MEDIA: 'RESTORE_MEDIA' },
+        bindings: {
+          // PIKK Vault (test-only key; kept at the top so it never touches lines other PRs append to).
+          VAULT_SIGNING_KEY: 'vault_local_test_only_not_a_real_signing_key_0123456789',
+          TEST_MIGRATIONS: migrations,
+          EXPOSE_VERIFY_TOKEN: 'true',
+          // Forwarded so migration-order.test.js can relax the no-gaps rule on PR CI runs.
+          GITHUB_BASE_REF: process.env.GITHUB_BASE_REF || '',
+          STRIPE_WEBHOOK_SECRET: 'whsec_local_test_only_not_a_real_secret',
+          AGE_VERIFY_WEBHOOK_SECRET: 'agev_local_test_only_not_a_real_secret',
+          OWNER_BOOTSTRAP_TOKEN: 'owner_bootstrap_local_test_only_not_a_real_secret_0123456789',
+        },
+      },
+    })],
+    test: { setupFiles: ['./test/apply-migrations.js'] },
+  };
+});

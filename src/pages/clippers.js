@@ -15,8 +15,24 @@ const STATUS_CHIP = {
 
 export function renderClippers() {
   const { clipperApps, user } = getState();
+  const total = clipperApps.length;
+  const approved = clipperApps.filter(a => a.status === 'approved').length;
+  const pending = clipperApps.filter(a => a.status === 'pending').length;
   const form = `
-    <div class="card">
+    <div class="clippers-studio">
+      <header class="clippers-hero">
+        <div class="clippers-hero-label">PIKK CREATOR STUDIO <span aria-hidden="true">◆</span> CLIPPER PROGRAM</div>
+        <h2>Turn your edits into opportunities.</h2>
+        <p>Apply to become a PIKK Clipper, share your work and track your application in one place.</p>
+        <div class="clippers-hero-actions"><a class="btn primary" href="#clipper-application">Apply to clip</a><a class="btn ghost" href="#clipper-submissions">My applications</a></div>
+        <div class="clippers-hero-disclaimer">TEST MODE · Applications saved on this device · No paid campaigns or payouts active</div>
+      </header>
+      <section class="clippers-stats" aria-label="Application overview">
+        <div><span>Applications</span><strong>${total}</strong><small>On this device</small></div>
+        <div><span>Pending review</span><strong>${pending}</strong><small>Demo review queue</small></div>
+        <div><span>Approved</span><strong>${approved}</strong><small>Demo status only</small></div>
+      </section>
+    <div class="card clippers-panel" id="clipper-application">
       <div class="home-sell-title-row">
         <h3 style="margin:0">Clipper application</h3>
         <span class="badge-cs badge-cs-inline" id="clippers-coming-soon">Coming Soon</span>
@@ -50,7 +66,7 @@ export function renderClippers() {
       <button class="btn primary block" id="cSubmit">Submit application</button>
     </div>
 
-    <div class="card">
+    <div class="card clippers-panel" id="clipper-submissions">
       <h3>Submissions (this device)</h3>
       ${
         clipperApps.length
@@ -76,6 +92,7 @@ export function renderClippers() {
           : '<p class="muted">None yet.</p>'
       }
       <p class="muted" style="font-size:12px;margin-top:8px">Demo admin: approve / reject here or on <a href="#/admin" style="color:var(--sk)">Admin</a>. Signed in as ${esc(user?.username || 'guest')}.</p>
+    </div>
     </div>
   `;
   return shellPage('Clippers', form, {

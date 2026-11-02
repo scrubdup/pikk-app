@@ -1,18 +1,25 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { CREATE_MENU_ITEMS } from '../src/create-menu.js';
+import { MUSIC_MENU_ITEMS } from '../src/music-menu.js';
+import { SECTION_MENU_ITEMS } from '../src/section-menus.js';
+
+// The app uses local/system fonts; avoid a flaky Chromium screenshot wait on
+// unrelated pending web fonts (e.g. third-party embedded media).
+process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = '1';
 
 // Checks the owner's screenshot requirement: ALL seven bottom tabs use the
 // existing Create dialog's actual grid, outlined icons, tile and cancel CSS.
 // These are real browser interactions, not static string checks.
 const sections = [
-  ['create', 'pikkCreateMenu', 30],
-  ['music', 'pikkMusicMenu', 5],
-  ['videos', 'pikkVideosMenu', 4],
-  ['connect', 'pikkConnectMenu', 5],
-  ['dating', 'pikkDatingMenu', 4],
-  ['games', 'pikkGamesMenu', 2],
-  ['shop', 'pikkShopMenu', 4],
+  ['create', 'pikkCreateMenu', CREATE_MENU_ITEMS.length],
+  ['music', 'pikkMusicMenu', MUSIC_MENU_ITEMS.length],
+  ['videos', 'pikkVideosMenu', SECTION_MENU_ITEMS.videos.length],
+  ['connect', 'pikkConnectMenu', SECTION_MENU_ITEMS.connect.length],
+  ['dating', 'pikkDatingMenu', SECTION_MENU_ITEMS.dating.length],
+  ['games', 'pikkGamesMenu', SECTION_MENU_ITEMS.games.length],
+  ['shop', 'pikkShopMenu', SECTION_MENU_ITEMS.shop.length],
 ];
 const expectedTabs = ['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop'];
 await mkdir('visual-review', { recursive: true });
@@ -84,6 +91,15 @@ try {
         await page.screenshot({ path: 'visual-review/tabs-' + device + '-create-bottom.png' });
         await sheet.evaluate(el => { el.scrollTop = 0; });
       }
+      if (name === 'games') {
+        assert.equal(await panel.locator('.pikk-menu-planned[aria-disabled="true"]').count(), 14, '14 upcoming games are visibly disabled');
+        assert.equal(await panel.locator('.pikk-menu-planned[href]').count(), 0, 'planned games cannot masquerade as links');
+        await sheet.evaluate(el => { el.scrollTop = el.scrollHeight; });
+        await panel.getByText('PIKK Cup Pong', { exact: true }).scrollIntoViewIfNeeded();
+        assert.equal(await panel.getByText('PIKK Cup Pong', { exact: true }).isVisible(), true, 'last planned game is accessible');
+        await page.screenshot({ path: 'visual-review/tabs-' + device + '-games-bottom.png' });
+        await sheet.evaluate(el => { el.scrollTop = 0; });
+      }
       await sheet.locator('.pikk-menu-cancel').click();
       await panel.waitFor({ state: 'hidden' });
       assert.equal(await trigger.getAttribute('aria-expanded'), 'false', name + ' cancel expanded');
@@ -100,10 +116,25 @@ try {
       await page.waitForFunction(expected => location.hash === expected, firstHref);
       assert.equal(await page.locator('#tabbar a').count(), 7, 'navigation preserved after route');
     }
+    // The Create menu must navigate to the real, explicitly local-only Shield prototype.
+    await page.evaluate(() => { location.hash = '#/home'; });
+    await page.locator('#tabbar a[href="#/create"]').click();
+    const shieldLink = page.locator('#pikkCreateMenu a[href="#/shield"]');
+    await shieldLink.scrollIntoViewIfNeeded();
+    assert.equal(await shieldLink.getByText('Artist Protection').isVisible(), true);
+    await shieldLink.click();
+    await page.waitForFunction(() => location.hash === '#/shield');
+    assert.equal(await page.locator('#pikkCreateMenu').isHidden(), true);
+    await page.locator('.shield-hero').waitFor({ state: 'visible', timeout: 10000 });
+    assert.equal(await page.locator('.shield-hero').isVisible(), true);
+    assert.match(await page.locator('.shield-notice').innerText(), /No upload scanning, automated fingerprinting/i);
+    assert.equal(await page.locator('#dbs-sticky-player').isVisible(), true);
+    assert.equal(await page.locator('#tabbar a').count(), 7);
+    await page.screenshot({ path: 'visual-review/tabs-' + device + '-shield-route.png' });
     assert.deepEqual(errors, [], device + ' uncaught errors');
     await context.close();
   }
-  console.log('PASS: 7 Create-matched menus x 2 viewports, 16 screenshots, SVG icons, 3-column grids, Cancel, Escape, route navigation, logo/player/nav and no overflow.');
+  console.log('PASS: 7 Create-matched menus x 2 viewports, 18 screenshots, SVG icons, 3-column grids, Cancel, Escape, route navigation, logo/player/nav and no overflow.');
 } finally {
   await browser.close();
 }

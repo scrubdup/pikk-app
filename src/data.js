@@ -464,9 +464,9 @@ export const SHOP_CATEGORIES = [
 ];
 
 export const MEMBERSHIPS = [
-  { id: 'skeet', name: 'Skeet+', price: 3.99, blurb: 'Early DatBoiSkeet releases · basic Vault' },
+  { id: 'skeet', name: 'PIKK+', price: 3.99, blurb: 'Early releases · basic Vault' },
   { id: 'backstage', name: 'Backstage', price: 7.99, blurb: 'Deeper Vault · studio lives · listening rooms' },
-  { id: 'inner', name: 'Inner Circle', price: 14.99, blurb: 'VIP drops · private Q&As · Inner Circle rooms' },
+  { id: 'inner', name: 'Inner Circle', price: 12.99, blurb: 'VIP drops · private Q&As · Inner Circle rooms' },
 ];
 
 /** Quick-pick images for the Posts composer (real assets only) */
@@ -482,7 +482,7 @@ export const POST_IMAGE_PRESETS = [
 export const HOME_SECTIONS = [
   { route: '/explore', title: 'Explore', blurb: 'Discover DatBoiSkeet · creators · drops' },
   { route: '/music', title: 'Music', blurb: 'Long Story Short · Ladies Only · Vault' },
-  { route: '/videos', title: 'Videos', blurb: 'Official DatBoiSkeet MVs' },
+  { route: '/videos', title: 'Videos', blurb: 'Official music videos' },
   { route: '/posts', title: 'Posts', blurb: 'Text · Picture · Short · Video' },
   { route: '/shorts', title: 'Shorts', blurb: 'Under Posts · quick clips' },
   { route: '/live', title: 'Live', blurb: 'Go live · TEST MODE demo' },

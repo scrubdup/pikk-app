@@ -51,3 +51,14 @@ test('Create menu uses approved icon system and grouped accessible scrolling dia
   assert.match(styles, /#pikkCreateMenu \.pikk-create-sheet\{max-height:min\(88dvh,850px\);overflow-y:auto/);
   assert.match(styles, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
 });
+
+
+test('Artist Protection opens the existing PIKK Shield local-draft route without promising live enforcement', () => {
+  const shield = CREATE_MENU_ITEMS.find(item => item.title === 'Artist Protection');
+  assert.equal(shield.href, '#/shield');
+  assert.match(shield.detail, /local rights drafts/i);
+  assert.match(shield.detail, /TEST MODE/);
+  assert.match(main, /'\/shield':\s*\{/);
+  const support = CREATE_MENU_ITEMS.find(item => item.title === 'AI Support');
+  assert.equal(support.href, undefined, 'AI Support remains planned until a real service exists');
+});

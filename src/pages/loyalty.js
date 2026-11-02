@@ -78,20 +78,22 @@ export function renderLoyalty() {
   return shellPage(
     'Loyalty Club',
     `
-    <div class="card">
-      <p class="kicker">§28 · Recognition beyond spending</p>
-      <h2 style="margin:0 0 6px">Loyalty Club</h2>
+    <div class="pikk-loyalty-studio">
+    <section class="pikk-loyalty-hero" aria-label="PIKK Loyalty rewards overview">
+      <p class="kicker">PIKK REWARDS · RECOGNITION BEYOND SPENDING</p>
+      <h2>Earn your place. <span>Get recognized.</span></h2>
       <p class="muted" style="margin:0 0 10px">Badges for listening, attending lives, and Fan Club participation — <strong>not purchase-only</strong>. Paid gifts are never the only loyalty signal. Anti-farming cooldowns + daily caps apply (TEST MODE).</p>
-      <div class="row wrap" style="gap:8px;align-items:center">
-        <span style="font-size:28px;font-weight:900">${L.points}</span>
+      <div class="pikk-loyalty-stats" aria-label="Your demo loyalty totals">
+        <span class="pikk-loyalty-points">${L.points}</span>
         <span class="muted">points</span>
         <span class="chip">${(L.badges || []).length} badges</span>
         <span class="chip">TEST MODE</span>
       </div>
       ${!user ? `<p class="chip" style="margin-top:10px">Sign in to earn · local demo</p>` : ''}
-    </div>
+      <div class="pikk-loyalty-hero-mark" aria-hidden="true">★</div>
+    </section>
 
-    <div class="card">
+    <div class="card pikk-loyalty-panel pikk-loyalty-actions">
       <h3 style="margin:0 0 8px">Demo actions</h3>
       <p class="muted" style="margin:0 0 10px;font-size:12px">Healthy participation stubs — not a spend ladder.</p>
       <div class="row wrap" style="gap:8px">
@@ -109,7 +111,7 @@ export function renderLoyalty() {
       </div>
     </div>
 
-    <div class="card">
+    <div class="card pikk-loyalty-panel pikk-loyalty-privacy">
       <h3 style="margin:0 0 6px">Visibility</h3>
       <p class="muted" style="margin:0 0 10px;font-size:12px">${esc(visibleNote)}</p>
       <label class="row" style="gap:8px;align-items:center;cursor:pointer">
@@ -118,19 +120,20 @@ export function renderLoyalty() {
       </label>
     </div>
 
-    <div class="card">
+    <div class="card pikk-loyalty-panel pikk-loyalty-badges">
       <h3 style="margin:0 0 10px">Badges</h3>
-      <div style="display:grid;gap:10px">${badgeCards}</div>
+      <div class="pikk-loyalty-badge-grid">${badgeCards}</div>
     </div>
 
-    <div class="card">
+    <div class="card pikk-loyalty-panel pikk-loyalty-activity">
       <h3 style="margin:0 0 8px">Recent activity</h3>
       ${history}
     </div>
 
-    <div class="card">
+    <div class="card pikk-loyalty-panel pikk-loyalty-roadmap">
       <h3 style="margin:0 0 6px">Admin-ish rollup · optional</h3>
       <p class="muted" style="margin:0;font-size:12px">Future Admin Fan Loyalty dashboard (plan § Live Gift Effects) can list tenure, attendance, and opted-in history. This page stays fan-facing; no purchase-only ranking.</p>
+    </div>
     </div>
     `,
     { lead: 'Recognition for healthy participation · DEMO.', badge: 'Phase 2 demo' }

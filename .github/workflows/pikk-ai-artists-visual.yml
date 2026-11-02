@@ -1,0 +1,37 @@
+name: PIKK AI Artists Visual Review
+on:
+  pull_request:
+    paths:
+      - 'src/ai-artists.js'
+      - 'src/pages/ai-artists.js'
+      - 'src/ai-artists.css'
+      - 'src/pages/music.js'
+      - 'src/main.js'
+      - 'tests/pikk-ai-artists.test.mjs'
+      - 'scripts/visual-review-ai-artists.mjs'
+      - '.github/workflows/pikk-ai-artists-visual.yml'
+jobs:
+  screenshots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install browser
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Build PIKK
+        run: npm run build
+      - name: Mobile and desktop visual and demo checks
+        run: node scripts/visual-review-ai-artists.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pikk-ai-artists-visual-review
+          path: visual-review/ai-artists-*.png
+          if-no-files-found: warn

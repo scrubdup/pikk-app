@@ -13,6 +13,7 @@ import {
 import { POST_IMAGE_PRESETS } from '../data.js';
 import { esc, toast, timeAgo, shellPage } from '../ui.js';
 import { navigate } from '../router.js';
+import { postsApi, isPostsApiConfigured } from '../api/posts-client.js';
 
 function refresh() {
   navigate('#/posts');
@@ -65,7 +66,45 @@ function hotStripHtml() {
   </section>`;
 }
 
+
+export function renderPersistentComments(comments=[]) {
+  if(!comments.length) return '<p class="muted">No comments yet.</p>';
+  return comments.map(c=>`<div class="comment"><strong>@${esc(c.author||'user')}</strong> ${esc(c.body)}<br/><small class="muted">${new Date(c.created_at).toLocaleString()}</small></div>`).join('');
+}
+
+export function renderPersistentPosts(posts=[], { focusId='', currentHandle='' } = {}) {
+  if (!posts.length) return '<div class="card muted">No persistent posts yet.</div>';
+  return posts.map((p) => {
+    const handle = p.author || 'creator';
+    const focused = focusId && focusId === p.id ? ' post-focus' : '';
+    const canFollow = currentHandle && currentHandle.toLowerCase() !== String(handle).toLowerCase();
+    return `<article class="post persistent-post${focused}" data-id="${esc(p.id)}" id="post-${esc(p.id)}">
+      <div class="meta">
+        <div class="avatar">${esc((p.display_name || handle || '?')[0].toUpperCase())}</div>
+        <div class="spacer">
+          <div class="who"><a href="#/user?h=${encodeURIComponent(handle)}" data-user-link="${esc(handle)}">@${esc(handle)}</a> <span class="chip">Persistent</span> <span class="chip">${esc(p.kind || 'text')}</span></div>
+          <div class="when">${new Date(p.created_at).toLocaleString()}</div>
+        </div>
+        ${canFollow ? `<button class="btn ghost persistent-follow" data-handle="${esc(handle)}">Follow</button>` : ''}
+      </div>
+      <p class="body-text">${esc(p.body)}</p>
+      <div class="post-actions">
+        <button class="btn ghost persistent-like" type="button" data-id="${esc(p.id)}" data-liked="${Number(p.liked_by_me)?'1':'0'}">${Number(p.liked_by_me)?'♥':'♡'} ${Number(p.like_count)||0}</button>
+        <button class="btn ghost persistent-comments-toggle" type="button" data-id="${esc(p.id)}">💬 ${Number(p.comment_count)||0}</button>
+      </div>
+      <div class="comments persistent-comments" data-comments-for="${esc(p.id)}" hidden>
+        <div class="persistent-comments-list"><p class="muted">Loading comments…</p></div>
+        <form class="persistent-comment-form" data-id="${esc(p.id)}">
+          <div class="row"><input class="persistent-comment-input" name="body" maxlength="2000" required placeholder="Add a comment…" /><button class="btn primary" type="submit">Comment</button></div>
+        </form>
+      </div>
+      <p class="muted" style="font-size:11px;margin:8px 0 0">Saved to PIKK backend.</p>
+    </article>`;
+  }).join('');
+}
+
 export function renderPosts(route) {
+  const remote = isPostsApiConfigured();
   const { posts, likes, comments, user, postShares } = getState();
   const tab = route?.query?.tab === 'following' ? 'following' : 'discover';
   const focusId = route?.query?.focus || '';
@@ -123,8 +162,8 @@ export function renderPosts(route) {
           <input id="postImg" placeholder="/music/… · YouTube URL · /merch/…" />
         </div>
         <div class="row wrap" id="postPresets" style="margin-bottom:10px">${presets}</div>
-        <p class="muted" id="postMediaNote" style="font-size:12px;margin:0 0 10px">TEST MODE · no real upload — paste a path or YouTube link.</p>
-        <button class="btn primary" id="postSubmit">Post</button>
+        <p class="muted" id="postMediaNote" style="font-size:12px;margin:0 0 10px">${remote ? 'Persistent text posting is live. Picture/Short/Video uploads are not connected yet.' : 'TEST MODE · no real upload — paste a path or YouTube link.'}</p>
+        <button class="btn primary" id="postSubmit">${remote ? 'Post to PIKK' : 'Post'}</button>
       </div>
     </div>`
     : `<div class="card"><p class="muted">Sign in from Profile to post text, a picture, short, or video.</p>
@@ -132,8 +171,8 @@ export function renderPosts(route) {
 
   const tabs = `
     <div class="row wrap" style="margin-bottom:12px;gap:8px">
-      <a class="btn ${tab === 'discover' ? 'primary' : 'ghost'}" href="#/posts">Discover</a>
-      <a class="btn ${tab === 'following' ? 'primary' : 'ghost'}" href="#/posts?tab=following">Following</a>
+      <a class="chip pikk-chip${tab === 'discover' ? ' on' : ''}"${tab === 'discover' ? ' aria-current="page"' : ''} href="#/posts">Discover</a>
+      <a class="chip pikk-chip${tab === 'following' ? ' on' : ''}"${tab === 'following' ? ' aria-current="page"' : ''} href="#/posts?tab=following">Following</a>
       <a class="btn ghost" href="#/profile/dbs">@DatBoiSkeet</a>
     </div>`;
 
@@ -222,16 +261,40 @@ export function renderPosts(route) {
       ? '<div class="card muted">No posts from people you follow yet. Discover feed has official drops.</div>'
       : '<div class="card muted">No posts yet.</div>';
 
+  const feedHtml = remote
+    ? '<section id="pikkPersistentPosts" aria-live="polite"><div class="card muted">Loading persistent posts…</div></section>'
+    : (feed || empty);
   return shellPage(
     'Posts',
-    hotStripHtml() + composer + tabs + (feed || empty),
+    (remote ? '' : hotStripHtml()) + composer + tabs + feedHtml,
     {
-      lead: 'Post Text, a Picture, Short, or Video · Shorts live here (not separate tabs) · Hot strip ranks engagement.',
+      lead: remote
+        ? 'Persistent PIKK text posts · Discover and Following load from the backend. Media uploads are next.'
+        : 'Post Text, a Picture, Short, or Video · Shorts live here (not separate tabs) · Hot strip ranks engagement.',
     }
   );
 }
 
 export function bindPosts(root) {
+  const remote = isPostsApiConfigured();
+  const persistentHost = root.querySelector('#pikkPersistentPosts');
+  const loadPersistentPosts = async () => {
+    if (!remote || !persistentHost) return;
+    try {
+      const following = typeof location !== 'undefined' && location.hash.includes('tab=following');
+      const data = following ? await postsApi.following() : await postsApi.discover();
+      persistentHost.innerHTML = renderPersistentPosts(data.posts || [], {
+        focusId: new URLSearchParams((location.hash.split('?')[1] || '').split('#')[0]).get('focus') || '',
+        currentHandle: getState().user?.handle || '',
+      });
+    } catch (err) {
+      persistentHost.innerHTML = err?.status === 401
+        ? '<div class="card muted">Sign in from <a href="#/profile">Profile</a> to load persistent PIKK posts.</div>'
+        : `<div class="card muted">Could not load persistent posts: ${esc(err?.message || 'Unknown error')}</div>`;
+    }
+  };
+  loadPersistentPosts();
+
   const focus = root.querySelector('.post-focus');
   if (focus) {
     try {
@@ -283,11 +346,24 @@ export function bindPosts(root) {
     });
   });
 
-  root.querySelector('#postSubmit')?.addEventListener('click', () => {
+  root.querySelector('#postSubmit')?.addEventListener('click', async () => {
     try {
       const text = root.querySelector('#postText')?.value;
       const mediaType = typeInput?.value || 'picture';
       const media = (root.querySelector('#postImg')?.value || '').trim();
+
+      if (remote) {
+        if (mediaType !== 'text') {
+          return toast('Persistent Picture/Short/Video uploads are not connected yet');
+        }
+        if (!text?.trim()) return toast('Write some words for a Text post');
+        await postsApi.createText(text.trim());
+        toast('Text post saved to PIKK');
+        await loadPersistentPosts();
+        if (root.querySelector('#postText')) root.querySelector('#postText').value = '';
+        return;
+      }
+
       if (mediaType === 'text') {
         if (!text?.trim()) return toast('Write some words for a Text post');
         createPost({ text: text.trim(), mediaType: 'text' });
@@ -308,6 +384,7 @@ export function bindPosts(root) {
       toast(mediaType.charAt(0).toUpperCase() + mediaType.slice(1) + ' posted');
       refresh();
     } catch (e) {
+      if (e?.code === 'email_unverified') return toast('Verify your email before posting');
       toast(e.message || 'Could not post');
     }
   });
@@ -354,6 +431,71 @@ export function bindPosts(root) {
       }
       refresh();
     });
+  });
+
+  root.addEventListener('click', async (event) => {
+    if (!remote) return;
+    const followBtn = event.target.closest?.('.persistent-follow');
+    if (followBtn) {
+      try {
+        await postsApi.follow(followBtn.dataset.handle);
+        toast('Following @' + followBtn.dataset.handle);
+        await loadPersistentPosts();
+      } catch (err) {
+        toast(err?.code === 'email_unverified' ? 'Verify your email before following' : (err?.message || 'Could not follow'));
+      }
+      return;
+    }
+
+    const likeBtn = event.target.closest?.('.persistent-like');
+    if (likeBtn) {
+      try {
+        const liked = likeBtn.dataset.liked === '1';
+        await (liked ? postsApi.unlike(likeBtn.dataset.id) : postsApi.like(likeBtn.dataset.id));
+        await loadPersistentPosts();
+      } catch (err) {
+        toast(err?.code === 'email_unverified' ? 'Verify your email before liking posts' : (err?.message || 'Could not update like'));
+      }
+      return;
+    }
+
+    const commentsBtn = event.target.closest?.('.persistent-comments-toggle');
+    if (commentsBtn) {
+      const box = persistentHost?.querySelector(`[data-comments-for="${CSS.escape(commentsBtn.dataset.id)}"]`);
+      if (!box) return;
+      box.hidden = !box.hidden;
+      if (!box.hidden) {
+        const list = box.querySelector('.persistent-comments-list');
+        if (list) {
+          try {
+            const data = await postsApi.comments(commentsBtn.dataset.id);
+            list.innerHTML = renderPersistentComments(data.comments || []);
+          } catch (err) {
+            list.innerHTML = `<p class="muted">Could not load comments: ${esc(err?.message || 'Unknown error')}</p>`;
+          }
+        }
+      }
+    }
+  });
+
+  persistentHost?.addEventListener('submit', async (event) => {
+    const form = event.target.closest?.('.persistent-comment-form');
+    if (!form || !remote) return;
+    event.preventDefault();
+    const input = form.querySelector('.persistent-comment-input');
+    const body = input?.value?.trim();
+    if (!body) return;
+    try {
+      await postsApi.comment(form.dataset.id, body);
+      input.value = '';
+      const data = await postsApi.comments(form.dataset.id);
+      const list = form.closest('.persistent-comments')?.querySelector('.persistent-comments-list');
+      if (list) list.innerHTML = renderPersistentComments(data.comments || []);
+      await loadPersistentPosts();
+      toast('Comment added');
+    } catch (err) {
+      toast(err?.code === 'email_unverified' ? 'Verify your email before commenting' : (err?.message || 'Could not add comment'));
+    }
   });
 
   root.querySelectorAll('.follow-btn').forEach((btn) => {

@@ -9,7 +9,7 @@ const defaultState = () => ({
       id: 'dbs',
       username: 'DatBoiSkeet',
       bio: 'Official DatBoiSkeet · Long Story Short & Ladies Only Coming Soon · Vault · Foreign X-Change',
-      avatar: '/brand/logo-dbs-v3@2x.webp',
+      avatar: '/brand/pikk-logo-square.png',
       followers: [],
       following: [],
       verified: true,
@@ -472,6 +472,38 @@ export function signOut() {
   state = { ...state, user: null };
   save(state);
 }
+export function syncRemoteAuthUser(remoteUser) {
+  if (!remoteUser?.id || !remoteUser?.handle) return null;
+  const previous = state.user && state.user.id === remoteUser.id ? state.user : {};
+  const user = {
+    ...previous,
+    id: remoteUser.id,
+    username: remoteUser.display_name || remoteUser.handle,
+    handle: remoteUser.handle,
+    email: remoteUser.email || '',
+    emailVerified: !!remoteUser.email_verified,
+    authSource: 'backend',
+    bio: remoteUser.bio !== undefined ? String(remoteUser.bio || '').slice(0, 280) : (previous.bio || ''),
+    avatar: remoteUser.avatar_url !== undefined ? String(remoteUser.avatar_url || '') : (previous.avatar || ''),
+    followers: previous.followers || [],
+    following: previous.following || [],
+    membership: previous.membership ?? null,
+    memberships: previous.memberships || { skeetPlus: false, backstage: false, innerCircle: false },
+    purchasedTracks: previous.purchasedTracks || [],
+    createdAt: previous.createdAt || Date.now(),
+  };
+  state = { ...state, user };
+  syncUserProfile(user);
+  save(state);
+  return user;
+}
+
+export function clearAuthenticatedUser() {
+  serverRoles = [];
+  state = { ...state, user: null };
+  save(state);
+}
+
 
 export function updateProfile({ bio, avatar, username }) {
   const user = state.user;
@@ -716,13 +748,29 @@ export function shouldShowSplash() {
   return !state.splashSeenAt;
 }
 
-/** TEST MODE admin gate: user.role === 'admin' */
+// Server-verified roles from GET /auth/me (never persisted to localStorage).
+let serverRoles = [];
+export function setServerRoles(roles) {
+  serverRoles = Array.isArray(roles) ? roles.map(String) : [];
+}
+export function getServerRoles() {
+  return serverRoles.slice();
+}
+/** Local demo admin is only honored in a dev build with no backend configured. */
+export function isDemoAdminAllowed() {
+  const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
+  const apiBase = (typeof window !== 'undefined' && typeof window.__PIKK_API_BASE__ === 'string' && window.__PIKK_API_BASE__.trim()) || String(env.VITE_PIKK_API_BASE || '').trim();
+  return env.DEV === true && !apiBase;
+}
+/** Admin is staff-only: the server role wins; localStorage role only counts in dev demo. */
 export function isAdmin() {
-  return !!(state.user && state.user.role === 'admin');
+  if (serverRoles.includes('admin')) return true;
+  return isDemoAdminAllowed() && !!(state.user && state.user.role === 'admin');
 }
 
 /** Persist demo admin role on the signed-in user. */
 export function setAdminRole(on = true) {
+  if (on && !isDemoAdminAllowed()) return { error: 'staff_only' };
   const user = state.user;
   if (!user) return { error: 'signin' };
   const next = { ...user, role: on ? 'admin' : 'fan' };
@@ -863,7 +911,7 @@ export function removeCatalogItem(id) {
 
 
 /** §3 Live — demo session (no real media) */
-export function startLiveDemo(title) {
+export function startLiveDemo(title, extra = {}) {
   const user = state.user;
   if (!user) return { error: 'signin' };
   if (state.live && !state.live.endedAt) return { error: 'already_live', live: state.live };
@@ -872,8 +920,10 @@ export function startLiveDemo(title) {
     hostId: user.id,
     hostName: user.username,
     title: (title || 'DBS Live · TEST MODE').trim().slice(0, 80),
+    category: extra.category || '',
+    permissions: extra.permissions || null,
     startedAt: Date.now(),
-    viewers: 3 + Math.floor(Math.random() * 18), // stub
+    viewers: 0, // t397u: demo stream has no real viewers — never invent a count
     giftsTotal: 0,
     tipsTotal: 0,
     giftLog: [],
@@ -904,12 +954,8 @@ export function endLiveDemo() {
 
 export function bumpLiveViewers() {
   if (!state.live || state.live.endedAt) return state.live;
-  const delta = Math.floor(Math.random() * 5) - 1; // -1..3
-  const viewers = Math.max(1, (state.live.viewers || 1) + delta);
-  const live = { ...state.live, viewers };
-  state = { ...state, live };
-  save(state);
-  return live;
+  // t397u: no random viewer bumps — a demo stream has no real viewers.
+  return state.live;
 }
 
 export function sendLiveChat(text) {
@@ -1675,7 +1721,7 @@ export function listDailyGoals(now = Date.now()) {
  * 100 coins = $2. Caps debit to remaining USD (no over-charge past target); completed → error.
  * Returns { ok, goal, coins, donated } or { error: signin|invalid_amount|unknown_goal|expired|insufficient|completed }.
  */
-export function donateToGoal(goalId, amountCoins) {
+export function donateToGoal(goalId, amountCoins, options = {}) {
   const user = state.user;
   if (!user) return { error: 'signin' };
   const coinsAmt = Math.floor(Number(amountCoins));
@@ -1735,12 +1781,15 @@ export function donateToGoal(goalId, amountCoins) {
     ...(completedAt ? { completedAt } : {}),
   };
 
+  // Optional supporter message is stored only in this browser's demo coin history.
+  const message = String(options?.message || '').trim().slice(0, 180);
   const coinHist = {
     at: now,
     amount: -applyCoins,
     note: `Goal donate · ${goal.name} · $${donatedUsd.toFixed(2)} · TEST MODE`,
     kind: 'goal',
     goalId: goal.id,
+    ...(message ? { message } : {}),
     usd: donatedUsd,
   };
   const nextCoins = {
@@ -1763,7 +1812,7 @@ export function donateToGoal(goalId, amountCoins) {
     ok: true,
     goal: cloneGoal(nextGoal),
     coins: nextCoins,
-    donated: { coins: applyCoins, usd: donatedUsd, requested: coinsAmt },
+    donated: { coins: applyCoins, usd: donatedUsd, requested: coinsAmt, message },
   };
 }
 
@@ -1961,7 +2010,15 @@ export function isMutualFollow(peerId) {
   return (user.following || []).includes(peerId) && (peer.following || []).includes(user.id);
 }
 
-export function getOrCreateThread(peerId, peerName) {
+/** Backend handle for a DM peer (from synced/backend profile data); '' when unknown. */
+export function resolveThreadPeerHandle(thread) {
+  if (!thread || thread.kind === 'group') return '';
+  const raw = thread.peerHandle || state.profiles?.[thread.peerId]?.handle || '';
+  const h = String(raw).trim().replace(/^@/, '');
+  return /^[A-Za-z0-9_]{3,30}$/.test(h) ? h : '';
+}
+
+export function getOrCreateThread(peerId, peerName, { peerHandle } = {}) {
   const user = state.user;
   if (!user) return { error: 'signin' };
   const id = threadIdFor(peerId);
@@ -1974,14 +2031,23 @@ export function getOrCreateThread(peerId, peerName) {
       participants: [user.id, peerId],
       peerId,
       peerName: peerName || peerId,
+      peerHandle: '',
       messages: [],
       updatedAt: Date.now(),
       request: !mutual,
       muted: false,
       blocked: false,
     };
+    t.peerHandle = resolveThreadPeerHandle({ ...t, peerHandle: peerHandle || '' });
     state = { ...state, threads: { ...state.threads, [id]: t } };
     save(state);
+  } else if (!t.peerHandle && t.kind !== 'group') {
+    const h = resolveThreadPeerHandle({ ...t, peerHandle: peerHandle || '' });
+    if (h) {
+      t = { ...t, peerHandle: h };
+      state = { ...state, threads: { ...state.threads, [id]: t } };
+      save(state);
+    }
   }
   return t;
 }
@@ -2194,7 +2260,7 @@ const CREATOR_SPLITS = {
 const DEMO_EARNING_SEEDS = [
   { category: 'gifts', gross: 40, note: 'Live gifts · demo week' },
   { category: 'tips', gross: 22.5, note: 'Live tips · demo week' },
-  { category: 'subscriptions', gross: 29.99, note: 'Skeet+ fan sub · demo' },
+  { category: 'subscriptions', gross: 29.99, note: 'PIKK+ fan sub · demo' },
   { category: 'referrals', gross: 15, note: 'Refer & Earn milestone · demo' },
   { category: 'clippers', gross: 50, note: 'Clippers campaign payout · demo' },
   { category: 'sponsorships', gross: 100, note: 'Sponsored livestream · demo' },
@@ -4531,7 +4597,7 @@ export function ensureFanClubsSeeded({ force = false } = {}) {
       name: 'DatBoiSkeet Official',
       description:
         'Official DatBoiSkeet fan club inside DBS Lounge. Music drops, Vault tips, Foreign X-Change, and community rules — DBS branding first. Follow optional.',
-      graphic: '/brand/logo-dbs-v3@2x.webp',
+      graphic: '/brand/pikk-logo-square.png',
       hostId: 'dbs',
       hostName: 'DatBoiSkeet',
       privacy: 'public', // public | members | paid
@@ -4545,7 +4611,7 @@ export function ensureFanClubsSeeded({ force = false } = {}) {
     {
       id: 'fc_lss_crew',
       name: 'Long Story Short Crew',
-      description: 'Creator club for LSS listeners. Public lounge chat + Skeet+ members-only drop room.',
+      description: 'Creator club for LSS listeners. Public lounge chat + PIKK+ members-only drop room.',
       graphic: '/music/01_Long_Story_Short_Coming_Soon.jpg',
       hostId: 'dbs',
       hostName: 'DatBoiSkeet',
@@ -4560,7 +4626,7 @@ export function ensureFanClubsSeeded({ force = false } = {}) {
     {
       id: 'fc_ladies_only',
       name: 'Ladies Only Circle',
-      description: 'Paid / Skeet+ gated room demo for Ladies Only supporters. Unlock via membership TEST MODE.',
+      description: 'Paid / PIKK+ gated room demo for Ladies Only supporters. Unlock via membership TEST MODE.',
       graphic: '/music/02_Ladies_Only_Coming_Soon.jpg',
       hostId: 'dbs',
       hostName: 'DatBoiSkeet',
@@ -4610,7 +4676,7 @@ export function ensureFanClubsSeeded({ force = false } = {}) {
         id: 'fcp_lo1',
         userId: 'dbs',
         username: 'DatBoiSkeet',
-        text: 'Skeet+ members-only preview chat. Join Skeet+ on Pricing (TEST MODE) to unlock.',
+        text: 'PIKK+ members-only preview chat. Join PIKK+ on Pricing (TEST MODE) to unlock.',
         at: now - 12 * 3600000,
         pinned: true,
         removed: false,
@@ -4624,10 +4690,7 @@ export function ensureFanClubsSeeded({ force = false } = {}) {
 export function createFanClub({ name, description, graphic, privacy = 'public' } = {}) {
   const user = state.user;
   if (!user) return { error: 'signin' };
-  // Creator/admin TEST MODE gate
-  if (!(isAdmin() || user.role === 'creator' || user.id === 'dbs')) {
-    // Allow any signed-in demo user to create in TEST MODE, but tag as creator demo
-  }
+  // TEST MODE: any signed-in user may create a demo club (no creator gate; roles are server-only).
   const n = String(name || '').trim().slice(0, 48);
   if (!n) return { error: 'name' };
   const priv = ['public', 'members', 'paid'].includes(privacy) ? privacy : 'public';
@@ -4637,7 +4700,7 @@ export function createFanClub({ name, description, graphic, privacy = 'public' }
     id: fcUid('fc'),
     name: n,
     description: String(description || '').trim().slice(0, 280),
-    graphic: String(graphic || '/brand/logo-dbs-v3@2x.webp').slice(0, 200),
+    graphic: String(graphic || '/brand/pikk-logo-square.png').slice(0, 200),
     hostId: user.id,
     hostName: user.username,
     privacy: priv,
@@ -4731,7 +4794,7 @@ export function isClubMod(clubId) {
   return isAdmin() || c.hostId === user.id || (c.mods || []).includes(user.id);
 }
 
-/** Access gate for discussion room: public always; members need join; paid needs Skeet+ (or higher). */
+/** Access gate for discussion room: public always; members need join; paid needs PIKK+ (or higher). */
 export function canAccessClubRoom(clubId) {
   const c = getFanClub(clubId);
   if (!c) return { ok: false, reason: 'missing' };
@@ -4811,12 +4874,12 @@ const SHARE_PLATFORMS = ['instagram', 'tiktok', 'facebook', 'youtube', 'x', 'sna
 const SHARE_REWARD_TIERS = [
   { id: 'badge', minVerified: 1, label: 'Exclusive DBS badge', kind: 'badge' },
   { id: 'decoration', minVerified: 2, label: 'Premium avatar decoration', kind: 'decoration' },
-  { id: 'skeet7', minVerified: 3, label: '7 days Skeet+ (TEST MODE)', kind: 'membership_trial', membership: 'skeet+', days: 7 },
+  { id: 'skeet7', minVerified: 3, label: '7 days PIKK+ (TEST MODE)', kind: 'membership_trial', membership: 'skeet+', days: 7 },
   {
     id: 'skeet30',
     minVerified: 3,
     requireAllLinked: true,
-    label: '30 days Skeet+ (all linked · min 3)',
+    label: '30 days PIKK+ (all linked · min 3)',
     kind: 'membership_trial',
     membership: 'skeet+',
     days: 30,
@@ -4825,8 +4888,8 @@ const SHARE_REWARD_TIERS = [
 
 const REFER_MILESTONES = [
   { n: 1, id: 'm1', label: 'Profile decoration', kind: 'decoration' },
-  { n: 3, id: 'm3', label: '7 days Skeet+ (TEST MODE)', kind: 'membership_trial', membership: 'skeet+', days: 7 },
-  { n: 5, id: 'm5', label: '30 days Skeet+ (TEST MODE)', kind: 'membership_trial', membership: 'skeet+', days: 30 },
+  { n: 3, id: 'm3', label: '7 days PIKK+ (TEST MODE)', kind: 'membership_trial', membership: 'skeet+', days: 7 },
+  { n: 5, id: 'm5', label: '30 days PIKK+ (TEST MODE)', kind: 'membership_trial', membership: 'skeet+', days: 30 },
   { n: 10, id: 'm10', label: 'Premium profile bundle', kind: 'bundle' },
   { n: 25, id: 'm25', label: '30 days Backstage (TEST MODE)', kind: 'membership_trial', membership: 'backstage', days: 30 },
   { n: 50, id: 'm50', label: '30 days Inner Circle (TEST MODE)', kind: 'membership_trial', membership: 'inner', days: 30 },
@@ -6841,6 +6904,7 @@ function normalizeHotLive(raw) {
     viewers,
     giftsTotal,
     house: !!raw.house,
+    example: true,
     spikedAt: raw.spikedAt || null,
     score,
   };
@@ -6854,6 +6918,7 @@ export function ensureHotLivesSeeded({ force = false } = {}) {
       lives: bucket.lives.map(normalizeHotLive).filter(Boolean),
     };
   }
+  // t208u (owner): seeded viewer numbers are EXAMPLE data and must render with an 'Example' tag.
   const seeds = [
     {
       id: 'hl_dbs_house',
@@ -6963,10 +7028,9 @@ export function simulateLiveSpike(liveId) {
   const lives = (bucket.lives || []).map((raw) => {
     const live = normalizeHotLive(raw);
     if (!live || live.id !== id) return raw;
-    const bumpViewers = 180 + Math.floor(Math.random() * 920);
-    const bumpGifts = 4 + Math.floor(Math.random() * 28);
-    const viewers = live.viewers + bumpViewers;
-    const giftsTotal = live.giftsTotal + bumpGifts;
+    // t409/t208u: no random bumps — seeded example numbers stay fixed; a spike only marks the live as hot.
+    const viewers = live.viewers;
+    const giftsTotal = live.giftsTotal;
     const score = liveHotScore(viewers, giftsTotal);
     found = {
       ...live,

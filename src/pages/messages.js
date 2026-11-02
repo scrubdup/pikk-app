@@ -13,9 +13,16 @@ import {
   isMutualFollow,
   setThreadFlags,
   updateMessagePrefs,
+  resolveThreadPeerHandle,
 } from '../store.js';
 import { esc, toast, shellPage, timeAgo } from '../ui.js';
 import { navigate } from '../router.js';
+import { messageSearchText, messageResultSummary } from '../message-search.js';
+import { messagesApi, isMessagesApiConfigured } from '../api/messages-client.js';
+
+
+export { normalizePeerHandle, canUseServerSafety, runPeerSafetyAction } from '../safety-actions.js';
+import { runPeerSafetyAction } from '../safety-actions.js';
 
 function refresh(hash) {
   navigate(hash || '#/messages');
@@ -32,7 +39,13 @@ function lastPreview(t) {
 function renderSignIn() {
   return shellPage(
     'Messages',
-    `<div class="card">
+    `<section class="pikk-msg-flow-hero" aria-label="PIKK messages sign-in">
+      <span class="pikk-msg-flow-kicker">PIKK CONNECT · PRIVATE MESSAGES</span>
+      <h2>Your conversations. <em>Your circle.</em></h2>
+      <p>Try DMs, group conversations and the creator messages with a local demo account.</p>
+      <span class="chip">TEST MODE · No server messaging</span>
+    </section>
+    <div class="card pikk-msg-flow-panel">
       <h3>Sign in required</h3>
       <p class="muted">Private DMs, team inbox, and group chats need a local demo account.</p>
       <a class="btn primary" href="#/profile">Sign in</a>
@@ -43,6 +56,7 @@ function renderSignIn() {
 
 function renderInbox(user) {
   const threads = listThreads();
+  const unreadThreads = threads.filter(t => getThreadUnreadCount(t) > 0);
   const prefs = getState().messagePrefs || { allowDMs: true, allowRequests: true };
   const rows = threads
     .map((t) => {
@@ -62,7 +76,7 @@ function renderInbox(user) {
         ? `<span class="chip msg-unread-chip" aria-label="${unreadN} unread">${unreadN}</span>`
         : '';
       return `
-      <button type="button" class="msg-thread-row${unreadN ? ' has-unread' : ''}" data-search="${esc(String(t.peerName || t.peerId).toLowerCase())}" data-open-thread="${esc(t.id)}">
+      <button type="button" class="msg-thread-row${unreadN ? ' has-unread' : ''}" data-search="${esc(messageSearchText(t))}" data-unread="${unreadN > 0}" data-open-thread="${esc(t.id)}">
         <div class="pikk-msg-avatar" aria-hidden="true">${esc(String(t.peerName || t.peerId || "?").slice(0,1).toUpperCase())}</div>
         <div class="pikk-msg-thread-body"><div class="msg-thread-top">
           <strong>${esc(t.peerName || t.peerId)}</strong>
@@ -76,16 +90,19 @@ function renderInbox(user) {
 
   return `
     <section class="pikk-messages-hero" aria-label="PIKK inbox">
-      <div><p class="kicker">PIKK CONNECT · MESSAGES</p><h2>Your conversations.</h2><p>Stay connected with people, groups, and the DatBoiSkeet team.</p></div>
+      <div><p class="kicker">PIKK CONNECT · MESSAGES</p><h2>Your conversations.</h2><p>Stay connected with people, groups, and the PIKK community.</p></div>
       <span class="pikk-messages-hero-mark" aria-hidden="true">✉</span>
     </section>
     <div class="pikk-msg-tools">
       <label for="pikkMsgSearch">Search conversations</label>
-      <input id="pikkMsgSearch" type="search" placeholder="Search messages..." autocomplete="off" aria-controls="msgInbox" />
-      <div class="pikk-msg-tool-actions"><button type="button" class="btn primary" id="pikkNewChatTop">+ New chat</button><button type="button" class="btn ghost" id="pikkGroupTop">Group chat</button></div>
+      <input id="pikkMsgSearch" type="search" placeholder="Search names or latest messages..." autocomplete="off" aria-controls="msgInbox" aria-describedby="pikkMsgSearchHelp" />
+      <p id="pikkMsgSearchHelp" class="muted" style="margin:4px 0 0;font-size:.75rem">Search covers names and the visible latest-message preview only.</p>
+      <label class="row" style="gap:8px;align-items:center;margin-top:8px" for="pikkMsgUnreadOnly"><input id="pikkMsgUnreadOnly" type="checkbox" aria-controls="msgInbox" /> Unread only (${unreadThreads.length})</label>
+      <div class="pikk-msg-tool-actions"><button type="button" class="btn ghost" id="pikkMsgClearFilters" aria-controls="msgInbox" hidden>Clear filters</button><button type="button" class="btn primary" id="pikkNewChatTop">+ New chat</button><button type="button" class="btn ghost" id="pikkGroupTop">Group chat</button></div>
+      <p id="pikkMsgResultCount" class="muted" role="status" aria-live="polite" aria-atomic="true" style="margin:8px 0 0;font-size:.875rem">${messageResultSummary(threads.length, threads.length)}</p>
     </div>
     <div class="card msg-team-card">
-      <h3>DatBoiSkeet · Team inbox</h3>
+      <h3>Creator messages</h3>
       <p class="muted" style="margin:0 0 10px">Free inquiry or <strong>Priority $2.99 TEST MODE</strong> (not charged). Priority = faster review, not a guaranteed personal reply.</p>
       <button type="button" class="btn primary" id="msgOpenTeam">Open team chat</button>
     </div>
@@ -94,6 +111,7 @@ function renderInbox(user) {
       <div class="row wrap" style="justify-content:space-between;gap:8px">
         <h3 style="margin:0">Inbox</h3>
         <div class="row wrap" style="gap:8px">
+          <button type="button" class="btn ghost" id="msgMarkAllRead" ${unreadThreads.length ? '' : 'disabled'}>Mark all read${unreadThreads.length ? ` (${unreadThreads.length})` : ''}</button>
           <button type="button" class="btn" id="msgNewChat">New chat</button>
           <button type="button" class="btn ghost" id="msgOpenGroup">DBS Fans group</button>
         </div>
@@ -130,39 +148,53 @@ function renderNewChat() {
   const cards = contacts
     .map((c) => {
       const mutual = c.team || isMutualFollow(c.id);
-      const label = c.team ? 'Team inbox' : mutual ? 'Message' : 'Message request';
+      const label = c.team ? 'Creator message' : mutual ? 'Message' : 'Message request';
       return `
-      <article class="card msg-contact">
+      <article class="card msg-contact pikk-msg-contact-card">
         <div class="msg-contact-head">
+          <span class="pikk-msg-contact-avatar" aria-hidden="true">${esc(String(c.username || "?").slice(0, 1).toUpperCase())}</span>
           <strong>${esc(c.username)}</strong>
-          ${c.team ? '<span class="chip">Official</span>' : mutual ? '<span class="chip">Mutual</span>' : '<span class="chip">Request</span>'}
+          ${c.team ? '<span class="chip">Creator</span>' : mutual ? '<span class="chip">Mutual</span>' : '<span class="chip">Request</span>'}
+          ${c.handle ? '' : '<span class="chip">Demo · device-only</span>'}
         </div>
         <p class="muted" style="margin:6px 0 10px">${esc(c.bio || '')}</p>
-        <button type="button" class="btn ${c.team ? 'primary' : ''}" data-start-peer="${esc(c.id)}" data-peer-name="${esc(c.username)}">${esc(label)}</button>
+        <button type="button" class="btn ${c.team ? 'primary' : ''}" data-start-peer="${esc(c.id)}" data-peer-name="${esc(c.username)}" data-peer-handle="${esc(c.handle || '')}">${esc(label)}</button>
       </article>`;
     })
     .join('');
 
   return `
-    <div class="card">
+    <section class="pikk-msg-flow-hero" aria-label="Start a PIKK conversation">
+      <span class="pikk-msg-flow-kicker">PIKK CONNECT · NEW CONVERSATION</span>
+      <h2>Start a conversation. <em>Stay connected.</em></h2>
+      <p>Choose a demo contact below. Mutual follows open a DM; other contacts start a message request.</p>
+      <span class="chip">TEST MODE · Browser-local conversations</span>
+    </section>
+    <div class="card pikk-msg-flow-panel">
       <div class="row" style="justify-content:space-between">
         <h3 style="margin:0">Start chat</h3>
         <button type="button" class="btn ghost" id="msgBackInbox">← Inbox</button>
       </div>
       <p class="muted">Demo peers. Mutual follows open a DM; others create a <em>request</em> thread (still usable in TEST MODE).</p>
     </div>
-    ${cards}
+    <section class="pikk-msg-contact-grid" aria-label="Available demo contacts">${cards}</section>
   `;
 }
 
 function renderTeamIntro() {
   return `
-    <div class="card msg-team-card">
+    <section class="pikk-msg-flow-hero" aria-label="Creator messages">
+      <span class="pikk-msg-flow-kicker">PIKK CONNECT · CREATOR MESSAGES</span>
+      <h2>Reach the team. <em>One inbox.</em></h2>
+      <p>Send a local demo inquiry to this creator account. Priority is a test-mode flag, never a charge.</p>
+      <span class="chip">TEST MODE · No real delivery</span>
+    </section>
+    <div class="card msg-team-card pikk-msg-flow-panel">
       <div class="row" style="justify-content:space-between">
-        <h3 style="margin:0">Team inbox</h3>
+        <h3 style="margin:0">Creator inbox</h3>
         <button type="button" class="btn ghost" id="msgBackInbox">← Inbox</button>
       </div>
-      <p class="muted">Message DatBoiSkeet / authorized team. Free inquiry stays in the normal queue; Priority ($2.99 TEST MODE — not charged) flags the thread for priority review only.</p>
+      <p class="muted">Message this creator account. Free inquiry stays in the normal queue; Priority ($2.99 TEST MODE — not charged) flags the thread for priority review only.</p>
       <div class="row wrap" style="gap:8px;margin-top:8px">
         <button type="button" class="btn primary" id="msgTeamFree">Free inquiry</button>
         <button type="button" class="btn" id="msgTeamPriority">Priority $2.99 · TEST MODE</button>
@@ -199,7 +231,13 @@ function renderThread(thread, { teamPriorityHint = false } = {}) {
     : '';
 
   return `
-    <div class="card msg-thread-head">
+    <section class="pikk-msg-flow-hero pikk-msg-flow-hero-thread" aria-label="Current PIKK conversation">
+      <span class="pikk-msg-flow-kicker">PIKK CONNECT · ${isGroup ? "GROUP CHAT" : isTeam ? "TEAM INBOX" : "DIRECT MESSAGES"}</span>
+      <h2>${esc(thread.peerName || thread.peerId)}</h2>
+      <p>Browser-local conversation preview · Messages are not delivered to other accounts.</p>
+      <span class="chip">TEST MODE</span>
+    </section>
+    <div class="card msg-thread-head pikk-msg-flow-panel">
       <div class="row wrap" style="justify-content:space-between;gap:8px">
         <div>
           <button type="button" class="btn ghost" id="msgBackInbox">← Inbox</button>
@@ -217,11 +255,12 @@ function renderThread(thread, { teamPriorityHint = false } = {}) {
           <button type="button" class="btn ghost" data-flag="block">${thread.blocked ? 'Unblock' : 'Block'}</button>
           <button type="button" class="btn ghost danger" data-flag="report">Report</button>
         </div>
+        ${!isGroup && !resolveThreadPeerHandle(thread) ? '<p class="muted msg-device-only-note" style="font-size:12px;margin:6px 0 0">Demo contact · Report and Block save on this device only — not sent to PIKK moderators.</p>' : ''}
       </div>
     </div>
     ${requestBanner}
     ${priorityBanner}
-    <div class="card msg-thread-card">
+    <div class="card msg-thread-card pikk-msg-flow-panel">
       <div class="msg-thread" id="msgThread">${msgs || '<p class="muted">No messages yet — say hi.</p>'}</div>
       ${
         blocked
@@ -240,11 +279,128 @@ function renderThread(thread, { teamPriorityHint = false } = {}) {
   `;
 }
 
+
+export function renderPersistentConversationList(conversations=[]) {
+  if (!conversations.length) return '<div class="msg-empty"><p class="muted">No persistent conversations yet.</p><a class="btn primary" href="#/messages?view=new">Start a chat</a></div>';
+  return conversations.map(c => {
+    const peer = c.peer_display_name || c.peer_handle || 'PIKK user';
+    const preview = c.last_message || 'No messages yet';
+    const stamp = c.last_message_at || c.created_at;
+    return `<button type="button" class="msg-thread-row persistent-msg-row" data-open-remote-thread="${esc(c.id)}">
+      <div class="pikk-msg-avatar" aria-hidden="true">${esc(String(peer).slice(0,1).toUpperCase())}</div>
+      <div class="pikk-msg-thread-body">
+        <div class="msg-thread-top"><strong>${esc(peer)}</strong><span class="muted">${stamp ? esc(timeAgo(Date.parse(stamp))) : ''}</span></div>
+        <div class="msg-thread-preview muted">${esc(preview.slice(0,100))}</div>
+        <div class="msg-thread-chips"><span class="chip">Persistent</span><span class="muted">@${esc(c.peer_handle||'user')}</span></div>
+      </div>
+    </button>`;
+  }).join('');
+}
+
+export function renderPersistentThread(detail, currentUserId='') {
+  const convo=detail?.conversation;
+  const messages=detail?.messages||[];
+  if(!convo)return '<div class="card muted">Conversation not found.</div>';
+  const peer=convo.peer?.display_name||convo.peer?.handle||'PIKK user';
+  const bubbles=messages.map(m=>{
+    const mine=m.sender_id===currentUserId;
+    return `<div class="msg-bubble ${mine?'mine':''}">
+      <div class="msg-bubble-meta"><strong>${mine?'You':'@'+esc(m.sender_handle||convo.peer?.handle||'user')}</strong><span class="muted">${esc(timeAgo(Date.parse(m.created_at)))}</span></div>
+      <div class="msg-bubble-text">${esc(m.body)}</div>
+    </div>`;
+  }).join('');
+  return `<section class="pikk-msg-flow-hero pikk-msg-flow-hero-thread"><span class="pikk-msg-flow-kicker">PIKK CONNECT · DIRECT MESSAGES</span><h2>${esc(peer)}</h2><p>Persistent private conversation stored on PIKK.</p><span class="chip">Backend message thread</span></section>
+    <div class="card msg-thread-head pikk-msg-flow-panel"><button type="button" class="btn ghost" data-remote-inbox>← Inbox</button><h3 style="margin:10px 0 0">${esc(peer)}</h3>${convo.peer?.handle ? `<div class="row wrap" style="margin-top:8px"><button type="button" class="btn ghost" data-remote-flag="block" data-peer-handle="${esc(convo.peer.handle)}">Block</button><button type="button" class="btn ghost danger" data-remote-flag="report" data-peer-handle="${esc(convo.peer.handle)}">Report</button></div>` : ''}</div>
+    <div class="card msg-thread-card pikk-msg-flow-panel">
+      <div class="msg-thread" id="remoteMsgThread">${bubbles||'<p class="muted">No messages yet — say hi.</p>'}</div>
+      <div class="msg-composer"><input id="remoteMsgInput" placeholder="Message…" maxlength="4000" /><button type="button" class="btn primary" id="remoteMsgSend">Send</button></div>
+    </div>`;
+}
+
+function renderPersistentMessages(route,user) {
+  if(!user){
+    return shellPage('Messages',`<section class="pikk-msg-flow-hero"><span class="pikk-msg-flow-kicker">PIKK CONNECT · PRIVATE MESSAGES</span><h2>Your conversations.</h2><p>Sign in with your PIKK account to use persistent private messages.</p><span class="chip">Backend messaging</span></section><div class="card"><a class="btn primary" href="#/profile">Sign in</a></div>`,{lead:'Persistent private messaging'});
+  }
+  const view=route?.query?.view||'';
+  const threadId=route?.query?.t||'';
+  if(threadId){
+    return shellPage('Messages',`<div id="persistentMessageThread" data-thread-id="${esc(threadId)}"><div class="card muted">Loading conversation…</div></div>`,{lead:'Persistent private messaging'});
+  }
+  if(view==='new'){
+    return shellPage('Messages',`<section class="pikk-msg-flow-hero"><span class="pikk-msg-flow-kicker">PIKK CONNECT · NEW CONVERSATION</span><h2>Start a private chat.</h2><p>Enter the PIKK username you want to message.</p><span class="chip">Verified accounts only</span></section><div class="card pikk-msg-flow-panel"><button type="button" class="btn ghost" data-remote-inbox>← Inbox</button><form id="remoteNewChatForm" style="margin-top:12px"><div class="field"><label for="remotePeerHandle">PIKK username</label><input id="remotePeerHandle" name="handle" maxlength="30" pattern="[A-Za-z0-9_]{3,30}" autocomplete="off" required placeholder="username" /></div><button class="btn primary" type="submit">Start conversation</button></form></div>`,{lead:'Persistent private messaging'});
+  }
+  return shellPage('Messages',`<section class="pikk-messages-hero"><div><p class="kicker">PIKK CONNECT · MESSAGES</p><h2>Your conversations.</h2><p>Private messages tied to your PIKK account.</p></div><span class="pikk-messages-hero-mark" aria-hidden="true">✉</span></section><div class="pikk-msg-tools"><div class="pikk-msg-tool-actions"><a class="btn primary" href="#/messages?view=new">+ New chat</a></div></div><div class="card"><h3>Inbox</h3><div class="msg-inbox" id="persistentMsgInbox"><p class="muted">Loading conversations…</p></div></div>`,{lead:'Persistent private messaging · backend stored'});
+}
+
+async function bindPersistentMessages(root) {
+  const user=getState().user;
+  if(!user)return;
+  root.querySelectorAll('[data-remote-inbox]').forEach(btn=>btn.addEventListener('click',()=>refresh('#/messages')));
+
+  const inbox=root.querySelector('#persistentMsgInbox');
+  if(inbox){
+    try{
+      const data=await messagesApi.list();
+      inbox.innerHTML=renderPersistentConversationList(data.conversations||[]);
+      inbox.querySelectorAll('[data-open-remote-thread]').forEach(btn=>btn.addEventListener('click',()=>refresh('#/messages?t='+encodeURIComponent(btn.dataset.openRemoteThread))));
+    }catch(err){
+      inbox.innerHTML=err?.status===401?'<p class="muted">Your session expired. <a href="#/profile">Sign in again</a>.</p>':`<p class="muted">Could not load messages: ${esc(err?.message||'Unknown error')}</p>`;
+    }
+  }
+
+  root.querySelector('#remoteNewChatForm')?.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const handle=event.currentTarget.elements.handle.value.trim();
+    if(!handle)return;
+    try{
+      const data=await messagesApi.start(handle);
+      refresh('#/messages?t='+encodeURIComponent(data.conversation.id));
+    }catch(err){
+      toast(err?.code==='email_unverified'?'Verify your email before starting messages':(err?.message||'Could not start conversation'));
+    }
+  });
+
+  const host=root.querySelector('#persistentMessageThread');
+  if(host){
+    const id=host.dataset.threadId;
+    try{
+      const data=await messagesApi.get(id);
+      host.innerHTML=renderPersistentThread(data,user.id);
+      await messagesApi.markRead(id).catch(()=>{});
+      host.querySelector('[data-remote-inbox]')?.addEventListener('click',()=>refresh('#/messages'));
+      const peerHandle=data?.conversation?.peer?.handle||'';
+      host.querySelectorAll('[data-remote-flag]').forEach(btn=>btn.addEventListener('click',()=>runPeerSafetyAction(btn.dataset.remoteFlag==='block'?'block':'report',peerHandle)));
+      const send=async()=>{
+        const input=host.querySelector('#remoteMsgInput');
+        const message=input?.value?.trim();
+        if(!message)return toast('Type a message');
+        try{
+          await messagesApi.send(id,message);
+          const fresh=await messagesApi.get(id);
+          host.innerHTML=renderPersistentThread(fresh,user.id);
+          bindPersistentMessages(root);
+          toast('Sent');
+        }catch(err){
+          toast(err?.code==='email_unverified'?'Verify your email before sending messages':(err?.message||'Could not send'));
+        }
+      };
+      host.querySelector('#remoteMsgSend')?.addEventListener('click',send);
+      host.querySelector('#remoteMsgInput')?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();send();}});
+      const box=host.querySelector('#remoteMsgThread');if(box)box.scrollTop=box.scrollHeight;
+    }catch(err){
+      host.innerHTML=err?.status===404?'<div class="card muted">Conversation not found or unavailable.</div>':`<div class="card muted">Could not load conversation: ${esc(err?.message||'Unknown error')}</div>`;
+    }
+  }
+}
+
 export function renderMessages(route) {
   const user = getState().user;
+  if (isMessagesApiConfigured()) return renderPersistentMessages(route,user);
   if (!user) return renderSignIn();
 
   ensureDemoMessageContacts();
+  // Seed the one-time demo unread thread before rendering inbox counts.
+  ensureDemoUnreadMessages();
 
   const view = route?.query?.view || '';
   const threadId = route?.query?.t || '';
@@ -267,31 +423,95 @@ export function renderMessages(route) {
   }
 
   return shellPage('Messages', body, {
-    lead: 'DMs, group chats, and DatBoiSkeet team inbox · TEST MODE',
+    lead: 'DMs, group chats, and creator messages · TEST MODE',
+  });
+}
+
+/** Device-only thread Mute/Block/Report buttons. Block/Report reach the server when the thread has a real peer handle. */
+export function bindLocalThreadFlags(root, thread, { go = refresh } = {}) {
+  root.querySelectorAll('[data-flag]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!thread) return;
+      const flag = btn.dataset.flag;
+      if (flag === 'mute') {
+        const next = setThreadFlags(thread.id, { muted: !thread.muted });
+        toast(next.muted ? 'Muted' : 'Unmuted');
+      } else if (flag === 'block') {
+        const next = setThreadFlags(thread.id, { blocked: !thread.blocked });
+        if (next.blocked) runPeerSafetyAction('block', resolveThreadPeerHandle(thread));
+        else toast('Unblocked on this device');
+      } else if (flag === 'report') {
+        setThreadFlags(thread.id, { report: true });
+        runPeerSafetyAction('report', resolveThreadPeerHandle(thread));
+      }
+      go('#/messages?t=' + encodeURIComponent(thread.id));
+    });
   });
 }
 
 export function bindMessages(root) {
   const user = getState().user;
+  if (isMessagesApiConfigured()) {
+    bindPersistentMessages(root);
+    return;
+  }
   if (!user) return;
-
-  ensureDemoUnreadMessages();
 
   const goInbox = () => refresh('#/messages');
 
   root.querySelector('#msgBackInbox')?.addEventListener('click', goInbox);
+  root.querySelector('#msgMarkAllRead')?.addEventListener('click', () => {
+    const unread = listThreads().filter(t => getThreadUnreadCount(t) > 0);
+    if (!unread.length) return;
+    unread.forEach(t => markThreadRead(t.id));
+    toast(`${unread.length} conversation${unread.length === 1 ? '' : 's'} marked read`);
+    refresh('#/messages');
+  });
   root.querySelector('#msgNewChat')?.addEventListener('click', () => refresh('#/messages?view=new'));
   root.querySelector('#pikkNewChatTop')?.addEventListener('click', () => refresh('#/messages?view=new'));
-  root.querySelector('#pikkMsgSearch')?.addEventListener('input', e => {
-    const query=String(e.target.value||'').trim().toLowerCase();
+  const filterInbox = () => {
+    const query = String(root.querySelector('#pikkMsgSearch')?.value || '').trim().toLowerCase();
+    const unreadOnly = !!root.querySelector('#pikkMsgUnreadOnly')?.checked;
     let shown = 0;
     root.querySelectorAll('#msgInbox [data-open-thread]').forEach(row => {
-      row.hidden = !!query && !String(row.dataset.search || '').includes(query);
+      const matchesSearch = !query || String(row.dataset.search || '').includes(query);
+      const matchesUnread = !unreadOnly || row.dataset.unread === 'true';
+      row.hidden = !(matchesSearch && matchesUnread);
       if (!row.hidden) shown++;
     });
+    const total = root.querySelectorAll('#msgInbox [data-open-thread]').length;
+    const resultCount = root.querySelector('#pikkMsgResultCount');
+    if (resultCount) resultCount.textContent = messageResultSummary(shown, total, !!(query || unreadOnly));
     const empty = root.querySelector('#pikkMsgNoResults');
-    if (empty) empty.hidden = !query || shown > 0;
+    if (empty) {
+      empty.textContent = unreadOnly
+        ? (query ? 'No unread conversations match your search.' : 'No unread conversations.')
+        : 'No conversations match your search.';
+      empty.hidden = shown > 0 || (!query && !unreadOnly);
+    }
+    const clearFilters = root.querySelector('#pikkMsgClearFilters');
+    if (clearFilters) clearFilters.hidden = !query && !unreadOnly;
+  };
+  root.querySelector('#pikkMsgClearFilters')?.addEventListener('click', () => {
+    const search = root.querySelector('#pikkMsgSearch');
+    const unread = root.querySelector('#pikkMsgUnreadOnly');
+    if (search) search.value = '';
+    if (unread) unread.checked = false;
+    filterInbox();
+    search?.focus();
   });
+  const inboxSearch = root.querySelector('#pikkMsgSearch');
+  inboxSearch?.addEventListener('input', filterInbox);
+  // Escape clears the search text without resetting the Unread only filter.
+  // Keep focus in the field so keyboard users can immediately search again.
+  inboxSearch?.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || !inboxSearch.value) return;
+    event.preventDefault();
+    event.stopPropagation();
+    inboxSearch.value = '';
+    filterInbox();
+  });
+  root.querySelector('#pikkMsgUnreadOnly')?.addEventListener('change', filterInbox);
   root.querySelector('#msgEmptyNew')?.addEventListener('click', () => refresh('#/messages?view=new'));
   root.querySelector('#msgOpenTeam')?.addEventListener('click', () => refresh('#/messages?view=team'));
 
@@ -327,7 +547,7 @@ export function bindMessages(root) {
         refresh('#/messages?view=team');
         return;
       }
-      const t = getOrCreateThread(peerId, peerName);
+      const t = getOrCreateThread(peerId, peerName, { peerHandle: btn.dataset.peerHandle || '' });
       if (t.error) return toast('Sign in required');
       if (t.request) toast('Request thread created · demo');
       refresh('#/messages?t=' + encodeURIComponent(t.id));
@@ -355,25 +575,7 @@ export function bindMessages(root) {
     markThreadRead(thread.id);
   }
 
-  root.querySelectorAll('[data-flag]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      if (!thread) return;
-      const flag = btn.dataset.flag;
-      if (flag === 'mute') {
-        const next = setThreadFlags(thread.id, { muted: !thread.muted });
-        toast(next.muted ? 'Muted' : 'Unmuted');
-        refresh('#/messages?t=' + encodeURIComponent(thread.id));
-      } else if (flag === 'block') {
-        const next = setThreadFlags(thread.id, { blocked: !thread.blocked });
-        toast(next.blocked ? 'Blocked' : 'Unblocked');
-        refresh('#/messages?t=' + encodeURIComponent(thread.id));
-      } else if (flag === 'report') {
-        setThreadFlags(thread.id, { report: true });
-        toast('Reported · stub (Guidelines §13)');
-        refresh('#/messages?t=' + encodeURIComponent(thread.id));
-      }
-    });
-  });
+  bindLocalThreadFlags(root, thread);
 
   const send = (priority) => {
     if (!thread) return;

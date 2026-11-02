@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { MERCH, TABBAR, DRAWER_GROUPS, HOME_SECTIONS } from '../src/data.js';
-import { filterPikkShopProducts, renderPikkShop } from '../src/pages/pikk-shop.js';
+import { filterPikkShopProducts, sortPikkShopProducts, renderPikkShop } from '../src/pages/pikk-shop.js';
 
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const profile = readFileSync(new URL('../src/pages/profile.js', import.meta.url), 'utf8');
@@ -43,6 +43,56 @@ test('product search and category filtering work on the existing catalog', () =>
 
 test('official approved PIKK JPG remains the brand source', () => {
   const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(index, /brand\/pikk-official-approved\.jpg/);
-  assert.ok(existsSync(new URL('../public/brand/pikk-official-approved.jpg', import.meta.url)));
+  assert.match(index, /brand\/pikk-logo-official\.png/);
+  assert.ok(existsSync(new URL('../public/brand/pikk-logo-official.png', import.meta.url)));
+});
+
+
+test('shop exposes a real clear-filters control without changing the original merchandise', () => {
+  const html = renderPikkShop();
+  assert.match(html, /id="pikkShopReset"[^>]*hidden>Reset view<\/button>/);
+  assert.equal((html.match(/class="merch-card pikk-shop-product"/g) || []).length, MERCH.length);
+  assert.ok(html.includes('id="pikkShopSearch"'));
+  assert.ok(html.includes('id="pikkShopCount" aria-live="polite"'));
+});
+
+test('Shop sorts genuine products by price or name without mutating the approved catalog', () => {
+  const original = MERCH.map((item) => item.id);
+  const low = sortPikkShopProducts(MERCH, 'price-asc');
+  const high = sortPikkShopProducts(MERCH, 'price-desc');
+  const names = sortPikkShopProducts(MERCH, 'name-asc');
+  assert.deepEqual(low.map((item) => item.price), [...low.map((item) => item.price)].sort((a, b) => a - b));
+  assert.deepEqual(high.map((item) => item.price), [...high.map((item) => item.price)].sort((a, b) => b - a));
+  assert.deepEqual(names.map((item) => item.name), [...names.map((item) => item.name)].sort((a, b) => a.localeCompare(b)));
+  assert.deepEqual(sortPikkShopProducts(MERCH).map((item) => item.id), original);
+  assert.deepEqual(MERCH.map((item) => item.id), original);
+  const html = renderPikkShop();
+  assert.match(html, /id="pikkShopSort"/);
+  assert.match(html, /Price: low to high/);
+  assert.match(html, /Price: high to low/);
+  assert.match(html, /Name: A to Z/);
+});
+
+
+test('Shop Escape clears only the query while preserving category and sort', () => {
+  const source = readFileSync(new URL('../src/pages/pikk-shop.js', import.meta.url), 'utf8');
+  assert.match(source, /search\?\.addEventListener\('keydown', event => \{/);
+  assert.match(source, /event\.key !== 'Escape' \|\| !search\.value/);
+  assert.match(source, /search\.value = '';\s+applyFilters\(\);/);
+  assert.match(renderPikkShop(), /id="pikkShopSearch" type="search"/);
+});
+
+test('Shop collection CTA moves keyboard focus into search while preserving reduced-motion scrolling', () => {
+  const source = readFileSync(new URL('../src/pages/pikk-shop.js', import.meta.url), 'utf8');
+  assert.match(renderPikkShop(), /data-shop-scroll>Shop the collection<\/button>/);
+  assert.match(source, /search\?\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(source, /root\.querySelector\('#pikkShopCatalog'\)\?\.scrollIntoView/);
+  assert.match(source, /prefers-reduced-motion: reduce/);
+});
+
+test('Shop reset view restores featured sorting as well as category and search', () => {
+  const source = readFileSync(new URL('../src/pages/pikk-shop.js', import.meta.url), 'utf8');
+  assert.match(source, /\(sort\?\.value \|\| 'featured'\) !== 'featured'/);
+  assert.match(source, /if \(sort\) sort\.value = 'featured';/);
+  assert.match(renderPikkShop(), /id="pikkShopReset"[^>]*hidden>Reset view<\/button>/);
 });

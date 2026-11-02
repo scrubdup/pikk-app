@@ -1,0 +1,20 @@
+{
+  "name": "pikk-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "dev": "wrangler dev",
+    "migrate:local": "wrangler d1 migrations apply pikk-db --local",
+    "db:tables:remote": "wrangler d1 execute pikk-db --remote --command \"SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;\"",
+    "migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "deploy": "wrangler deploy",
+    "migrate:ci": "node scripts/migrate-if-main.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.4.11",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.124.0"
+  }
+}

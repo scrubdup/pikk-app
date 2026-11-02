@@ -161,7 +161,24 @@ export function renderEarnings() {
         : `<p class="muted" style="margin:0">No lines in this category. <a href="#/earnings">Show all</a></p>`;
 
   const body = `
-    <div class="card">
+    <section class="pikk-earnings-hero" aria-label="Creator earnings overview">
+      <div class="pikk-earnings-hero-copy">
+        <span class="pikk-earnings-eyebrow">PIKK CREATOR STUDIO · ANALYTICS PREVIEW</span>
+        <h2>Your work. <em>Your earnings.</em></h2>
+        <p>Track your creator share across gifts, subscriptions, tips and more in one place. Every amount shown here is browser-local demo data, not a real balance.</p>
+        <div class="pikk-earnings-hero-actions">
+          <a class="btn primary" href="#/wallet">Open Wallet</a>
+          <a class="btn ghost" href="#/music">Explore Music</a>
+        </div>
+      </div>
+      <div class="pikk-earnings-hero-art" aria-hidden="true">
+        <span class="pikk-earnings-hero-orbit"></span>
+        <span class="pikk-earnings-hero-symbol">PIKK</span>
+        <span class="pikk-earnings-hero-mini">CREATOR STUDIO</span>
+      </div>
+    </section>
+    <div class="pikk-earnings-dashboard">
+    <div class="card pikk-earnings-intro">
       <div class="row wrap">
         <span class="chip">TEST MODE · not real money</span>
         <span class="chip">Analytics &amp; ledger · payouts on Wallet</span>
@@ -169,7 +186,7 @@ export function renderEarnings() {
       <p class="muted" style="margin:10px 0 0;font-size:13px">Transparent breakdown of clipping, referrals, merch affiliates, subscriptions, gifts, and tips — with PIKK commission splits. Request payouts on <a href="#/wallet">Wallet</a>.</p>
     </div>
 
-    <div class="card">
+    <div class="card pikk-earnings-summary">
       <h3>Summary</h3>
       <div class="grid-2">
         <div>
@@ -235,6 +252,7 @@ export function renderEarnings() {
         <div class="field"><label>Note (optional)</label><input name="note" id="earnNote" type="text" maxlength="120" placeholder="Manual demo earning" /></div>
         <button class="btn primary" type="submit">Record demo earning</button>
       </form>
+    </div>
     </div>
   `;
 

@@ -61,14 +61,8 @@ export function renderMissions() {
   const missions = listMissions().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const active = missions.filter((m) => m.status === 'active' || m.status === 'paused');
   const archive = missions.filter((m) => m.status === 'ended' || m.status === 'draft');
-
-  const empty =
-    missions.length === 0
-      ? `<div class="card">
-          <p class="muted" style="margin:0 0 12px">No missions yet. Load demo campaigns or create one as demo admin.</p>
-          <button class="btn primary" id="msnSeed">Load demo missions</button>
-        </div>`
-      : '';
+  const uniqueCreators = new Set(missions.flatMap((m) => (m.participants || []).map((p) => p.userId).filter(Boolean))).size;
+  const proofCount = missions.reduce((count, m) => count + (m.submissions || []).length, 0);
 
   const missionCard = (m) => {
     const feeChip =
@@ -141,7 +135,7 @@ export function renderMissions() {
             </div>`
           : `<div class="row wrap" style="margin-top:10px"><span class="chip">Archive · ${esc(m.status)}</span></div>`;
 
-    return `<article class="card" data-mission="${esc(m.id)}">
+    return `<article class="card pikk-mission-card" data-mission="${esc(m.id)}">
       <div class="row wrap">
         <span class="chip">${esc(PROMOTE_LABELS[m.promoteType] || m.promoteType)}</span>
         <span class="chip">${esc(m.status)}</span>
@@ -190,7 +184,19 @@ export function renderMissions() {
       : '';
 
   const body = `
-    <div class="card">
+    <div class="pikk-missions-studio">
+      <section class="pikk-missions-hero" aria-label="PIKK Missions Studio overview">
+        <p class="pikk-missions-kicker">PIKK CREATOR STUDIO · PROMOTIONAL CAMPAIGNS</p>
+        <h2>Make your next <span>move count.</span></h2>
+        <p>Explore creator missions, share your work and track demo rankings. Campaign budgets and points are examples, not real earnings.</p>
+        <div class="pikk-missions-stats" aria-label="Current demo mission totals">
+          <div class="pikk-missions-stat"><strong>${active.length}</strong><span>Open / paused</span></div>
+          <div class="pikk-missions-stat"><strong>${uniqueCreators}</strong><span>Demo creators</span></div>
+          <div class="pikk-missions-stat"><strong>${proofCount}</strong><span>Proof submissions</span></div>
+        </div>
+        <span class="pikk-missions-mode">TEST MODE · NO REAL PAYOUTS</span>
+      </section>
+    <div class="card pikk-missions-intro">
       <div class="row wrap">
         <span class="chip">TEST MODE · not real money</span>
         <span class="chip">Manual review · TEST MODE — no auto fraud API</span>
@@ -207,10 +213,9 @@ export function renderMissions() {
       </div>
     </div>
 
-    ${empty}
-    ${listHtml}
+    <section class="pikk-missions-list" aria-label="Available campaigns">${listHtml}</section>
 
-    <div class="card">
+    <div class="card pikk-missions-create">
       <h3>Create mission · demo admin</h3>
       <p class="muted" style="margin:0 0 10px;font-size:13px">Stored in <code>dbs_v1.missions</code>. No real charges or fraud API.</p>
       <form id="msnCreate" style="display:grid;gap:10px;max-width:520px">
@@ -239,7 +244,8 @@ export function renderMissions() {
       </form>
     </div>
 
-    ${archiveHtml}
+    <section class="pikk-missions-archive">${archiveHtml}</section>
+    </div>
   `;
 
   return shellPage('Missions', body, {

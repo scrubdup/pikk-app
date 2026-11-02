@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { CREATE_MENU_ITEMS } from '../src/create-menu.js';
 
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const data = readFileSync(new URL('../src/data.js', import.meta.url), 'utf8');
 
-test('center Create button keeps approved play triangle plus arrow icon', () => {
-  assert.match(main, /t\.href === '#\/create' \? '<svg/);
-  assert.match(main, /<path d="M9 5 L25 16 L9 27 Z" fill="currentColor"\/>/);
-  assert.match(main, /<path d="M24 5v11m0 0-4-4m4 4 4-4"/);
+test('center Create icon is the play button + white cursor cropped from the approved PIKK logo', () => {
+  assert.match(main, /t\.href === '#\/create' \? `<img class="pikk-create-logo-icon" src="\$\{asset\('\/brand\/pikk-logo-badge\.png'\)\}"/);
+  assert.ok(existsSync(new URL('../public/brand/pikk-logo-badge.png', import.meta.url)));
+  assert.ok(existsSync(new URL('../public/brand/pikk-logo-official.png', import.meta.url)), 'source logo unchanged');
 });
 
 test('Create remains the primary fourth tab and opens its menu', () => {

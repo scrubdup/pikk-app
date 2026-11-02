@@ -1,0 +1,18 @@
+/* polish-connect (t221u): brand-consistent Connect at 360/390/430. */
+/* Discover nav chips: white text on dark, red+blue outline (unselected chip spec). */
+html body .pikk-connect-discover-nav a { color: #fff !important; white-space: nowrap; }
+html body .pikk-connect-discover-nav a > span[aria-hidden] { color: var(--pikk-red, #ff3137); }
+/* Video actions: Start spans the row, Next + End share the next row; no 3-line wrapped labels. */
+html body #connectMonkey .connect-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+html body #connectMonkey .connect-btn-start { grid-column: 1 / -1; white-space: normal; line-height: 1.2; }
+html body #connectMonkey .connect-btn-next, html body #connectMonkey .connect-btn-end { min-height: 44px; }
+/* Secondary controls: even 4-up row, no ragged wrap. */
+html body #connectMonkey .connect-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+html body #connectMonkey .connect-controls .btn { width: 100%; padding: 6px 2px; white-space: nowrap; }
+/* Disabled controls: solid chrome-dark with red+blue duotone edge instead of broken-line borders (still clearly not active). */
+html body #app #connectMonkey .btn:disabled, html body #app .connect-multistream .btn:disabled, html body #app #connect-random-chat .btn:disabled {
+  border: 1px solid rgba(47, 107, 255, .55) !important;
+  box-shadow: inset 0 -2px 0 rgba(255, 49, 55, .55) !important; color: #c0c6cf !important; opacity: .82;
+}
+/* Checker #363: 44px tap targets on Start + secondary controls. */
+html body #app #connectMonkey :is(.connect-btn-start, .connect-btn-next, .connect-btn-end, .connect-controls .btn) { min-height: 44px; }

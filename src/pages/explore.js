@@ -7,6 +7,7 @@ import {
 } from '../store.js';
 import { COMING_SOON, VIDEOS } from '../data.js';
 import { navigate } from '../router.js';
+import { searchOptInLocations, exploreResultContext } from '../explore-location.js';
 import { esc, shellPage, toast, timeAgo } from '../ui.js';
 
 const TABS = [
@@ -49,6 +50,7 @@ function renderResults(res) {
     </div>`;
   }
 
+  const resultContext = esc(exploreResultContext(res));
   const total =
     res.posts.length +
     res.profiles.length +
@@ -60,8 +62,8 @@ function renderResults(res) {
 
   if (!total) {
     return `<div class="card" id="exploreResults">
-      <p style="margin:0 0 6px"><strong>No results for “${esc(res.query)}”</strong></p>
-      <p class="muted" style="margin:0">Try another keyword, or browse Trending / Discover below. Report spam from a result’s destination page (demo shell).</p>
+      <p style="margin:0 0 6px"><strong>No results ${resultContext}</strong></p>
+      <p class="muted" style="margin:0">${res.locationLabel ? 'Only content explicitly opted into city/state discovery can appear here. No matching public location tags are available in this demo.' : 'Try another keyword, or browse Trending / Discover below. Report spam from a result’s destination page (demo shell).'}</p>
     </div>`;
   }
 
@@ -81,7 +83,7 @@ function renderResults(res) {
     .slice(0, 8)
     .map((p) =>
       resultRow({
-        href: '#/profile',
+        href: `#/profile/${encodeURIComponent(p.id)}`,
         title: `@${p.username || p.id}`,
         meta: (p.bio || 'Creator / fan').slice(0, 80),
         chip: p.verified ? 'Verified' : 'Profile',
@@ -95,7 +97,7 @@ function renderResults(res) {
       resultRow({
         href: '#/music',
         title: c.title,
-        meta: `${c.artist || 'DatBoiSkeet'} · ${c.type}`,
+        meta: `${c.artist || 'Artist not credited'} · ${c.type}`,
         chip: c.type === 'album' ? 'Album' : 'Song',
       })
     )
@@ -107,7 +109,7 @@ function renderResults(res) {
       resultRow({
         href: '#/videos',
         title: c.title,
-        meta: `${c.artist || 'DatBoiSkeet'} · From Admin`,
+        meta: `${c.artist || 'Artist not credited'} · Video catalog`,
         chip: 'Video',
       })
     )
@@ -119,7 +121,7 @@ function renderResults(res) {
       resultRow({
         href: '#/home',
         title: c.title,
-        meta: `${c.artist || 'DatBoiSkeet'} · picture`,
+        meta: `${c.artist || 'Creator not credited'} · picture`,
         chip: 'Picture',
       })
     )
@@ -151,7 +153,7 @@ function renderResults(res) {
 
   // Music-based recommendations: Coming Soon covers + official MVs matching query tokens
   const q = res.query.toLowerCase();
-  const musicRec = [
+  const musicRec = res.locationLabel ? '' : [
     ...COMING_SOON.filter(
       (c) =>
         c.title.toLowerCase().includes(q) ||
@@ -177,14 +179,14 @@ function renderResults(res) {
       resultRow({
         href: '#/videos',
         title: v.title,
-        meta: `${v.artist || 'DatBoiSkeet'} · Official MV`,
+        meta: `${v.artist || 'Artist not credited'} · Official MV`,
         chip: 'MV',
       })
     ),
   ].join('');
 
   return `<div id="exploreResults">
-    <p class="muted" style="margin:0 0 10px">${total} result${total === 1 ? '' : 's'} for “${esc(res.query)}”</p>
+    <p class="muted" style="margin:0 0 10px">${total} result${total === 1 ? '' : 's'} ${resultContext}</p>
     ${section('People', profiles, 'No matching creators or fans')}
     ${section('Posts', posts, 'No matching posts')}
     ${section('Music (catalog)', music, 'No published songs/albums')}
@@ -226,7 +228,7 @@ function followingPanel() {
     .map((id) => {
       const p = getState().profiles?.[id] || { id, username: id };
       return resultRow({
-        href: '#/profile',
+        href: `#/profile/${encodeURIComponent(p.id)}`,
         title: `@${p.username || p.id}`,
         meta: (p.bio || 'Following').slice(0, 80),
         chip: 'Following',
@@ -241,7 +243,7 @@ function discoverPanel() {
   const rows = suggested
     .map((p) =>
       resultRow({
-        href: '#/profile',
+        href: `#/profile/${encodeURIComponent(p.id)}`,
         title: `@${p.username}`,
         meta: (p.bio || 'Suggested').slice(0, 80),
         chip: p.verified ? 'Verified' : 'Suggest',
@@ -286,7 +288,7 @@ export function renderExplore() {
   const tab = getState().exploreTab || 'trending';
   const tabBtns = TABS.map(
     (t) =>
-      `<button type="button" class="shop-chip${t.id === tab ? ' on' : ''}" data-explore-tab="${t.id}">${esc(t.label)}</button>`
+      `<button type="button" role="tab" id="explore-tab-${t.id}" aria-controls="explorePanel" aria-selected="${t.id === tab}" tabindex="${t.id === tab ? 0 : -1}" class="shop-chip${t.id === tab ? ' on' : ''}" data-explore-tab="${t.id}">${esc(t.label)}</button>`
   ).join('');
 
   let panel = '';
@@ -294,7 +296,7 @@ export function renderExplore() {
   else if (tab === 'discover') panel = discoverPanel();
   else
     panel = `<div class="card">
-      <h3>Trending Across DBS</h3>
+      <h3>Trending Across PIKK</h3>
       <p class="muted" style="margin:0 0 10px">High-engagement public posts and seeded demo cards (not a full engagement pipeline).</p>
       ${trendingStrip()}
     </div>
@@ -303,40 +305,57 @@ export function renderExplore() {
   const body = `
     <div class="card explore-search">
       <div class="field" style="margin-bottom:8px">
-        <label for="exploreQ">Search DBS</label>
+        <label for="exploreQ">Search PIKK</label>
         <input id="exploreQ" type="search" autocomplete="off" placeholder="Creators, fans, songs, albums, videos, posts, lives, products…" />
+      </div>
+      <div class="row wrap" style="gap:8px;margin-bottom:10px">
+        <div class="field" style="flex:1 1 160px;min-width:0;margin:0">
+          <label for="exploreCity">City (optional)</label>
+          <input id="exploreCity" type="text" autocomplete="address-level2" placeholder="Houston" maxlength="80" />
+        </div>
+        <div class="field" style="flex:1 1 130px;min-width:0;margin:0">
+          <label for="exploreState">State (optional)</label>
+          <input id="exploreState" type="text" autocomplete="address-level1" placeholder="TX or Texas" maxlength="60" />
+        </div>
       </div>
       <div class="row wrap" style="gap:8px">
         <button class="btn primary" type="button" id="exploreGo">Search</button>
         <button class="btn ghost" type="button" id="exploreClear">Clear</button>
       </div>
-      <p class="muted" style="margin:10px 0 0;font-size:12px">Local demo index · DEMO/TEST MODE · no backend · no exact locations</p>
+      <p class="muted" id="exploreSearchStatus" role="status" aria-live="polite" aria-atomic="true" style="margin:8px 0 0;font-size:12px">Ready to search PIKK.</p>
+      <p class="muted" style="margin:10px 0 0;font-size:12px">City/state filters search only explicitly opted-in public location tags. Your own profile needs both location and Explore discoverability enabled. Demo data may have none. No GPS, precise addresses, real-time presence or backend.</p>
     </div>
-    <div class="shop-chips" style="margin:0 0 12px" role="tablist">${tabBtns}</div>
-    <div id="explorePanel">${panel}</div>
+    <div class="shop-chips" style="margin:0 0 12px" role="tablist" aria-label="Explore sections">${tabBtns}</div>
+    <div id="explorePanel" role="tabpanel" aria-labelledby="explore-tab-${tab}">${panel}</div>
   `;
 
   return shellPage('Explore', body, {
-    lead: 'Universal search & discovery across DBS.',
+    lead: 'Universal search & discovery across PIKK.',
     badge: 'Phase 2 demo',
   });
 }
 
 function runSearch(root, q) {
-  const res = exploreSearch(q);
-  const wrap = root.querySelector('#exploreResultsWrap') || root.querySelector('#explorePanel');
-  // When on Trending tab, results sit in exploreResultsWrap; otherwise inject at top of panel
-  if (root.querySelector('#exploreResultsWrap')) {
-    root.querySelector('#exploreResultsWrap').innerHTML = renderResults(res);
-  } else if (wrap) {
-    let box = root.querySelector('#exploreResults');
-    if (!box) {
-      const div = document.createElement('div');
-      div.id = 'exploreLiveInsert';
-      div.innerHTML = renderResults(res);
-      wrap.prepend(div);
-    } else {
-      box.outerHTML = renderResults(res);
+  const city = root.querySelector('#exploreCity')?.value.trim() || '';
+  const region = root.querySelector('#exploreState')?.value.trim() || '';
+  const res = city || region
+    ? searchOptInLocations(getState(), { city, state: region, query: q })
+    : exploreSearch(q);
+  const resultsWrap = root.querySelector('#exploreResultsWrap');
+  if (resultsWrap) {
+    resultsWrap.innerHTML = renderResults(res);
+  } else {
+    // Keep a stable container across repeated searches on Following and Discover.
+    // Replacing #exploreResults itself orphaned subsequent results from Clear.
+    const panel = root.querySelector('#explorePanel');
+    if (panel) {
+      let insert = panel.querySelector('#exploreLiveInsert');
+      if (!insert) {
+        insert = document.createElement('div');
+        insert.id = 'exploreLiveInsert';
+        panel.prepend(insert);
+      }
+      insert.innerHTML = renderResults(res);
     }
   }
   const total =
@@ -347,6 +366,13 @@ function runSearch(root, q) {
     (res.lives?.length || 0) +
     (res.products?.length || 0) +
     (res.pictures?.length || 0);
+  const status = root.querySelector('#exploreSearchStatus');
+  if (status) {
+    const context = exploreResultContext(res);
+    status.textContent = res.query
+      ? `${total} result${total === 1 ? '' : 's'} ${context || 'across PIKK'}.`
+      : 'Enter a keyword, city or state to search.';
+  }
   if (res.query) toast(total ? `${total} result(s)` : 'No matches');
 }
 
@@ -354,34 +380,99 @@ export function bindExplore(root) {
   const input = root.querySelector('#exploreQ');
   const go = root.querySelector('#exploreGo');
   const clear = root.querySelector('#exploreClear');
+  const cityInput = root.querySelector('#exploreCity');
+  const stateInput = root.querySelector('#exploreState');
 
   const doSearch = () => runSearch(root, input?.value || '');
 
   go?.addEventListener('click', doSearch);
-  clear?.addEventListener('click', () => {
+  function clearSearch() {
+    clearTimeout(debounce);
     if (input) input.value = '';
+    if (cityInput) cityInput.value = '';
+    if (stateInput) stateInput.value = '';
     const wrap = root.querySelector('#exploreResultsWrap');
     if (wrap) wrap.innerHTML = renderResults(null);
     root.querySelector('#exploreLiveInsert')?.remove();
+    const status = root.querySelector('#exploreSearchStatus');
+    if (status) status.textContent = 'Ready to search PIKK.';
     toast('Cleared');
-  });
+  }
+  clear?.addEventListener('click', clearSearch);
 
   let debounce;
   input?.addEventListener('input', () => {
     clearTimeout(debounce);
     debounce = setTimeout(doSearch, 220);
   });
+  for (const field of [cityInput, stateInput]) {
+    field?.addEventListener('input', () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(doSearch, 220);
+    });
+    field?.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && (input?.value || cityInput?.value || stateInput?.value)) {
+        // Escape clears the entire active search, including stale location-only
+        // results, and keeps focus on the field the visitor was editing.
+        event.preventDefault();
+        clearSearch();
+        field.focus();
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        clearTimeout(debounce);
+        doSearch();
+      }
+    });
+  }
   input?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Escape' && (input.value || cityInput?.value || stateInput?.value)) {
+      // Native search inputs may clear their text without clearing our rendered results.
       e.preventDefault();
+      clearSearch();
+      input.focus();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      clearTimeout(debounce);
       doSearch();
     }
   });
 
-  root.querySelectorAll('[data-explore-tab]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      setState({ exploreTab: btn.getAttribute('data-explore-tab') });
-      navigate('/explore');
+  // One keyboard stop for the tablist; arrow/Home/End keys activate the next section.
+  // navigate('/explore') replaces the panel, so restore focus to the new tab element.
+  const tabs = [...root.querySelectorAll('[data-explore-tab]')];
+  function activateTab(id, restoreFocus = false) {
+    // Switching sections must not silently discard an in-progress search.
+    // Keep the query only in the current UI, not in persisted account state.
+    const query = input?.value || '';
+    const city = cityInput?.value || '';
+    const region = stateInput?.value || '';
+    clearTimeout(debounce);
+    setState({ exploreTab: id });
+    navigate('/explore');
+    if (query.trim() || city.trim() || region.trim()) {
+      const nextRoot = document.getElementById('app');
+      const nextInput = nextRoot?.querySelector('#exploreQ');
+      if (nextInput) {
+        nextInput.value = query;
+        const nextCity = nextRoot.querySelector('#exploreCity');
+        const nextState = nextRoot.querySelector('#exploreState');
+        if (nextCity) nextCity.value = city;
+        if (nextState) nextState.value = region;
+        runSearch(nextRoot, query);
+      }
+    }
+    if (restoreFocus) document.getElementById('explore-tab-' + id)?.focus();
+  }
+  tabs.forEach((btn, index) => {
+    btn.addEventListener('click', () => activateTab(btn.dataset.exploreTab));
+    btn.addEventListener('keydown', (event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const last = tabs.length - 1;
+      const next = event.key === 'Home' ? 0
+        : event.key === 'End' ? last
+        : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      activateTab(tabs[next].dataset.exploreTab, true);
     });
   });
 

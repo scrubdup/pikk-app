@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SECTION_MENU_ITEMS } from '../src/section-menus.js';
+import { PIKK_GAMES } from '../src/games/arcade-catalog.js';
 
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const source = readFileSync(new URL('../src/section-menus.js', import.meta.url), 'utf8');
@@ -13,7 +14,12 @@ test('all five remaining bottom sections have honest, verified menu destinations
   for (const [section, items] of Object.entries(SECTION_MENU_ITEMS)) {
     assert.ok(items.length >= 2, section);
     for (const { title, href, detail } of items) {
-      assert.ok(title && detail && href.startsWith('#/'), section);
+      assert.ok(title && detail, section);
+      if (!href) {
+        assert.match(detail, /planned|coming soon/i, title + ': disabled card must disclose planned / Coming Soon status');
+        continue;
+      }
+      assert.ok(href.startsWith('#/'), title + ': invalid route');
       const path = href.slice(1).split(/[?#]/)[0];
       assert.ok(routes.includes(path), title + ': missing route ' + path);
     }
@@ -39,5 +45,21 @@ test('menus retain fail-safe disclosure and protect player and branding', () => 
   assert.match(SECTION_MENU_ITEMS.connect.find(item => item.title === 'Random Chat').detail, /unavailable/);
   assert.match(SECTION_MENU_ITEMS.games.find(item => item.title === 'PIKK Arcade').detail, /preview/);
   assert.match(html, /id="dbs-sticky-player"/);
-  assert.match(html, /brand\/pikk-official-approved\.jpg/);
+  assert.match(html, /brand\/pikk-logo-official\.png/);
+});
+
+// Keep the Games popup in lockstep with the fifteen exact owner-approved Arcade tiles.
+test('Games tab shows all 15 games in approved order without fake playable links', () => {
+  const games = SECTION_MENU_ITEMS.games;
+  assert.equal(games[0].title, 'PIKK Arcade');
+  const tiles = games.slice(1, 16);
+  assert.equal(tiles.length, 15);
+  assert.deepEqual(tiles.map(item => item.title), PIKK_GAMES.map(game => game.name));
+  assert.equal(tiles[0].title, 'Block Wars');
+  assert.equal(tiles[1].title, 'PIKK Playground');
+  for (const [index, tile] of tiles.entries()) {
+    const catalog = PIKK_GAMES[index];
+    assert.equal(tile.href, catalog.href);
+    if (!catalog.href) assert.match(tile.detail, /planned/i);
+  }
 });

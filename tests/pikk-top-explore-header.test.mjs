@@ -12,7 +12,7 @@ test('Explore lives outside Social as a standalone pinned discovery entry', () =
   assert.ok(DRAWER_GROUPS.some(g => g.id === 'explore' && g.href === '#/explore'));
   assert.match(html, /class="pikk-explore-rail"/);
   assert.match(html, /href="#\/explore">⌕ Explore/);
-  for (const route of ['#/posts', '#/videos', '#/live', '#/community']) assert.ok(html.includes('href="' + route + '"'));
+  for (const route of ['#/posts', '#/videos', '#/live', '#/communities']) assert.ok(html.includes('href="' + route + '"'));
 });
 
 test('official PIKK logo and compact header precede and preserve sticky music player', () => {
@@ -20,9 +20,9 @@ test('official PIKK logo and compact header precede and preserve sticky music pl
   const player = html.indexOf('id="dbs-sticky-player"');
   const rail = html.indexOf('class="pikk-explore-rail"');
   assert.ok(header > 0 && header < player && player < rail);
-  assert.match(html, /src="%BASE_URL%brand\/pikk-official-approved\.jpg" alt="PIKK"/);
+  assert.match(html, /src="%BASE_URL%brand\/pikk-logo-official\.png" alt="PIKK"/);
   assert.match(html, /href="#\/home" class="logo" aria-label="PIKK Home"/);
-  const actions = ['id="headerProfile"', 'id="headerMsg"', 'id="notifBtn"', 'id="menuBtn"'];
+  const actions = ['id="headerProfile"', 'id="paymentsBtn"', 'id="exploreSearchBtn"', 'id="headerMsg"', 'id="notifBtn"', 'id="menuBtn"'];
   let last = header;
   for (const action of actions) { const next = html.indexOf(action, last); assert.ok(next > last, action); last = next; }
   assert.match(css, /\.top#topBar \{ position: sticky/);
@@ -30,6 +30,10 @@ test('official PIKK logo and compact header precede and preserve sticky music pl
   assert.match(css, /\.pikk-explore-rail \{/);
   assert.match(html, /id="spPlay"/);
   assert.match(html, /id="spQueueBtn"/);
+});
+
+test('header omits Settings gear (owner t219u); Settings stays in navigation', () => {
+  assert.equal(html.includes('id="settingsBtn"'), false);
 });
 
 test('approved seven bottom tabs remain unchanged', () => {

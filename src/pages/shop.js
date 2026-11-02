@@ -208,7 +208,7 @@ export function renderShop() {
           <span class="chip">TEST MODE</span>
         </div>
       </div>
-      <div class="shop-chips" role="tablist" aria-label="Cosmetic categories">${chips}</div>
+      <div class="shop-chips" role="group" aria-label="Cosmetic categories">${chips}</div>
       <label class="shop-reduce row" style="gap:8px;align-items:center;margin:0 0 12px;cursor:pointer">
         <input type="checkbox" id="shopReduceMotion" ${shop.reduceMotion ? 'checked' : ''} />
         <span>Reduce motion (effects)</span>
@@ -234,6 +234,11 @@ export function bindShop(root) {
     btn.addEventListener('click', () => {
       activeCat = btn.dataset.cat || 'all';
       refresh();
+      // The same-route refresh replaces the filter buttons. Restore keyboard focus
+      // to the selected category so users can keep browsing without starting over.
+      const selected = [...document.querySelectorAll('.shop-chip')]
+        .find((chip) => chip.dataset.cat === activeCat);
+      selected?.focus();
     });
   });
 

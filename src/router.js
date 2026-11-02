@@ -12,8 +12,17 @@ export function getRoute() {
     routePart = rawHash.slice(0, fragAt);
   }
   const path = routePart.startsWith('/') ? routePart : '/' + routePart;
-  const [pathname, query = ''] = path.split('?');
-  const parts = pathname.split('/').filter(Boolean);
+  // Split only at the first ?: later question marks can be literal query values.
+  const queryAt = path.indexOf('?');
+  const pathname = queryAt === -1 ? path : path.slice(0, queryAt);
+  const query = queryAt === -1 ? '' : path.slice(queryAt + 1);
+  // Decode dynamic path segments so encoded profile IDs resolve to the original
+  // account, while preserving the first segment used for registered app routes.
+  // Invalid percent escapes must not crash navigation.
+  const parts = pathname.split('/').filter(Boolean).map((part, index) => {
+    if (index === 0) return part;
+    try { return decodeURIComponent(part); } catch { return part; }
+  });
   return {
     path: '/' + (parts[0] || 'home'),
     parts,

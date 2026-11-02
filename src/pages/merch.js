@@ -33,7 +33,7 @@ export function renderMerch() {
       <p class="merch-note" style="margin-top:10px">Hats $30 · Tees $65 · Jackets $200 · prices exclude shipping</p>
     </div>
     <div class="merch-grid">${cards}</div>
-    <div id="merchLightbox" class="lightbox" aria-hidden="true"><img alt="" /></div>
+    <div id="merchLightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Product image preview" aria-hidden="true"><button type="button" class="merch-lightbox-close" aria-label="Close product preview">×</button><img alt="" /></div>
   `;
   return shellPage('Merch', body, { lead: 'Foreign X-Change showcase · 10 products · external checkout only' });
 }
@@ -47,18 +47,28 @@ export function bindMerch(root) {
 
   const lb = root.querySelector('#merchLightbox');
   const lbImg = lb?.querySelector('img');
-  const openZoom = (src) => {
-    if (!lb || !lbImg) return;
-    lbImg.src = src;
+  const closeButton = lb?.querySelector('.merch-lightbox-close');
+  let lastOpener = null;
+  const openZoom = (opener) => {
+    if (!lb || !lbImg || !closeButton) return;
+    lastOpener = opener;
+    // Use the rendered image URL so the preview also works under the /pikk-app/ Pages base path.
+    lbImg.src = opener.querySelector('img')?.currentSrc || opener.dataset.zoom;
+    lbImg.alt = opener.querySelector('img')?.alt || 'Product preview';
     lb.classList.add('show');
     lb.setAttribute('aria-hidden', 'false');
+    closeButton.focus();
   };
   const closeZoom = () => {
-    lb?.classList.remove('show');
-    lb?.setAttribute('aria-hidden', 'true');
+    if (!lb?.classList.contains('show')) return;
+    lb.classList.remove('show');
+    lb.setAttribute('aria-hidden', 'true');
+    lbImg?.removeAttribute('src');
+    if (lastOpener?.isConnected) lastOpener.focus();
+    lastOpener = null;
   };
   root.querySelectorAll('.img-wrap').forEach((el) => {
-    const go = () => openZoom(el.dataset.zoom);
+    const go = () => openZoom(el);
     el.addEventListener('click', go);
     el.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -68,4 +78,14 @@ export function bindMerch(root) {
     });
   });
   lb?.addEventListener('click', closeZoom);
+  lb?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeZoom();
+    } else if (e.key === 'Tab') {
+      // The preview has one focusable control: keep focus inside the dialog.
+      e.preventDefault();
+      closeButton?.focus();
+    }
+  });
 }

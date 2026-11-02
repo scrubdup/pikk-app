@@ -1,0 +1,35 @@
+name: PIKK Loyalty Studio Visual Review
+on:
+  pull_request:
+    paths:
+      - 'src/pages/loyalty.js'
+      - 'src/loyalty-premium.css'
+      - 'src/main.js'
+      - 'tests/pikk-loyalty-premium.test.mjs'
+      - 'scripts/visual-review-loyalty.mjs'
+      - '.github/workflows/pikk-loyalty-visual.yml'
+jobs:
+  screenshots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies and Chromium
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Build PIKK
+        run: npm run build
+      - name: Verify Loyalty at 390px and 1440px
+        run: node scripts/visual-review-loyalty.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pikk-loyalty-visual-review
+          path: visual-review/loyalty-*.png
+          if-no-files-found: warn

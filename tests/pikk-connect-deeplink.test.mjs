@@ -43,3 +43,35 @@ test('Connect scrolls to the requested, allowlisted section without starting cam
     else globalThis.requestAnimationFrame = originalRaf;
   }
 });
+
+
+test('Connect deep links honor reduced motion and preserve smooth scrolling otherwise', () => {
+  const originalLocation = globalThis.location;
+  const originalRaf = globalThis.requestAnimationFrame;
+  const originalWindow = globalThis.window;
+  try {
+    globalThis.location = { hash: '#/connect#connect-random-chat' };
+    globalThis.requestAnimationFrame = (callback) => { callback(); return 1; };
+    const behaviors = [];
+    const root = {
+      querySelectorAll: () => [],
+      querySelector: (selector) => selector === '#connect-random-chat'
+        ? { scrollIntoView: (options) => behaviors.push(options.behavior) }
+        : null,
+    };
+    globalThis.window = { matchMedia: () => ({ matches: true }) };
+    bindConnect(root);
+    globalThis.window = { matchMedia: () => ({ matches: false }) };
+    bindConnect(root);
+    globalThis.window = {};
+    bindConnect(root);
+    assert.deepEqual(behaviors, ['instant', 'smooth', 'smooth']);
+  } finally {
+    if (originalLocation === undefined) delete globalThis.location;
+    else globalThis.location = originalLocation;
+    if (originalRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = originalRaf;
+    if (originalWindow === undefined) delete globalThis.window;
+    else globalThis.window = originalWindow;
+  }
+});

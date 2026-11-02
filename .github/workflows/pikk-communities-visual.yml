@@ -1,0 +1,45 @@
+name: PIKK Communities Visual Review
+on:
+  pull_request:
+    paths:
+      - 'src/pages/communities.js'
+      - 'src/main.js'
+      - 'src/pages/connect.js'
+      - 'src/pages/shells.js'
+      - 'src/section-menus.js'
+      - 'src/styles.css'
+      - 'tests/pikk-communities-forum.test.mjs'
+      - 'scripts/visual-review-communities.mjs'
+      - '.github/workflows/pikk-communities-visual.yml'
+jobs:
+  screenshots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install app and screenshot browser
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Start Vite preview
+        run: |
+          npm run dev -- --host 127.0.0.1 > /tmp/pikk-communities-vite.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5173/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/pikk-communities-vite.log
+          exit 1
+      - name: Verify real local interactions and capture 390px / 1440px screenshots
+        run: node scripts/visual-review-communities.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pikk-communities-visual-review
+          path: visual-review/communities-*.png
+          if-no-files-found: warn

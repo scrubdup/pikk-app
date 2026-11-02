@@ -48,6 +48,7 @@ import { toast } from './ui.js';
 const YT_API_SRC = 'https://www.youtube.com/iframe_api';
 
 /** @type {QueueItem[]} */
+import { recordPlay, playCount, playCountLabel, decoratePlayCounts } from './play-counter.js';
 let queue = [];
 let index = 0;
 /** @type {YT.Player | null} */
@@ -59,6 +60,8 @@ let playingDesired = false;
 /** @type {Set<string>} */
 const interrupts = new Set();
 let uiBound = false;
+let stickyPlayTimer = null;
+const pageViewTimers = new Map();
 
 function ytIdFromUrl(url) {
   if (!url) return '';
@@ -128,7 +131,7 @@ export function buildQueue() {
       id: m.id,
       title: m.title,
       artist: 'DatBoiSkeet',
-      cover: coverFromYtId('DTe4OiX2otg') || '/brand/logo-dbs-v3@2x.webp',
+      cover: coverFromYtId('DTe4OiX2otg') || '/brand/pikk-logo-square.png',
       playlistId: pl,
       youtube: m.youtube,
       embed: m.embed || `https://www.youtube.com/embed/videoseries?list=${pl}`,
@@ -485,6 +488,14 @@ function ensureYtPlayer() {
         syncUi();
       },
       onStateChange: (e) => {
+        // t347u: count a real play after ≥3 s of continuous playback (shared organic/promote counter)
+        clearTimeout(stickyPlayTimer);
+        if (e.data === 1) {
+          const t = queue[index];
+          stickyPlayTimer = setTimeout(() => {
+            if (queue[index] === t && isYtPlaying()) { recordPlay(t?.youtubeId || t?.title, { kind: 'audio', seconds: 3, source: t?.promoted ? 'promote' : 'organic' }); syncUi(); }
+          }, 3000);
+        }
         // 0 = ended → advance
         if (e.data === 0) {
           nextTrack({ auto: true });
@@ -561,10 +572,12 @@ function syncUi() {
   const playing = !interrupted && (playingDesired || isYtPlaying());
 
   if (art && track) {
-    art.src = track.cover || coverFromYtId(track.youtubeId || '') || '/brand/logo-dbs-v3@2x.webp';
+    art.src = track.cover || coverFromYtId(track.youtubeId || '') || '/brand/pikk-logo-square.png';
     art.alt = track.title || '';
   }
-  if (title) title.textContent = track?.title || 'DatBoiSkeet';
+  if (title) title.textContent = track?.title || 'PIKK Music';
+  const playsEl = document.getElementById('spPlays');
+  if (playsEl) { const n = track ? playCount(track.youtubeId || track.title) : 0; playsEl.textContent = n ? playCountLabel(n, 'audio') : ''; }
   if (sub) {
     if (!userArmed) sub.textContent = 'Tap Play · YouTube embed · Stream Everywhere';
     else if (interrupted) sub.textContent = `Paused · ${[...interrupts][0]} interrupt`;
@@ -572,7 +585,7 @@ function syncUi() {
   }
   if (playBtn) {
     playBtn.textContent = playing ? '❚❚' : '▶';
-    playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play DBS Music');
+    playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play PIKK Music');
     playBtn.dataset.playing = playing ? '1' : '0';
   }
   if (openBtn && track) {
@@ -629,7 +642,7 @@ function playInternal() {
       setTimeout(() => clearInterval(wait), 8000);
     }
   } catch (_) {
-    toast('Tap Play DBS Music again if autoplay blocked');
+    toast('Tap Play PIKK Music again if autoplay blocked');
   }
   syncUi();
 }
@@ -762,6 +775,7 @@ function bindUi() {
     interrupts.clear();
     nextTrack();
   });
+  bindProgressAndVolume();
   document.getElementById('spOpen')?.addEventListener('click', (e) => {
     // let default navigate; toast honesty
     toast('Opening external music service (playback depends on provider)');
@@ -930,6 +944,13 @@ function onPagePlayerStateChange(hostId, e) {
   const entry = pageYtById.get(hostId);
   if (!entry) return;
   // YT.PlayerState: ENDED=0 PLAYING=1 PAUSED=2 BUFFERING=3 CUED=5
+  clearTimeout(pageViewTimers.get(hostId));
+  if (e.data === 1) {
+    const vid = e.target?.getVideoData?.()?.video_id;
+    if (vid) pageViewTimers.set(hostId, setTimeout(() => {
+      if (pageYtById.get(hostId)?.playing) { recordPlay(vid, { kind: 'video', seconds: 3, source: document.querySelector(`#${CSS.escape(hostId)}`)?.closest('[data-promoted]') ? 'promote' : 'organic' }); decoratePlayCounts(document); }
+    }, 3000));
+  }
   if (e.data === 1) {
     if (!entry.playing) {
       entry.playing = true;
@@ -1152,4 +1173,45 @@ export function destroyPageYtPlayer(hostElOrId) {
 /** Test helper — how many page embeds currently report PLAYING. */
 export function getPageYtPlayingCount() {
   return pagePlayingCount;
+}
+
+
+/* Mockup player card: progress/time and volume wired to the real YouTube player.
+   Shows --:-- until the YT player reports a real duration (no fabricated time). */
+export function fmtTime(sec) {
+  if (!Number.isFinite(sec) || sec <= 0) return '--:--';
+  const s = Math.floor(sec);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+let seeking = false;
+function bindProgressAndVolume() {
+  const seek = document.getElementById('spSeek');
+  const cur = document.getElementById('spTimeCur');
+  const dur = document.getElementById('spTimeDur');
+  const vol = document.getElementById('spVol');
+  if (!seek || !cur || !dur) return;
+  seek.addEventListener('input', () => { seeking = true; });
+  seek.addEventListener('change', () => {
+    const d = ytPlayer?.getDuration?.() || 0;
+    if (d > 0) ytPlayer.seekTo?.((Number(seek.value) / 1000) * d, true);
+    seeking = false;
+  });
+  vol?.addEventListener('input', () => ytPlayer?.setVolume?.(Number(vol.value)));
+  document.getElementById('spCast')?.addEventListener('click', () => toast('Cast is not available yet'));
+  setInterval(() => {
+    const d = ytPlayer?.getDuration?.() || 0;
+    const t = ytPlayer?.getCurrentTime?.() || 0;
+    if (d > 0) {
+      seek.disabled = false;
+      if (!seeking) seek.value = String(Math.round((t / d) * 1000));
+      cur.textContent = t > 0 ? fmtTime(t) : '0:00';
+      dur.textContent = fmtTime(d);
+      seek.setAttribute('aria-valuetext', `${fmtTime(t)} of ${fmtTime(d)}`);
+      seek.style.setProperty('--sp-pct', `${(t / d) * 100}%`);
+    } else {
+      seek.disabled = true;
+      cur.textContent = '--:--';
+      dur.textContent = '--:--';
+    }
+  }, 500);
 }

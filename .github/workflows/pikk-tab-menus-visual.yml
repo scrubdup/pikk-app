@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'src/section-menus.js'
+      - 'src/create-menu.js'
       - 'src/music-menu.js'
       - 'src/main.js'
       - 'src/styles.css'

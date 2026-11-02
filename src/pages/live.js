@@ -4,7 +4,6 @@ import {
   endLiveDemo,
   sendLiveChat,
   sendLiveSupport,
-  bumpLiveViewers,
   getLiveHistory,
   listHotLives,
   simulateLiveSpike,
@@ -43,18 +42,22 @@ import { esc, toast, shellPage, timeAgo, ytEmbedSrc } from '../ui.js';
 import { navigate, getRoute } from '../router.js';
 import { notifyLiveOpen, notifyLiveClosed } from '../player.js';
 import { giftStickerHtml, getGiftSticker } from '../gift-stickers.js';
+import { renderLiveDiscoveryDirectory, mountLiveDirectorySearch, liveDiscoveryRefreshHref } from '../live-discovery.js';
+import { renderGiftForAllControls, bindGiftForAll, renderWinnersStrip, nameHtml as gbNameHtml, hasWinnerBadge as gbHasBadge, loadRecords as gbLoad } from '../live-gift-battle.js';
+import { renderGoLiveCategoryFields, bindGoLiveCategoryFields, readGoLiveFields, renderGroupRoomsPanel, bindGroupRooms } from '../live-rooms.js';
 
 /** t197u discovery tabs — preserve ?tab= on soft refresh */
 function getLiveDiscTab() {
   const q = (getRoute().query || {}).tab;
   if (q === 'live' || q === 'channels') return 'channels';
-  if (q === 'following' || q === 'categories') return q;
+  if (q === 'following' || q === 'categories' || q === 'rooms') return q;
   return 'channels';
 }
 
 function refresh() {
   const tab = getLiveDiscTab();
-  navigate(tab === 'channels' ? '#/live' : `#/live?tab=${tab}`);
+  const category = getRoute().query?.category || '';
+  navigate(liveDiscoveryRefreshHref(tab, category));
 }
 
 function fmtMoney(n) {
@@ -73,6 +76,7 @@ function renderLiveCategoryChips(active = 'live') {
     { id: 'live', href: '#/live?tab=channels', label: 'Live' },
     { id: 'openmic', href: '#/openmic', label: 'Open Mic / Talent Discovery (24/7)' },
     { id: 'spotlight', href: '#/spotlight', label: 'Spotlight (24/7)' },
+    { id: 'viral', href: '#/viral-live', label: 'Viral Live · Preview' },
   ];
   const chips = items
     .map((it) => {
@@ -95,6 +99,7 @@ function renderLiveDiscoveryTabs(active = 'channels') {
     { id: 'clips', href: '#/shorts', label: 'Clips' },
     { id: 'channels', href: '#/live?tab=channels', label: 'Channels' },
     { id: 'categories', href: '#/live?tab=categories', label: 'Categories' },
+    { id: 'rooms', href: '#/live?tab=rooms', label: 'Group Rooms' },
   ];
   const btns = tabs
     .map((t) => {
@@ -148,7 +153,7 @@ function renderFollowingPanel(user) {
   const followChips = following.length
     ? following
         .slice(0, 12)
-        .map((f) => `<a class="chip" href="#/profile">${esc('@' + (f.username || f.id))}</a>`)
+        .map((f) => `<a class="chip" href="#/profile/${encodeURIComponent(f.id)}">${esc('@' + (f.username || f.id))}</a>`)
         .join('')
     : '<span class="muted">Nobody followed yet · DEMO</span>';
 
@@ -172,9 +177,9 @@ function renderFollowingPanel(user) {
       .map((live) => {
         return `
         <article class="hot-live-card${live.house ? ' is-house' : ''}" data-live-id="${esc(live.id)}">
-          <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching">
+          <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching (example data)">
             <span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span>
-            <span class="live-hoodie-viewers">${esc(fmtCount(live.viewers))}</span>
+            <span class="live-hoodie-viewers">${esc(fmtCount(live.viewers))}</span><span class="chip pikk-example-tag" title="Example data · not real viewers">Example</span>
           </div>
           <div class="hot-live-body">
             <div class="hot-live-host">@${esc(live.hostName)}</div>
@@ -200,6 +205,71 @@ function renderFollowingPanel(user) {
 }
 
 const LIVE_DISCOVERY_CATEGORIES = [
+  ['The Booth', 'Rappers, freestyles, hip-hop performances and song previews', '🎙️'],
+  ['The Stage', 'Singers, bands, vocalists and instrumental performances', '🎤'],
+  ['City Takeover', 'City-versus-city showcases, performances and local pride challenges', '🌆'],
+  ['Producer Room', 'Beat showcases, producer collaborations and beat competitions', '🎹'],
+  ['Ladies Lounge', 'Women-centered girl talk, beauty, fashion, relationships and community', '💅'],
+  ['Girl Talk', 'Everyday conversations, friendships and women’s discussions', '💬'],
+  ['Tea Time', 'Celebrity gossip, trending stories and entertainment drama', '🫖'],
+  ['Who Did What?', 'Viral moments, celebrity controversies and debates', '👀'],
+  ['Boss Ladies', 'Women entrepreneurs, business networking and financial growth', '👑'],
+  ['Fashion & Fits', 'Fashion, outfits and personal style', '👗'],
+  ['Ladies Only Live', 'Women-centered livestreams and hosted events', '🎥'],
+
+  ["What's the Word?", 'Entertainment news, celebrity conversations, viral moments and trending discussions', '🗣️'],
+  ['Women in Business', 'Women entrepreneurs, founders, business networking and mentorship', '👩‍💼'],
+  ['The Man Cave', 'Men’s social conversations, sports and community', '🤝'],
+  ['Men in Business', 'Men’s entrepreneurship, networking, mentorship and partnerships', '👔'],
+  ['Girls\' Night In', 'Women-centered social nights, games and discussions', '🌙'],
+  ['Beauty Bar', 'Beauty, hair, makeup and skincare conversations', '💄'],
+  ['Love & Standards', 'Dating, relationships and boundaries', '💗'],
+  ['Women\'s Mental Wellness', 'Women-centered stress, confidence, emotional wellbeing and peer support', '🧠'],
+  ['Dating From Her Side', 'Women-centered dating experiences, relationships and personal standards', '💞'],
+  ['The Hustle Room: Women', 'Women-centered side hustles, extra income ideas and building businesses', '📈'],
+  ['The Barbershop', 'Men-centered everyday debates, conversation and community', '💈'],
+  ['Fellas\' Night', 'Men-centered social events and games', '🌃'],
+  ['Men\'s Corner', 'Men-centered life, relationships and personal development', '🧢'],
+  ['Cars & Motors', 'Cars, motorcycles, customization and auto culture', '🚘'],
+  ['Fitness & Brotherhood', 'Fitness, wellbeing and peer support', '💪'],
+  ['Fatherhood', 'Parenting, family responsibilities and raising children', '👨‍👧'],
+  ['Men\'s Mental Wellness', 'Men-centered stress, wellbeing and peer support', '🧠'],
+  ['Dating From His Side', 'Men-centered dating experiences and relationship advice', '💬'],
+  ['Sports Debate', 'Sports arguments, player comparisons and predictions', '🏅'],
+  ['Gaming Brotherhood', 'Gaming, tournaments and player communities', '🎮'],
+  ['Men\'s Style', 'Fashion, grooming, watches and fragrances', '⌚'],
+  ['The Hustle Room', 'Careers, side businesses and professional growth', '📈'],
+  ['Brotherhood & Mentorship', 'Intergenerational mentoring and peer support', '🤝'],
+
+  ['Sports Central', 'All-sports discussion, fan talk and analysis', '🏆'],
+  ['Basketball', 'Basketball discussion and fan streams', '🏀'],
+  ['Football', 'American football discussion and fan streams', '🏈'],
+  ['Soccer', 'Soccer discussion and fan streams', '⚽'],
+  ['Baseball', 'Baseball discussion and fan streams', '⚾'],
+  ['Hockey', 'Hockey discussion and fan streams', '🏒'],
+  ['Tech Talk', 'AI, gadgets, apps and technology', '💻'],
+  ['Startups & Innovation', 'Building businesses, technology and new ideas', '🚀'],
+  ['World News', 'International events and global news discussions', '🌍'],
+  ['Economy & Markets', 'Inflation, housing, jobs, interest rates and markets', '📈'],
+  ["Let's Talk", 'Open conversations, questions and community discussion', '🗣️'],
+  ['The Hangout', 'Conversations and social live streams', '💬'],
+  ['Creator Spotlight', 'Featured creators and emerging talent', '🌟'],
+  ['Game Room', 'Gameplay, tournaments and community games', '🎮'],
+  ['Why Are You Single?', 'Coed conversations about single life, dating experiences and relationship challenges', '❓'],
+  ['What Are You Looking For?', 'Coed conversations about dating intentions, values and ideal partners', '💭'],
+  ['Single & Ready to Mingle', 'Opt-in coed social conversations and introductions for singles', '💘'],
+  ['Looking for My Match', 'Opt-in dating live conversations', '❤️'],
+  ['The Flirt Zone', 'Dating and connection conversations', '💕'],
+  ['Speed Connections', 'Fast-paced introductions and connections', '⏱️'],
+  ['Poly Connections', 'Consensual nonmonogamy discussions and connections', '🔗'],
+  ['Couples Corner', 'Couples-versus-couples games, trivia, partner challenges, friendly competitions and rematches', '💞'],
+  ['Date Night Live', 'Live dating conversations and activities', '🌹'],
+  ['Love & Advice', 'Relationship conversations and advice', '💌'],
+  ['Business Connect & Wealth Academy', 'Coed business networking and beginner education in entrepreneurship, credit, stocks, crypto, real estate and Roth IRAs', '💼'],
+  ['City Connect', 'Meet people by city for friendship, dating, business networking and local conversations', '📍'],
+  ['Conspiracy Room', 'Open discussion of theories and claims', '🧩'],
+  ['Money Talk', 'Stocks, housing, crypto and financial discussions', '💰'],
+
   ['Just Chatting', 'Conversations, Q&A and hanging out', '💬'],
   ['Gaming', 'Gameplay, tournaments and community games', '🎮'],
   ['Music', 'Artists, DJs, producers and listening sessions', '🎵'],
@@ -219,23 +289,21 @@ const LIVE_DISCOVERY_CATEGORIES = [
 ];
 
 function renderCategoriesPanel() {
-  const cards = LIVE_DISCOVERY_CATEGORIES.map(([name, description, emoji]) => `
-    <a class="live-cat-card" href="${name === 'Comedy & Roast Battles' ? '#/roast-arena' : `#/live?tab=channels&category=${encodeURIComponent(name)}`}" aria-label="${esc(name)}: browse channels">
-      <span style="font-size:26px" aria-hidden="true">${emoji}</span>
-      <strong>${esc(name)}</strong>
-      <p class="muted" style="margin:6px 0 0;font-size:12px">${esc(description)}</p>
-      <span class="chip">Browse channels</span>
-    </a>`).join('');
   return `
     <div class="card live-disc-panel" id="liveTabCategories" data-panel="categories">
-      <h3 style="margin:0 0 8px">Browse Live Categories</h3>
-      <p class="muted" style="margin:0 0 12px;font-size:12px">Explore topics like Twitch and Kick. Select a topic to filter available PIKK live channels. Categories without an active stream show an empty result; no invented viewers.</p>
-      <div class="live-cat-cards">${cards}</div>
-      <h3 style="margin:18px 0 8px">PIKK 24/7 Stages</h3>
+      <div class="pikk-live-directory-hero">
+        <span class="pikk-live-directory-kicker">PIKK LIVE · DISCOVER</span>
+        <h3>Find your room.</h3>
+        <p>Choose a community, explore a sport or find a conversation. Open a section to browse its topics.</p>
+        <span class="pikk-live-directory-note">Discovery categories filter channels; a category is not a hosted room or a live stream. No active stream? You'll see an empty result.</span>
+      </div>
+      ${renderLiveDiscoveryDirectory(LIVE_DISCOVERY_CATEGORIES, esc)}
+      <h3 style="margin:20px 0 8px">PIKK 24/7 Stages</h3>
       <div class="live-cat-cards">
         <a class="live-cat-card" href="#/openmic"><strong>Open Mic / Talent Discovery</strong><span class="chip">24/7 stage</span><p class="muted">Join the performance queue</p></a>
         <a class="live-cat-card" href="#/spotlight"><strong>Spotlight Live</strong><span class="chip">24/7 stage</span><p class="muted">Keep Going votes and creator performances</p></a>
         <a class="live-cat-card" href="#/shorts"><strong>Clips / Shorts</strong><span class="chip">Watch</span><p class="muted">Watch short videos</p></a>
+        <a class="live-cat-card" href="#/viral-live"><strong>PIKK Viral Live</strong><span class="chip">Preview · not broadcasting</span><p class="muted">Explore the future 24/7 trending channel and original video sources</p></a>
       </div>
     </div>`;
 }
@@ -255,15 +323,15 @@ function renderHotLivesRail(category = '') {
       const hot = recentlySpiked(live);
       return `
       <article class="hot-live-card${hot ? ' is-hot' : ''}${live.house ? ' is-house' : ''}" data-live-id="${esc(live.id)}">
-        <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching">
+        <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching (example data)">
           <span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span>
-          <span class="live-hoodie-viewers" title="${esc(fmtCount(live.viewers))} watching">${esc(fmtCount(live.viewers))}</span>
+          <span class="live-hoodie-viewers" title="${esc(fmtCount(live.viewers))} watching · example">${esc(fmtCount(live.viewers))}</span><span class="chip pikk-example-tag" title="Example data · not real viewers">Example</span>
         </div>
         <div class="hot-live-body">
           <div class="hot-live-host">@${esc(live.hostName)}</div>
           <div class="hot-live-title">${esc(live.title)}</div>
           <div class="hot-live-chips">
-            <span class="chip">${esc(fmtCount(live.viewers))} watching</span>
+            <span class="chip">${esc(fmtCount(live.viewers))} watching · Example</span>
             ${live.house ? '<span class="chip chip-ok">House</span>' : ''}
             ${hot ? '<span class="chip live-chip"><span class="dot" aria-hidden="true"></span> HOT</span>' : ''}
           </div>
@@ -473,12 +541,11 @@ function renderStage(live) {
     : Math.max(0, Math.floor((Date.now() - live.startedAt) / 1000));
   const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
   const ss = String(elapsed % 60).padStart(2, '0');
-  const viewersLabel = fmtCount(live.viewers || 0);
   const liveHoodie = live.endedAt
     ? `<div class="live-stage-meta"><span class="chip">Ended · ${timeAgo(live.endedAt)}</span></div>`
-    : `<div class="live-hoodie live-hoodie--stage" aria-label="Live · ${esc(viewersLabel)} watching">
+    : `<div class="live-hoodie live-hoodie--stage" aria-label="Live demo · no real viewers">
           <span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span>
-          <span class="live-hoodie-viewers" id="liveViewers" title="${esc(viewersLabel)} watching">${esc(viewersLabel)}</span>
+          <span class="live-hoodie-viewers" id="liveViewers" title="TEST MODE demo stream">Demo · no real viewers</span>
         </div>
         <div class="live-stage-meta">
           <span class="chip">${mm}:${ss}</span>
@@ -488,8 +555,8 @@ function renderStage(live) {
     .slice(-40)
     .map(
       (m) => `
-      <div class="live-chat-row ${m.support ? 'support' : ''}">
-        <strong>${esc(m.username)}</strong>
+      <div class="live-chat-row ${m.support ? 'support' : ''}${gbHasBadge(gbLoad(), m.username) ? ' pikk-gb-hl' : ''}">
+        <strong>${gbNameHtml(m.username)}</strong>
         <span>${esc(m.text)}</span>
       </div>`
     )
@@ -499,7 +566,7 @@ function renderStage(live) {
     <div class="card live-stage">
       <div class="live-stage-frame" role="img" aria-label="Fake stream stage · TEST MODE">
         <div class="live-stage-brand">
-          <img src="/brand/pikk-official-approved.jpg" alt="PIKK" />
+          <img src="/brand/pikk-logo-official.png" alt="PIKK" />
           <div>
             <div class="live-stage-title">${esc(live.title)}</div>
             <div class="muted" style="font-size:12px">@${esc(live.hostName)} · Follow DatBoiSkeet</div>
@@ -524,14 +591,15 @@ function renderStage(live) {
           : `<div class="row wrap" style="margin-top:10px;gap:8px">
                <button class="btn" id="liveTip" data-kind="tip" data-amt="1">Tip $1 · demo</button>
                <button class="btn ghost" id="liveFocusGifts">Gifts tray</button>
-               <button class="btn ghost" id="liveBumpViewers">Refresh viewers</button>
                <button class="btn ghost danger" id="liveEnd">End stream</button>
-             </div>`
+             </div>
+             ${renderGiftForAllControls('live')}`
       }
     </div>
 
     <div class="card live-chat-card">
       <h3>Live chat</h3>
+      ${renderWinnersStrip('live')}
       <div class="live-chat" id="liveChat">${chat || '<p class="muted">No messages yet.</p>'}</div>
       ${
         live.endedAt
@@ -626,6 +694,14 @@ function renderLiveDailyGoalCard(live, user) {
         <span class="muted"> · ${pct}%</span>
         <span class="chip" style="margin-left:8px">Coins ${esc(fmtCoins(coinsBal))}</span>
       </p>
+      <div class="field live-goal-message-field" style="margin:10px 0 8px">
+        <label for="liveGoalSupportMessage">Message to the creator (optional)</label>
+        <input id="liveGoalSupportMessage" maxlength="180" placeholder="Show some love with your donation" autocomplete="off" aria-describedby="liveGoalSupportMessageHint liveGoalSupportMessageCount" />
+        <div class="live-goal-message-meta">
+          <p class="muted" id="liveGoalSupportMessageHint">Saved with your demo coin transaction on this device only. Not delivered to a real streamer.</p>
+          <output id="liveGoalSupportMessageCount" for="liveGoalSupportMessage" aria-live="off">0 / 180</output>
+        </div>
+      </div>
       <div class="row wrap live-goal-donate-row" style="gap:8px">
         ${donateBtns}
       </div>
@@ -655,6 +731,7 @@ function renderGoLiveForm(user) {
       <div class="field"><label>Stream title</label>
         <input id="liveTitle" maxlength="80" placeholder="e.g. Listening session · Long Story Short" value="PIKK Live · ${esc(user.username)}" />
       </div>
+      ${renderGoLiveCategoryFields()}
       <div class="field"><label>Today's goal name <span class="muted">(optional)</span></label>
         <input id="liveGoalNameGo" maxlength="80" placeholder="e.g. Studio session fund" />
       </div>
@@ -882,6 +959,7 @@ export function renderLive() {
   let tabPanel = channelsPanel;
   if (tab === 'following') tabPanel = renderFollowingPanel(user);
   else if (tab === 'categories') tabPanel = renderCategoriesPanel();
+  else if (tab === 'rooms') tabPanel = renderGroupRoomsPanel({ user, goalHtml: user && !active ? renderLiveDailyGoalCard({ hostId: user.id, hostName: user.username }, user) : (user ? '<p class="muted small">Your Live daily goal is shown above while you are live (TEST MODE).</p>' : '<p class="muted small">Sign in to set a room donation goal (reuses the Live daily goal · TEST MODE).</p>') });
 
   const body = `
     ${renderLiveDiscoveryTabs(tab)}
@@ -1076,6 +1154,7 @@ function mountSongRequestForm(root) {
 }
 
 export function bindLive(root) {
+  mountLiveDirectorySearch(root);
   root.querySelectorAll('.hot-live-watch').forEach((btn) => {
     btn.addEventListener('click', () => {
       notifyLiveOpen();
@@ -1104,9 +1183,14 @@ export function bindLive(root) {
     });
   });
 
+  bindGoLiveCategoryFields(root);
+  bindGroupRooms(root, { toast, me: getState().user?.username || 'You' });
+  bindGiftForAll(root, { toast, me: getState().user?.username || 'You' });
   root.querySelector('#liveStart')?.addEventListener('click', () => {
     const title = root.querySelector('#liveTitle')?.value?.trim();
-    const res = startLiveDemo(title);
+    const goFields = readGoLiveFields(root);
+    if (!goFields.category) return toast('Pick one Go Live category');
+    const res = startLiveDemo(title, goFields);
     if (res?.error === 'signin') return toast('Sign in first');
     if (res?.error === 'already_live') return toast('Already live');
     const gName = root.querySelector('#liveGoalNameGo')?.value?.trim();
@@ -1138,12 +1222,6 @@ export function bindLive(root) {
     refresh();
   });
 
-  root.querySelector('#liveBumpViewers')?.addEventListener('click', () => {
-    const live = bumpLiveViewers();
-    const el = root.querySelector('#liveViewers');
-    if (el && live) el.textContent = fmtCount(live.viewers || 0);
-    toast('Viewers updated (stub)');
-  });
 
   root.querySelector('#liveTip')?.addEventListener('click', (e) => {
     const btn = e.currentTarget;
@@ -1193,12 +1271,22 @@ function mountLiveDailyGoal(root) {
     refresh();
   });
 
+  const supportMessage = root.querySelector('#liveGoalSupportMessage');
+  const supportCount = root.querySelector('#liveGoalSupportMessageCount');
+  if (supportMessage && supportCount) {
+    const updateCount = () => {
+      supportCount.textContent = `${supportMessage.value.length} / 180`;
+    };
+    supportMessage.addEventListener('input', updateCount);
+    updateCount();
+  }
+
   root.querySelectorAll('.live-goal-custom-form').forEach((form) => {
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       const coins = Number(form.querySelector('.live-goal-custom-coins')?.value);
       if (!Number.isSafeInteger(coins) || coins < 1 || coins > 1000000) return toast('Enter 1–1,000,000 whole coins');
-      const result = donateToGoal(form.dataset.goalId, coins);
+      const result = donateToGoal(form.dataset.goalId, coins, {message:root.querySelector('#liveGoalSupportMessage')?.value || ''});
       if (result?.error === 'signin') return toast('Sign in first');
       if (result?.error === 'insufficient') return toast('Not enough demo coins');
       if (result?.error) return toast('Donation unavailable · TEST MODE');
@@ -1211,7 +1299,7 @@ function mountLiveDailyGoal(root) {
     btn.addEventListener('click', () => {
       const goalId = btn.dataset.goalId;
       const coins = Number(btn.dataset.coins);
-      const res = donateToGoal(goalId, coins);
+      const res = donateToGoal(goalId, coins, {message:root.querySelector('#liveGoalSupportMessage')?.value || ''});
       if (res?.error === 'signin') return toast('Sign in first');
       if (res?.error === 'insufficient') {
         return toast(`Need ${fmtCoins(res.need)} coins — buy a pack in Gifts · TEST MODE`);

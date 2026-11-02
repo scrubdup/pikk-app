@@ -13,8 +13,10 @@ try {
     const errors = [];
     page.on('pageerror', e => errors.push(String(e)));
     await page.goto(base + '#/profile', { waitUntil: 'domcontentloaded' });
-    await page.locator('#signinName').fill('PIKK QA');
-    await page.locator('#signinBtn').click();
+    // Profile no longer has demo sign-in (7859454). Seed a QA-only local profile the same way
+    // scripts/visual-review-messages-flow.mjs does; no backend session is claimed.
+    await page.evaluate((u) => localStorage.setItem('dbs_v1', JSON.stringify({ user: { ...u, createdAt: Date.now() } })), { id: 'u_pikkqa', username: 'PIKKQA', bio: 'Messages visual QA', avatar: '', followers: [], following: ['dbs'], memberships: { skeetPlus: false, backstage: false, innerCircle: false }, purchasedTracks: [] });
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await page.goto(base + '#/messages', { waitUntil: 'domcontentloaded' });
     await page.locator('.pikk-messages-hero').waitFor();
     assert.equal(await page.locator('#pikkMsgSearch').count(), 1);
@@ -37,7 +39,15 @@ try {
     await page.locator('#pikkMsgSearch').fill('unfindable___999');
     assert.equal(await page.locator('#msgInbox [data-open-thread]:visible').count(), 0);
     assert.equal(await page.locator('#pikkMsgNoResults:visible').count(), 1);
-    await page.locator('#pikkMsgSearch').fill('');
+    // Escape clears search while retaining Unread only and keyboard focus.
+    await page.locator('#pikkMsgUnreadOnly').check();
+    await page.locator('#pikkMsgSearch').press('Escape');
+    assert.equal(await page.locator('#pikkMsgSearch').inputValue(), '');
+    assert.equal(await page.locator('#pikkMsgUnreadOnly').isChecked(), true);
+    assert.equal(await page.locator('#pikkMsgSearch').evaluate(el => el === document.activeElement), true);
+    assert.equal(await page.locator('#pikkMsgNoResults').textContent(), 'No unread conversations.');
+    await page.screenshot({ path: 'visual-review/messages-' + name + '-escape.png', fullPage: true });
+    await page.locator('#pikkMsgUnreadOnly').uncheck();
     assert.ok(await page.locator('#msgInbox [data-open-thread]:visible').count() > 0);
     // Check the page is not wider than the viewport; keyboard focus remains usable.
     const overflows = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2);

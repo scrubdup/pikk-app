@@ -1,9 +1,12 @@
+import { getMembership, joinMembership, membershipStatus } from '../settings-store.js';
+import { renderStoriesAndPromotions } from '../featured-promos.js';
 import { getState, setState, setNotifPrefs, listCatalog, submitCreatorSellApp } from '../store.js';
 import { resolveMediaSrc } from '../media-db.js';
 import { VIDEOS, VIDEO_COMING_SOON, MEMBERSHIPS } from '../data.js';
 import { esc, shellPage, toast, ytEmbedSrc } from '../ui.js';
 import { navigate } from '../router.js';
 import { notifyVideoPlaying, notifyVideoIdle, bindPageYoutubeEmbeds } from '../player.js';
+import { accountApi, isAccountApiConfigured } from '../api/account-client.js';
 
 function phase(n) {
   return { badge: `Phase ${n} shell` };
@@ -78,7 +81,7 @@ export function renderVideos() {
   const coming = Object.entries(byCat)
     .map(
       ([cat, items]) => `
-      <div class="card">
+      <div class="card pikk-video-coming-card" data-video-coming-category="${esc(cat)}">
         <h3>${esc(cat)}</h3>
         <p class="muted" style="margin:0 0 8px">No verified URLs in repo yet — titles from plan §9 only. No invented view counts.</p>
         <ul class="list-plain">${items
@@ -90,7 +93,8 @@ export function renderVideos() {
 
   return shellPage(
     'Videos & Interviews',
-    `<section class="pikk-video-hero card">
+    `${renderStoriesAndPromotions('videos')}
+    <section class="pikk-video-hero card">
       <div class="pikk-video-hero-copy">
         <p class="kicker">PIKK VIDEOS · OFFICIAL RELEASES</p>
         <h2>Watch. Discover. Repeat.</h2>
@@ -109,6 +113,7 @@ export function renderVideos() {
       <button type="button" data-videos-filter="Interviews" aria-pressed="false">Interviews</button>
       ${adminVids.length ? '<button type="button" data-videos-filter="Admin" aria-pressed="false">Admin</button>' : ''}
     </nav>
+    <p class="card pikk-video-source-info pikk-video-filter-status muted" role="status" aria-live="polite" data-video-filter-status>Showing all video categories and upcoming titles.</p>
     <div class="card pikk-video-source-info"><p class="muted" style="margin:0">Official DatBoiSkeet music videos, mixes, and interviews — YouTube embeds from the original source. No rehosted files.</p>
       <div class="row wrap" style="margin-top:8px;gap:8px">
         <a class="btn" href="https://www.youtube.com/channel/UCA2GGwQ-cOUW0ZqmWaGzEBA" target="_blank" rel="noopener">Official YouTube channel</a>
@@ -118,7 +123,10 @@ export function renderVideos() {
     </div>
     ${sections}${extra}
     ${adminHtml ? `<section class="pikk-video-section" data-video-category="Admin"><h3>From Admin</h3><div class="pikk-video-grid">${adminHtml}</div></section>` : ''}
-    ${coming}`,
+    <section class="pikk-video-section pikk-video-coming-list" aria-label="Upcoming videos">
+      <h3>Upcoming on PIKK</h3>
+      ${coming}
+    </section>`,
     { lead: 'Official MVs · Mixes · Interviews · admin uploads.' }
   );
 }
@@ -127,6 +135,9 @@ export function bindVideos(root) {
   // Filter only video sections; preserve embedded playback and uploaded content.
   const filterButtons = [...root.querySelectorAll('[data-videos-filter]')];
   const videoSections = [...root.querySelectorAll('.pikk-video-section[data-video-category]')];
+  const comingCards = [...root.querySelectorAll('[data-video-coming-category]')];
+  const comingList = root.querySelector('.pikk-video-coming-list');
+  const filterStatus = root.querySelector('[data-video-filter-status]');
   filterButtons.forEach((button) => button.addEventListener('click', () => {
     const category = button.dataset.videosFilter || 'All';
     filterButtons.forEach((candidate) => {
@@ -138,7 +149,35 @@ export function bindVideos(root) {
       const visible = category === 'All' || section.dataset.videoCategory === category;
       section.hidden = !visible;
     });
+    comingCards.forEach((card) => {
+      card.hidden = category !== 'All' && card.dataset.videoComingCategory !== category;
+    });
+    const upcomingVisible = comingCards.some(card => !card.hidden);
+    if (comingList) comingList.hidden = !upcomingVisible;
+    if (filterStatus) {
+      const publishedVisible = videoSections.some(section => !section.hidden);
+      filterStatus.textContent = category === 'All'
+        ? 'Showing all video categories and upcoming titles.'
+        : publishedVisible
+          ? `Showing ${category}${upcomingVisible ? ' and upcoming titles' : ''}.`
+          : upcomingVisible
+            ? `No published ${category} videos yet. Upcoming titles are listed below.`
+            : `No published ${category} videos yet.`;
+    }
   }));
+  // Accessible shortcut: Left/Right arrows move between video category buttons.
+  // Buttons remain ordinary tabbable controls; arrow navigation is an enhancement.
+  root.querySelector('.pikk-video-filters')?.addEventListener('keydown', (event) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    const current = filterButtons.indexOf(event.target);
+    if (current < 0 || !filterButtons.length) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0
+      : event.key === 'End' ? filterButtons.length - 1
+      : (current + (event.key === 'ArrowRight' ? 1 : -1) + filterButtons.length) % filterButtons.length;
+    filterButtons[next].focus();
+    filterButtons[next].click();
+  });
   // §17: real YT play via IFrame API (Media Links binder) — not cross-origin pointerdown
   bindPageYoutubeEmbeds(root);
   root.querySelectorAll('video.catalog-video').forEach((vid) => {
@@ -206,7 +245,7 @@ export { renderMissions, bindMissions } from './missions.js';
 
 export function renderPricing() {
   const tiers = MEMBERSHIPS.map(
-    (m) => `<li><span>${esc(m.name)}</span><strong>$${m.price}/mo</strong></li>`
+    (m) => `<li class="pikk-tier" data-tier="${esc(m.id)}"><span><strong>${esc(m.name)}</strong><br/><small class="muted">${esc(m.blurb || '')}</small></span><strong>$${m.price}/mo</strong><button type="button" class="btn primary pikk-join" data-join="${esc(m.id)}">${m.id === 'inner' ? 'Join' : 'Subscribe'}</button></li>`
   ).join('');
   const apps = getState().creatorSellApps || [];
   const appsList = apps.length
@@ -288,7 +327,7 @@ export function renderPricing() {
       ${appsList}
     </div>
 
-    <div class="card"><h3>Memberships</h3><ul class="list-plain">${tiers}</ul></div>
+    <div class="card" id="memberships"><h3>Memberships</h3><p class="pikk-member-status" data-member-status role="status">${esc(membershipStatus(getMembership()))}</p><ul class="list-plain">${tiers}</ul><div class="pikk-join-confirm" data-join-confirm hidden></div><p class="muted" style="font-size:12px">TEST MODE · no real charge. Billing starts when Stripe is live.</p></div>
      <div class="card"><h3>Music price ranges</h3>
        <ul class="list-plain">
          <li><span>Song</span><span>$0.99–$1.29</span></li>
@@ -302,6 +341,7 @@ export function renderPricing() {
 }
 
 export function bindPricing(root) {
+  bindMemberships(root || document);
   const focusSell =
     typeof location !== 'undefined' &&
     (location.hash.includes('focus=sell') || location.hash.includes('creator-sell'));
@@ -429,7 +469,7 @@ const LOUNGE_CHANNELS = [
     cat: 'MEMBERS',
     hash: '#backstage-rooms',
     name: 'Backstage Rooms',
-    blurb: 'Tier-restricted spaces for Skeet+ / Backstage / Inner Circle',
+    blurb: 'Tier-restricted spaces for PIKK+ / Backstage / Inner Circle',
     chip: 'Members',
   },
   {
@@ -462,7 +502,7 @@ const LOUNGE_DEMO_MSGS = {
     { who: 'DEMO', text: 'Listening parties will sync reactions here — preview only.', tag: 'DEMO' },
   ],
   backstage: [
-    { who: 'DEMO', text: 'Member-tier rooms unlock with Skeet+ / Backstage / Inner Circle.', tag: 'DEMO' },
+    { who: 'DEMO', text: 'Member-tier rooms unlock with PIKK+ / Backstage / Inner Circle.', tag: 'DEMO' },
   ],
   'live-rooms': [
     { who: 'DEMO', text: 'Scheduled community events will list here — no live presence yet.', tag: 'DEMO' },
@@ -552,6 +592,7 @@ export function renderCommunity() {
       <h2 style="margin:0 0 8px">Channel-style Lounge</h2>
       <p>PIKK Lounge is DatBoiSkeet’s premium community — Discord-type channel UX (sidebar + room panes) under silver/dark PIKK branding. Announcements, listening parties, and fan conversations in one place.</p>
       <p class="muted" style="margin:8px 0 0">Not affiliated with Discord. Channels below are the same rooms as before; live chat unlocks in Phase 2.</p>
+      <a class="btn ghost" href="#/communities">Open PIKK Communities · local discussion preview</a>
     </div>
 
     <div class="lounge-discord" id="loungeDiscord">
@@ -600,37 +641,101 @@ export function bindCommunity(root = document) {
   });
 }
 
+export const CREATOR_ROLE_OPTIONS = Object.freeze([
+  { id: 'creator', label: 'Creator', note: 'General creator tools and profile publishing.' },
+  { id: 'artist', label: 'Artist', note: 'Music uploads and artist tools.' },
+  { id: 'streamer', label: 'Streamer', note: 'Livestream creator tools.' },
+  { id: 'producer', label: 'Producer', note: 'Beat/music creator tools.' },
+  { id: 'publisher', label: 'Publisher', note: 'Publishing/rights workflow declaration.' },
+  { id: 'seller', label: 'Seller', note: 'Marketplace/storefront tools.' },
+  { id: 'advertiser', label: 'Advertiser', note: 'Business advertising tools.' },
+  { id: 'clipper', label: 'Clipper', note: 'Clipper campaigns and submissions.' },
+]);
+
 export function renderSignup() {
+  const remote=isAccountApiConfigured();
+  const roleOptions=CREATOR_ROLE_OPTIONS.map(role=>`<label class="card creator-role-choice" style="margin:0" data-role-card="${esc(role.id)}"><span class="row" style="align-items:flex-start"><input type="checkbox" name="creatorRole" value="${esc(role.id)}" /><span class="spacer"><strong>${esc(role.label)}</strong><br/><small class="muted">${esc(role.note)}</small></span><span class="chip creator-role-state" data-role-state="${esc(role.id)}">not selected</span></span></label>`).join('');
   return shellPage(
     'Signup & Creator Apps',
     `<div class="card">
       <p class="kicker">Join PIKK</p>
-      <h2 style="margin:0 0 8px">Fan account first</h2>
-      <p>Everyone creates a DatBoiSkeet account to participate — follow, comment, save, join Lounge rooms, buy memberships, message the team, or apply to earn. Visitors can browse public promo pages; signing up unlocks the network.</p>
-      <p class="muted" style="margin:8px 0 12px"><strong>Basic fan signup is free</strong> — no manual approval. This demo uses local Profile sign-in (TEST MODE · no real email/auth yet).</p>
-      <a class="btn primary" href="#/profile">Sign in / create demo user</a>
+      <h2 style="margin:0 0 8px">Your PIKK account</h2>
+      <p>Everyone uses one PIKK account. Creator roles are declarations on that account—not separate accounts.</p>
+      <p class="muted" style="margin:8px 0 12px">${remote
+        ? '<strong>Backend account roles are connected.</strong> Sign in, then select the roles that describe how you plan to use PIKK.'
+        : '<strong>Account role service is not connected in this build.</strong> Role changes will not be saved until the production API endpoint is configured.'}</p>
+      <a class="btn primary" href="#/profile">Open Profile / Sign in</a>
       <a class="btn ghost" href="#/guidelines" style="margin-left:8px">Read Guidelines</a>
+      <p class="muted" style="margin:10px 0 0;font-size:12px">By using PIKK you agree to the <a href="#/terms">Terms</a> (draft), including <a href="#/terms?s=security">Security &amp; Data Breach / Limitation of Liability</a>, and the <a href="#/privacy">Privacy</a> notice.</p>
     </div>
 
+    <section class="card" id="creator-role-manager">
+      <h3>Account roles</h3>
+      <p class="muted">Member is always included. Selecting Creator, Artist, Streamer, Producer, Publisher, Seller, Advertiser or Clipper declares your intended use. <strong>It does not grant admin privileges, payout eligibility, verification, or monetization approval.</strong></p>
+      ${remote ? `<form id="creatorRoleForm">
+        <label class="card creator-role-choice" style="margin:0 0 10px"><span class="row"><input type="checkbox" checked disabled /><span><strong>Member</strong><br/><small class="muted">Every PIKK account.</small></span></span></label>
+        <div class="grid-2" id="creatorRoleChoices">${roleOptions}</div>
+        <p id="creatorRoleStatus" class="muted" role="status" aria-live="polite" style="margin:12px 0"></p>
+        <button class="btn primary" type="submit">Save account roles</button>
+      </form>` : '<p class="chip">Role manager waiting for backend API configuration</p>'}
+    </section>
+
     <div class="card">
-      <h3>Apply for a role</h3>
-      <p class="muted" style="margin:0 0 10px">From Profile → Become a Creator, request one or more roles. Each has its own application — no automatic access to earning tools.</p>
+      <h3>Specialized applications &amp; tools</h3>
+      <p class="muted" style="margin:0 0 10px">Some tools still require additional review beyond the role declaration above.</p>
       <ul class="list-plain">
-        <li><span><strong>Creator / Streamer</strong><br/><span class="muted" style="font-size:12px">Profile, socials, livestream plan · PIKK branding &amp; moderation</span></span><a href="#/live">Live</a></li>
-        <li><span><strong>Clipper</strong><br/><span class="muted" style="font-size:12px">Work samples &amp; analytics · paid promo campaigns</span></span><a href="#/clippers">Apply</a></li>
-        <li><span><strong>Brand / Advertiser</strong><br/><span class="muted" style="font-size:12px">Business identity, campaigns &amp; disclosures</span></span><a href="#/marketplace">Marketplace</a></li>
-        <li><span><strong>Affiliate / Promoter</strong><br/><span class="muted" style="font-size:12px">Referral &amp; campaign promotion plan</span></span><a href="#/refer">Refer</a></li>
-        <li><span><strong>Seller</strong><br/><span class="muted" style="font-size:12px">Storefront details, fulfillment &amp; verification</span></span><a href="#/marketplace">Storefront</a></li>
+        <li><span><strong>Creator / Streamer</strong><br/><span class="muted" style="font-size:12px">Livestream plan, safety and creator tools</span></span><a href="#/live">Live</a></li>
+        <li><span><strong>Artist / Producer</strong><br/><span class="muted" style="font-size:12px">Private draft music uploads with rights certification</span></span><a href="#/music?view=upload">Upload Music</a></li>
+        <li><span><strong>Clipper</strong><br/><span class="muted" style="font-size:12px">Work samples &amp; campaign workflow</span></span><a href="#/clippers">Apply</a></li>
+        <li><span><strong>Brand / Advertiser</strong><br/><span class="muted" style="font-size:12px">Business campaigns &amp; disclosures</span></span><a href="#/marketplace">Marketplace</a></li>
+        <li><span><strong>Seller</strong><br/><span class="muted" style="font-size:12px">Storefront, fulfillment &amp; verification</span></span><a href="#/marketplace">Storefront</a></li>
       </ul>
     </div>
 
     <div class="card">
       <h3>Approval flow</h3>
-      <p class="muted" style="margin:0">Register → select role → submit → admin reviews → approve / reject / waitlist → notify → unlock role tools. Earnings need identity/tax/payout checks before payouts. All roles stay under Community Guidelines.</p>
-      <p class="chip" style="margin-top:10px">TEST MODE · local demo user on Profile</p>
+      <p class="muted" style="margin:0">Account → declare role(s) → complete any role-specific application/verification → admin/provider review where required → unlock restricted tools. Earnings still require identity/tax/payout checks before real payouts.</p>
     </div>`,
-    { lead: 'Free fan signup + creator role applications · §16.' }
+    { lead: remote ? 'Real account role declarations + specialized creator applications' : 'Creator role manager waiting for production API configuration' }
   );
+}
+
+export function bindSignup(root){
+  if(!isAccountApiConfigured()) return;
+  const form=root.querySelector('#creatorRoleForm');
+  const status=root.querySelector('#creatorRoleStatus');
+  if(!form)return;
+  const setStatus=(message)=>{if(status)status.textContent=message;};
+  accountApi.me().then(data=>{
+    const entries=(data.signup_roles||[]).map(r=>typeof r==='string'?{role:r,status:'declared'}:r);
+    const byRole=new Map(entries.map(r=>[r.role,r.status||'declared']));
+    root.querySelectorAll('input[name="creatorRole"]').forEach(input=>{
+      input.checked=byRole.has(input.value);
+      const badge=root.querySelector(`[data-role-state="${CSS.escape(input.value)}"]`);
+      if(badge) badge.textContent=byRole.get(input.value)||'not selected';
+    });
+    setStatus('Current account roles and review statuses loaded.');
+  }).catch(err=>{
+    setStatus(err?.status===401?'Sign in from Profile to manage creator roles.':(err?.message||'Could not load account roles.'));
+  });
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const roles=[...root.querySelectorAll('input[name="creatorRole"]:checked')].map(input=>input.value);
+    const button=form.querySelector('button[type="submit"]');if(button)button.disabled=true;
+    setStatus('Saving account roles…');
+    try{
+      const data=await accountApi.updateSignupRoles(roles);
+      const saved=(data.signup_roles||[]).filter(role=>role!=='member');
+      root.querySelectorAll('input[name="creatorRole"]').forEach(input=>{
+        const badge=root.querySelector(`[data-role-state="${CSS.escape(input.value)}"]`);
+        if(badge) badge.textContent=saved.includes(input.value)?'declared':'not selected';
+      });
+      setStatus(saved.length?'Saved role declarations: '+saved.join(', ')+'. Review status may be updated separately where required.':'Saved as Member only.');
+      toast('Account roles saved');
+    }catch(err){
+      setStatus(err?.status===401?'Sign in to save account roles.':(err?.message||'Could not save account roles.'));
+    }finally{if(button)button.disabled=false;}
+  });
 }
 
 export function renderMessages() {
@@ -885,4 +990,15 @@ export function renderPhases() {
 
 export function renderNotFound(path) {
   return shellPage('Not found', `<div class="card"><p>No page for <code>${esc(path)}</code>.</p><a class="btn" href="#/home">Home</a></div>`);
+}
+
+export function bindMemberships(root) {
+  const box = root.querySelector('[data-join-confirm]'); if (!box) return;
+  root.querySelectorAll('[data-join]').forEach((b) => b.addEventListener('click', () => {
+    const t = MEMBERSHIPS.find((m) => m.id === b.dataset.join); if (!t) return;
+    box.hidden = false;
+    box.innerHTML = `<div role="dialog" aria-modal="false" aria-labelledby="joinH" class="pikk-join-dialog"><h4 id="joinH">Join ${esc(t.name)} · $${t.price}/mo</h4><p>TEST MODE: no card is charged. Your choice is saved on this device; billing starts when Stripe is live.</p><button type="button" class="btn primary" data-join-ok="${esc(t.id)}">Confirm ${esc(t.name)}</button> <button type="button" class="btn ghost" data-join-cancel>Cancel</button></div>`;
+    box.querySelector('[data-join-ok]').addEventListener('click', () => { const m = joinMembership(t); root.querySelector('[data-member-status]').textContent = membershipStatus(m); box.hidden = true; box.innerHTML = ''; });
+    box.querySelector('[data-join-cancel]').addEventListener('click', () => { box.hidden = true; box.innerHTML = ''; });
+  }));
 }

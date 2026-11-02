@@ -189,6 +189,25 @@ export function renderWallet() {
       : '<p class="muted">No payout requests yet.</p>';
 
   const body = `
+    <div class="pikk-wallet-studio">
+      <header class="pikk-wallet-hero" aria-label="PIKK Wallet overview">
+        <div>
+          <span class="pikk-wallet-eyebrow">PIKK · CREATOR & FAN WALLET</span>
+          <h2>Your balance.<br/><em>Your next move.</em></h2>
+          <p>Keep gift coins, fan credits and creator earnings in one clear place. All activity here is demo-only until payments and verification are connected.</p>
+          <div class="pikk-wallet-hero-actions">
+            <a class="btn" href="#/earnings">Creator earnings</a>
+            <a class="btn ghost" href="#/live">Explore Live</a>
+          </div>
+        </div>
+        <div class="pikk-wallet-hero-art" aria-hidden="true"><strong>◈</strong><small>PIKK WALLET</small></div>
+      </header>
+      <section class="pikk-wallet-metrics" aria-label="Wallet balance overview">
+        <div class="pikk-wallet-metric"><span>Gift coins</span><strong>${fmtCoins(coinBal)}</strong><small>Live gifting · demo</small></div>
+        <div class="pikk-wallet-metric"><span>Fan USD credits</span><strong>${fmtMoney(fan.balance)}</strong><small>Tips and requests · demo</small></div>
+        <div class="pikk-wallet-metric"><span>Creator available</span><strong>${fmtMoney(cw.available)}</strong><small>Eligible balance · demo</small></div>
+        <div class="pikk-wallet-metric"><span>Creator on hold</span><strong>${fmtMoney(cw.holds)}</strong><small>Payout review · demo</small></div>
+      </section>
     <div class="card">
       <div class="row wrap">
         <span class="chip">TEST MODE · not real money</span>
@@ -281,6 +300,7 @@ export function renderWallet() {
       <h3>Payout history</h3>
       <p class="muted" style="margin:0 0 10px">On-device demo approve / reject. Completed funds leave holds; rejected releases hold and untags earnings.</p>
       ${payoutList}
+    </div>
     </div>
   `;
 

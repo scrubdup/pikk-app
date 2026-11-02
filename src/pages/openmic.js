@@ -10,6 +10,7 @@ import {
   setOpenMicStatus,
   getOpenMicHouseTrack,
   advanceOpenMicHouseTrack,
+  isDemoAdminAllowed,
 } from '../store.js';
 import { esc, toast, shellPage, timeAgo, ytEmbedSrc } from '../ui.js';
 import { navigate } from '../router.js';
@@ -81,6 +82,7 @@ export function renderOpenMic() {
     ? listOpenMicApplications().filter((a) => a.userId === user.id)
     : [];
   const pending = admin ? listOpenMicApplications({ status: 'pending' }) : [];
+  const minePending = mine.filter((a) => a.status === 'pending').length;
 
   const showcaseHtml =
     showcase.length === 0
@@ -143,9 +145,25 @@ export function renderOpenMic() {
   return shellPage(
     'Open Mic',
     `
+    <div class="openmic-studio">
+      <header class="openmic-hero">
+        <p class="openmic-eyebrow">PIKK LIVE <span aria-hidden="true">◆</span> TALENT DISCOVERY</p>
+        <h2>Your sound. <span>Your stage.</span></h2>
+        <p>Apply for the Open Mic showcase, hear the original DatBoiSkeet house rotation and discover emerging performers.</p>
+        <div class="openmic-hero-actions">
+          <button type="button" class="btn primary" data-om-jump="omApplyCard">Apply to perform</button>
+          <button type="button" class="btn ghost" data-om-jump="omShowcaseCard">Discover talent</button>
+        </div>
+        <p class="openmic-hero-note">TEST MODE · Local applications and review · No real live stream, uploads or paid placements</p>
+      </header>
+      <section class="openmic-stats" aria-label="Open Mic local demo overview">
+        <div><span>Approved showcase</span><strong>${showcase.length}</strong><small>Demo performers</small></div>
+        <div><span>Your applications</span><strong>${mine.length}</strong><small>On this device</small></div>
+        <div><span>Awaiting review</span><strong>${minePending}</strong><small>Your pending submissions</small></div>
+      </section>
     ${renderOpenMicHouse()}
 
-    <div class="card">
+    <div class="card openmic-panel">
       <p class="kicker">§30 · 24/7 Live category · Talent Discovery</p>
       <h2 style="margin:0 0 6px">Open Mic &amp; Talent Discovery</h2>
       <p class="muted" style="margin:0 0 10px"><strong>24/7 Live category</strong> (like Spotlight) — not Social. Opt-in showcase for rappers, singers, DJs, producers. Submit music + profile, certify rights, apply for approval. Approved artists appear in the PIKK discovery showcase — <strong>not a paid ranking</strong>.</p>
@@ -160,12 +178,12 @@ export function renderOpenMic() {
         <a class="btn" href="#/music">Music</a>
         <a class="btn" href="#/fanclubs">Fan Clubs</a>
         <button class="btn ghost" id="omSeed">Reseed demos</button>
-        <button class="btn ghost" id="omAdmin">${admin ? 'Admin on' : 'Toggle demo admin'}</button>
+        ${isDemoAdminAllowed() ? `<button class="btn ghost" id="omAdmin">${admin ? 'Admin on' : 'Toggle demo admin'}</button>` : ''}
       </div>
       <p class="chip" style="margin-top:10px">TEST MODE · no pay-to-win</p>
     </div>
 
-    <div class="card">
+    <div class="card openmic-panel" id="omApplyCard">
       <h3 style="margin:0 0 8px">Apply</h3>
       <form id="omForm">
         <label class="muted" style="font-size:12px">Talent</label>
@@ -189,17 +207,18 @@ export function renderOpenMic() {
       </form>
     </div>
 
-    <div class="card">
+    <div class="card openmic-panel">
       <h3 style="margin:0 0 8px">Your applications</h3>
       ${mineHtml}
     </div>
 
     ${adminPanel}
 
-    <div class="card">
+    <div class="card openmic-panel" id="omShowcaseCard">
       <h3 style="margin:0 0 8px">Approved showcase</h3>
       <p class="muted" style="margin:0 0 10px;font-size:12px">Featured performers · discovery, not spend rank</p>
       ${showcaseHtml}
+    </div>
     </div>
     `,
     { lead: '24/7 house catalog when idle · opt-in talent showcase · DEMO.', badge: 'Phase 2 demo' }
@@ -207,6 +226,13 @@ export function renderOpenMic() {
 }
 
 export function bindOpenMic(root) {
+  root.querySelectorAll('[data-om-jump]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const id = button.getAttribute('data-om-jump');
+      const target = id === 'omApplyCard' || id === 'omShowcaseCard' ? root.querySelector('#' + id) : null;
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
   root.querySelector('#omSignIn')?.addEventListener('click', () => {
     ensureSignedIn();
     refresh();
