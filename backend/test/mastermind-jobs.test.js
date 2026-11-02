@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { call, newUser, makeAdmin, staff, grantRole } from './helpers.js';
-import { enqueue, claim, complete, fail, runJob, backoffSec, jobsPanel, cleanCode } from '../src/jobs.js';
+import { enqueue, claim, complete, fail, runJob, backoffSec, jobsPanel, cleanCode, reclaimExpired, LEASE_SEC } from '../src/jobs.js';
 import { runScheduled, dbCheckKey, DB_CHECK_KIND } from '../src/heartbeat.js';
 import opsSource from '../src/ops.js?raw';
 
@@ -110,5 +110,47 @@ describe('jobs panel via /admin/ops/summary', () => {
     for (const u of [admin, await staff('moderator'), await staff('support_agent'), await staff('dmca'), await newUser()])
       expect((await call('GET', '/admin/ops/summary', { cookie: u.cookie })).status).toBe(403);
     expect((await call('GET', '/admin/ops/summary')).status).toBe(401);
+  });
+});
+
+describe('job leases (crashed worker recovery)', () => {
+
+  it('a running job past the lease is failed with lease_expired and normal backoff; within lease it is untouched', async () => {
+    await clear();
+    const j = await enqueue(env, { kind: 'k', key: 'lease', maxAttempts: 2, now: T });
+    await claim(env, j.id, T); // "worker crashes" here
+    expect(await reclaimExpired(env, T + LEASE_SEC * 1000 - 1)).toEqual([]);
+    expect((await get(j.id)).state).toBe('running');
+    const now = T + LEASE_SEC * 1000;
+    expect(await reclaimExpired(env, now)).toEqual(['failed']);
+    const row = await get(j.id);
+    expect(row).toMatchObject({ state: 'failed', attempts: 1, last_error_code: 'lease_expired' });
+    expect(Date.parse(row.next_run_at) - now).toBe(backoffSec(1) * 1000);
+  });
+  it('lease expiry on the last attempt => dead', async () => {
+    await clear();
+    const j = await enqueue(env, { kind: 'k', key: 'lease-dead', maxAttempts: 1, now: T });
+    await claim(env, j.id, T);
+    expect(await reclaimExpired(env, T + LEASE_SEC * 1000)).toEqual(['dead']);
+    expect((await get(j.id)).state).toBe('dead');
+  });
+  it('panel counts stuck-running jobs and is degraded when any exceed the lease', async () => {
+    await clear();
+    const j = await enqueue(env, { kind: 'k', key: 'stuck', now: T });
+    await claim(env, j.id, T);
+    let p = await jobsPanel(env, T + 60_000);
+    expect(p.detail.stuckRunning).toBe(0); expect(p.status).toBe('healthy');
+    p = await jobsPanel(env, T + LEASE_SEC * 1000 + 1);
+    expect(p.detail.stuckRunning).toBe(1); expect(p.status).toBe('degraded');
+  });
+  it('scheduled() reclaims an expired lease before claiming, and the job is retried later', async () => {
+    await clear();
+    const key = dbCheckKey(T);
+    const j = await enqueue(env, { kind: DB_CHECK_KIND, key, now: T });
+    await claim(env, j.id, T); // crashed mid-run
+    await runScheduled(env, () => T + LEASE_SEC * 1000);
+    expect(await get(j.id)).toMatchObject({ state: 'failed', last_error_code: 'lease_expired', attempts: 1 });
+    await runScheduled(env, () => T + LEASE_SEC * 1000 + backoffSec(1) * 1000);
+    expect(await get(j.id)).toMatchObject({ state: 'succeeded', attempts: 2 });
   });
 });

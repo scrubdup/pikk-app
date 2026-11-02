@@ -40,6 +40,19 @@ export async function fail(env, id, code, now = Date.now()) {
   return dead ? 'dead' : 'failed';
 }
 
+/** Lease: a job's claim time is its updated_at when state='running' (claim sets it; nothing else touches a running job
+ *  until complete/fail). A job running longer than LEASE_SEC is assumed crashed. */
+export const LEASE_SEC = 600;
+
+/** Reclaims expired leases: each counts as a failed attempt ('lease_expired') with the normal backoff / dead-after-max rule. */
+export async function reclaimExpired(env, now = Date.now(), leaseSec = LEASE_SEC) {
+  const stuck = (await env.DB.prepare(`SELECT id FROM jobs WHERE state='running' AND updated_at <= ? ORDER BY updated_at LIMIT 50`)
+    .bind(iso(now - leaseSec * 1000)).all()).results;
+  const out = [];
+  for (const { id } of stuck) out.push(await fail(env, id, 'lease_expired', now));
+  return out;
+}
+
 /** Due jobs of a kind (current + scheduled retries), bounded. */
 export async function dueJobs(env, kind, now = Date.now(), limit = 5) {
   return (await env.DB.prepare(`SELECT id FROM jobs WHERE kind=? AND state IN ('queued','failed') AND next_run_at <= ? ORDER BY next_run_at LIMIT ?`)
@@ -71,10 +84,12 @@ export async function jobsPanel(env, now = Date.now()) {
       WHERE state IN ('failed','dead') ORDER BY updated_at DESC LIMIT 20`).all()).results
     .map(r => ({ kind: r.kind, state: r.state, attempts: r.attempts, error_code: r.last_error_code, at: r.updated_at }));
   const latest = await env.DB.prepare(`SELECT MAX(updated_at) AS t FROM jobs`).first();
+  const stuckRunning = Number((await env.DB.prepare(`SELECT COUNT(*) AS n FROM jobs WHERE state='running' AND updated_at <= ?`)
+    .bind(new Date(now - LEASE_SEC * 1000).toISOString()).first()).n);
   let status = 'healthy';
   if (!total) status = 'unknown';
-  else if (counts.dead > 0) status = 'degraded';
+  else if (counts.dead > 0 || stuckRunning > 0) status = 'degraded';
   else if (oldestQueuedAgeSec !== null && oldestQueuedAgeSec > STALE_BACKLOG_SEC) status = 'stale';
   return { status, checkedAt: latest?.t ?? null, source: 'D1 jobs (read-only)', freshnessLimitSec: STALE_BACKLOG_SEC,
-    detail: { counts, oldestQueuedAgeSec, recentFailures, review: 'view-only' } };
+    detail: { counts, stuckRunning, leaseSec: LEASE_SEC, oldestQueuedAgeSec, recentFailures, review: 'view-only' } };
 }

@@ -1,4 +1,4 @@
-import { enqueue, dueJobs, runJob } from './jobs.js';
+import { enqueue, dueJobs, runJob, reclaimExpired } from './jobs.js';
 /**
  * PIKK Master Mind phase 2 (slice 1): durable worker heartbeats.
  * The scheduled() handler records its own heartbeat after running read-only checks.
@@ -41,6 +41,7 @@ export const dbCheckKey = (nowMs) => `${DB_CHECK_KIND}:${new Date(Math.floor(now
 
 export async function runScheduled(env, now = () => Date.now()) {
   const t0 = now();
+  await reclaimExpired(env, t0); // crashed workers: expired leases become failed attempts before new claims
   await enqueue(env, { kind: DB_CHECK_KIND, key: dbCheckKey(t0), maxAttempts: 3, now: t0 });
   let err = null; let ran = 0;
   for (const { id } of await dueJobs(env, DB_CHECK_KIND, t0)) {
