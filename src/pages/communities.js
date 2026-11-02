@@ -20,8 +20,8 @@ function makePosts(v,user,topic,sort){
     const replies=Array.isArray(p.replies)?p.replies:[];
     const vote=Number(v.votes[p.id+':'+(user?.id||'guest')])||0;
     return '<article class="pikk-forum-post"><div class="pikk-forum-votes">'+
-      '<button data-fvote="1" data-id="'+esc(p.id)+'" aria-label="Upvote "+esc(p.title)+"" aria-pressed="'+(vote===1)+'" '+(user?'':'disabled')+'>▲</button>'+
-      '<b>'+score(p)+'</b><button data-fvote="-1" data-id="'+esc(p.id)+'" aria-label="Downvote "+esc(p.title)+"" aria-pressed="'+(vote===-1)+'" '+(user?'':'disabled')+'>▼</button></div>'+
+      '<button data-fvote="1" data-id="'+esc(p.id)+'" aria-label="Upvote '+esc(p.title)+'" aria-pressed="'+(vote===1)+'" '+(user?'':'disabled')+'>▲</button>'+
+      '<b>'+score(p)+'</b><button data-fvote="-1" data-id="'+esc(p.id)+'" aria-label="Downvote '+esc(p.title)+'" aria-pressed="'+(vote===-1)+'" '+(user?'':'disabled')+'>▼</button></div>'+
       '<div class="pikk-forum-post-content"><p class="pikk-forum-meta">'+esc(label)+' · u/'+esc(p.author)+' · local preview</p>'+
       '<h3>'+esc(p.title)+'</h3><p class="pikk-forum-text">'+esc(p.body)+'</p>'+
       '<button class="pikk-forum-reply-button" data-fopen="'+esc(p.id)+'" aria-expanded="false" aria-controls="pikk-forum-thread-'+esc(p.id)+'">▤ '+replies.length+' replies</button> '+
