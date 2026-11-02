@@ -13,6 +13,7 @@ export function renderDating() {
         <div class="pikk-dating-hero-actions">
           <a class="btn primary" href="#/communities">Explore communities</a>
           <a class="btn ghost" href="#/profile">Your profile</a>
+          <a class="btn ghost" href="#/verify-age" id="datingVerifyAge">Verify age / ID (18+)</a>
         </div>
         <small>No real matches are being created here · TEST MODE</small>
       </div>

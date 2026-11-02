@@ -9,7 +9,7 @@ export function renderTwerkGate() {
     <p class="kicker">Twerk Contest · 18+</p>
     <h1 id="twerkGateH">Are you 18 or older?</h1>
     <p>This contest is for adults only. Confirm you are 18+ to continue. Your answer is saved only on this device.</p>
-    <p class="muted">TEST MODE: this is a self-confirmation. Real age verification will be required once PIKK Safety and the backend are live.</p>
+    <p class="muted">TEST MODE: this is a self-confirmation. Real age verification will be required once PIKK Safety and the backend are live. <a href="#/verify-age">Verify age / ID</a></p>
     <div class="pikk-contest-actions">
       <button type="button" class="pikk-contest-enter" id="twerkGateYes">I'm 18 or older</button>
       <a class="pikk-contest-leave" href="#/home">No, take me back</a>
