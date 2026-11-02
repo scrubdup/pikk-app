@@ -31,7 +31,7 @@ async function postForEngagement(env, id) {
   return post;
 }
 
-async function route(req, env, ctx) {
+export async function route(req, env, ctx) {
   const url = new URL(req.url);
   const { pathname: p } = url; const m = req.method;
   const ip = clientIp(req);
