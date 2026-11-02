@@ -20,3 +20,17 @@ test('branding, player, navigation and test-mode content remain intact',()=>{
  assert.match(css,/\.pikk-create-overlay\[hidden\]/);
  assert.match(css,/\.sticky-player#dbs-sticky-player/);
 });
+
+
+test('owner mobile home polish keeps media blue/red with white titles and lower tabbar',()=>{
+ const css=readFileSync(new URL('../src/styles.css', import.meta.url),'utf8');
+ for(const token of [
+  '.pikk-home-media-card {',
+  'border-color: rgba(47,107,255,.88)',
+  '.pikk-home-media-badge {',
+  'border: 1px solid #2f6bff',
+  '.pikk-home-media-title {',
+  'color: #fff',
+  'padding-bottom: 4px'
+ ]) assert.ok(css.includes(token), token);
+});
