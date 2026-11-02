@@ -666,6 +666,7 @@ export function renderSignup() {
         : '<strong>Account role service is not connected in this build.</strong> Role changes will not be saved until the production API endpoint is configured.'}</p>
       <a class="btn primary" href="#/profile">Open Profile / Sign in</a>
       <a class="btn ghost" href="#/guidelines" style="margin-left:8px">Read Guidelines</a>
+      <p class="muted" style="margin:10px 0 0;font-size:12px">By using PIKK you agree to the <a href="#/terms">Terms</a> (draft), including <a href="#/terms?s=security">Security &amp; Data Breach / Limitation of Liability</a>, and the <a href="#/privacy">Privacy</a> notice.</p>
     </div>
 
     <section class="card" id="creator-role-manager">
