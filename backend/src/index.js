@@ -1,6 +1,9 @@
 import { ApiError, json, errorResponse, corsHeaders, readJson, clientIp } from './http.js';
 import { signup, login, logout, verifyEmail, resendVerification, loadSession, requireAuth, requireVerified, requireActive } from './auth.js';
-import { requirePermission, GRANTABLE_ROLES } from './permissions.js';
+import { requirePermission, GRANTABLE_ROLES, OWNER_ROLE } from './permissions.js';
+import { opsSummary } from './ops.js';
+import { bootstrapOwner } from './bootstrap.js';
+import { runMasterMindScheduled } from './heartbeat.js';
 import { assertNotBlocked, NOT_BLOCKED_SQL } from './blocks.js';
 import { safetyRoute, ageVerificationWebhook } from './safety.js';
 import { requireString, requirePositiveInt, validateSignupRoles } from './validate.js';
@@ -12,6 +15,9 @@ import { audit, auditStmt } from './audit.js';
 import { musicUploadRoute } from './music-upload.js';
 import { messagesRoute } from './messages.js';
 import { supportRoute } from './tickets.js';
+import { idvStatus, startIdv, idvWebhook } from './idv/index.js';
+import { getConsent, postConsent } from './idv/consent.js';
+import { contestRoute } from './contests.js';
 
 const HANDLE = /^[a-zA-Z0-9_]{3,30}$/;
 
@@ -38,6 +44,7 @@ async function route(req, env, ctx) {
 
   if (m === 'POST' && p === '/webhooks/stripe') return stripeWebhook(env, req);
   if (m === 'POST' && p === '/webhooks/age-verification') return ageVerificationWebhook(env, req);
+  { const w = m === 'POST' && p.match(/^\/webhooks\/idv\/([a-z]{2,20})$/); if (w) return idvWebhook(env, req, w[1], ip); }
 
   // CSRF: every state-changing browser request must come from the allowed origin.
   if (m !== 'GET' && m !== 'HEAD' && req.headers.get('Origin') !== env.ALLOWED_ORIGIN)
@@ -59,6 +66,12 @@ async function route(req, env, ctx) {
       media_storage: !!env.MEDIA,
     },
   });
+
+  if (m === 'GET' && p === '/verification/age') return idvStatus(env, ctx);
+  if (m === 'POST' && p === '/verification/age/start') return startIdv(env, req, ctx);
+  if (m === 'GET' && p === '/verification/age/consent') return getConsent(env, ctx);
+  if (m === 'POST' && p === '/verification/age/consent') return postConsent(env, req, ctx);
+  if (p.startsWith('/contests/') || p === '/account/gender' || p === '/admin/account/gender') { const r = await contestRoute(env, req, ctx, m, p); if (r) return r; }
 
   if (p.startsWith('/auth/')) await rateLimit(env, `auth:${ip}`, 10, 60);
   if (m === 'POST' && p === '/auth/signup') return withCookie(await signup(env, req, await readJson(req)));
@@ -248,8 +261,11 @@ async function route(req, env, ctx) {
     const s = requirePermission(ctx, 'roles.grant'); const b = await readJson(req);
     const target = await userByHandle(env, requireString(b, 'handle', { max: 30, pattern: HANDLE }));
     const role = requireString(b, 'role', { max: 20 });
+    if (role === OWNER_ROLE) throw new ApiError(403, 'forbidden', 'The owner role can only be assigned by the one-time server bootstrap');
     if (!GRANTABLE_ROLES.includes(role)) throw new ApiError(422, 'validation_failed', 'Invalid role');
     const reason = requireString(b, 'reason', { min: 3, max: 500 });
+    const targetIsOwner = await env.DB.prepare(`SELECT 1 AS x FROM user_roles WHERE user_id = ? AND role = ?`).bind(target.id, OWNER_ROLE).first();
+    if (targetIsOwner && !s.roles.includes(OWNER_ROLE)) throw new ApiError(403, 'forbidden', 'Only the owner can change the owner\'s roles');
     if (m === 'DELETE' && role === 'admin' && target.id === s.user.id) throw new ApiError(422, 'validation_failed', 'Cannot revoke your own admin role');
     const stmt = m === 'POST'
       ? env.DB.prepare(`INSERT OR IGNORE INTO user_roles(user_id,role,granted_by,granted_at) VALUES (?,?,?,?)`).bind(target.id, role, s.user.id, new Date().toISOString())
@@ -300,6 +316,11 @@ async function route(req, env, ctx) {
     return json(200, { role: { handle, role, status } });
   }
 
+  if (m === 'POST' && p === '/bootstrap/owner') return json(200, await bootstrapOwner(env, req, ip));
+  if (m === 'GET' && p === '/admin/ops/summary') { requirePermission(ctx, 'ops.view'); 
+    // PIKK Vault (#236) not in this branch: no vault handler is wired, so the vault panel reports unknown.
+    // Once #236 lands: vaultHealth: () => mediaRoute(env, new Request(new URL('/vault/health', req.url)), ctx, 'GET', '/vault/health')
+    return json(200, await opsSummary(env, { vaultHealth: undefined })); }
   if (m === 'GET' && p === '/admin/audit') {
     requirePermission(ctx, 'admin.access');
     const r = await env.DB.prepare(`SELECT id, actor_id, action, target, created_at FROM audit_log ORDER BY created_at DESC LIMIT 100`).all();
@@ -334,5 +355,13 @@ export default {
     for (const [k, v] of Object.entries(cors)) res.headers.set(k, v);
     res.headers.set('X-Request-Id', requestId);
     return res;
+  },
+  // Thin cron dispatcher: each subsystem exports one function; failures are isolated by allSettled.
+  // Master Mind no-ops unless MASTERMIND_JOBS_ENABLED === 'true'. No cron triggers are enabled in this branch.
+  async scheduled(event, env, ctx) {
+    const now = Date.now();
+    ctx.waitUntil(Promise.allSettled([
+      runMasterMindScheduled(env, event, now),
+    ]).then(rs => rs.forEach(r => r.status === 'rejected' && console.error('scheduled task failed', r.reason && r.reason.message))));
   },
 };

@@ -52,13 +52,14 @@ export const HOME_MORE = Object.freeze([
 ]);
 
 export function renderHomeShowcase() {
-  const music = STREAMING_RELEASES.map((r) => card('#/music', img(r.cover, r.title), r.title, `${r.artist} · ${r.type === 'album' ? 'Album' : 'Single'}${r.year ? ' · ' + r.year : ''}`, 'is-square', r.type === 'album' ? 'Album' : 'Track')).join('');
+  const music = STREAMING_RELEASES.map((r) => card('#/music', img(r.cover, r.title), r.title, `${r.artist} · ${r.type === 'album' ? 'Album' : 'Single'}${r.year ? ' · ' + r.year : ''}`, 'is-square', r.type === 'album' ? 'Album' : 'Track')).join('')
+    + [['#/music?view=playlists', 'Playlists', 'Curated lists']].map(([h, t, s]) => card(h, '<span class="hs-ph" aria-hidden="true">♪</span>', t, s, 'is-chip')).join('');
   const mv = VIDEOS.filter((v) => v.category === 'Music Videos');
   const posts = mv.slice(0, 6).map((v, i) => card(i % 3 === 1 ? '#/shorts' : '#/posts', img(thumb(v.youtube), v.title), v.title, i % 3 === 0 ? 'Picture · house' : i % 3 === 1 ? 'Short · house' : 'Video · house', i % 3 === 1 ? 'is-tall' : 'is-square', i % 3 === 0 ? 'Photo' : i % 3 === 1 ? 'Short' : 'Video')).join('');
   const videos = VIDEOS.slice(0, 8).map((v) => card('#/videos', img(thumb(v.youtube), v.title), v.title, `${v.artist || 'DatBoiSkeet'} · PIKK Official`, 'is-wide')).join('');
   const live = [['#/live', 'Live Rooms', 'Directory preview · TEST MODE'], ['#/live?go=1', 'Go Live', 'Start a stream · TEST MODE'], ['#/viral-live', '24/7 Viral Live', 'Rotating clips · preview']]
     .map(([h, t, s]) => card(h, '<span class="hs-ph hs-live" aria-hidden="true">●</span>', t, s, 'is-chip')).join('');
-  const connect = [['#/explore', 'People', 'Discover creators'], ['#/communities', 'Communities', 'Topics & votes · TEST MODE'], ['#/community', 'PIKK Lounge', 'Channel rooms'], ['#/live', 'Live connections', 'Rooms · TEST MODE'], ['#/messages', 'Messages', 'Your inbox']]
+  const connect = [['#/explore', 'People', 'Discover creators'], ['#/communities', 'Communities', 'Topics & votes · TEST MODE'], ['#/community', 'PIKK Lounge', 'Channel rooms'], ['#/live', 'Live connections', 'Rooms · TEST MODE'], ['#/messages', 'Messages', 'Your inbox'], ['#/connect#connect-random-chat', 'Random Chat', '18+ · TEST MODE'], ['#/connect#connect-multistream', 'Multi-platform go-live', 'TEST MODE · no real relay']]
     .map(([h, t, s]) => card(h, '<span class="hs-ph" aria-hidden="true">◎</span>', t, s, 'is-chip')).join('');
   const dating = card('#/dating', '<span class="hs-ph hs-18" aria-hidden="true">18+</span>', 'PIKK Dating · pre-launch', 'Adults only · age & ID verification and safety review before launch. No profiles shown.', 'is-wide is-teaser');
   const bw = card('#/blockwars', img('/blockwars-preview/01-title.jpg', 'Block Wars'), 'Block Wars', 'Coming Soon · gameplay paused', 'is-wide', 'Coming Soon');

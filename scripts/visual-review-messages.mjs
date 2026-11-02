@@ -12,17 +12,11 @@ try {
     const page = await browser.newPage({ viewport: { width, height }, reducedMotion: 'reduce' });
     const errors = [];
     page.on('pageerror', e => errors.push(String(e)));
-    // Seeded local session (the Profile demo login form was removed in 7859454). CI runs without a
-    // backend API configured, so the store treats this local user as signed in.
-    await page.addInitScript(() => {
-      if (localStorage.getItem('dbs_v1')) return;
-      localStorage.setItem('dbs_v1', JSON.stringify({ user: {
-        id: 'u_pikk_qa', username: 'PIKK QA', bio: 'Visual review seeded session', avatar: '',
-        followers: [], following: ['dbs'], membership: null,
-        memberships: { skeetPlus: false, backstage: false, innerCircle: false },
-        purchasedTracks: [], createdAt: Date.now(),
-      } }));
-    });
+    await page.goto(base + '#/profile', { waitUntil: 'domcontentloaded' });
+    // Profile no longer has demo sign-in (7859454). Seed a QA-only local profile the same way
+    // scripts/visual-review-messages-flow.mjs does; no backend session is claimed.
+    await page.evaluate((u) => localStorage.setItem('dbs_v1', JSON.stringify({ user: { ...u, createdAt: Date.now() } })), { id: 'u_pikkqa', username: 'PIKKQA', bio: 'Messages visual QA', avatar: '', followers: [], following: ['dbs'], memberships: { skeetPlus: false, backstage: false, innerCircle: false }, purchasedTracks: [] });
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await page.goto(base + '#/messages', { waitUntil: 'domcontentloaded' });
     await page.locator('.pikk-messages-hero').waitFor();
     assert.equal(await page.locator('#pikkMsgSearch').count(), 1);

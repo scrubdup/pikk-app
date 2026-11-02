@@ -1,6 +1,6 @@
 import { ApiError, json, readJson, clientIp } from './http.js';
 import { requireAuth, requireActive, requireVerified } from './auth.js';
-import { requirePermission, can } from './permissions.js';
+import { requirePermission, can, effectiveRoles } from './permissions.js';
 import { assertNotBlocked } from './blocks.js';
 import { rateLimit } from './ratelimit.js';
 import { requireString } from './validate.js';
@@ -80,7 +80,8 @@ async function moderationAction(env, req, ctx) {
   const target = await userByHandle(env, requireString(b, 'target_handle', { max: 30, pattern: HANDLE }));
   if (target.id === s.user.id) throw new ApiError(422, 'validation_failed', 'Cannot moderate yourself');
   const targetRoles = await rolesOf(env, target.id);
-  if (targetRoles.includes('admin') && !s.roles.includes('admin')) throw new ApiError(403, 'forbidden', 'Only admins can act on admins');
+  if (targetRoles.includes('owner') && !s.roles.includes('owner')) throw new ApiError(403, 'forbidden', 'Only the owner can act on the owner');
+  if (targetRoles.includes('admin') && !effectiveRoles(s.roles).includes('admin')) throw new ApiError(403, 'forbidden', 'Only admins can act on admins');
   const t = nowIso();
   const a = { id: newId('mod'), actor_id: s.user.id, target_user_id: target.id, action, content_type: null, content_id: null, reason, report_id: null, expires_at: null, created_at: t };
   if (action === 'remove_content') {
@@ -137,7 +138,7 @@ async function decideAppeal(env, req, ctx, appealId) {
     FROM appeals ap JOIN moderation_actions ma ON ma.id = ap.action_id WHERE ap.id = ?`).bind(appealId).first();
   if (!ap) throw new ApiError(404, 'not_found', 'Appeal not found');
   if (ap.status !== 'pending') throw new ApiError(409, 'already_decided', 'Appeal already decided');
-  if (!s.roles.includes('admin') && ap.actor_id === s.user.id) throw new ApiError(403, 'conflict_of_interest', 'Original actor cannot review this appeal');
+  if (!effectiveRoles(s.roles).includes('admin') && ap.actor_id === s.user.id) throw new ApiError(403, 'conflict_of_interest', 'Original actor cannot review this appeal');
   if (ap.appellant_id === s.user.id) throw new ApiError(403, 'conflict_of_interest', 'Cannot review your own appeal');
   const t = nowIso();
   const stmts = [

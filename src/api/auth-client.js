@@ -44,10 +44,10 @@ async function request(path, { method = 'GET', body } = {}) {
 export const authApi = {
   health: () => request('/health'),
   me: () => request('/auth/me'),
-  signup: ({ email, handle, displayName, password, signupRoles = ['member'] }) =>
+  signup: ({ email, handle, displayName, password, signupRoles = ['member'], gender }) =>
     request('/auth/signup', {
       method: 'POST',
-      body: { email, handle, display_name: displayName, password, signup_roles: signupRoles },
+      body: { email, handle, display_name: displayName, password, signup_roles: signupRoles, ...(gender ? { gender } : {}) },
     }),
   login: ({ email, password }) => request('/auth/login', { method: 'POST', body: { email, password } }),
   logout: () => request('/auth/logout', { method: 'POST', body: {} }),

@@ -32,7 +32,7 @@ test('official PIKK logo and compact header precede and preserve sticky music pl
   assert.match(html, /id="spQueueBtn"/);
 });
 
-test('header omits Settings shortcut while preserving the Settings route elsewhere', () => {
+test('header omits Settings gear (owner t219u); Settings stays in navigation', () => {
   assert.equal(html.includes('id="settingsBtn"'), false);
 });
 
