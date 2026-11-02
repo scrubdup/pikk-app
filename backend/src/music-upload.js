@@ -29,8 +29,8 @@ function safeName(name) {
   return String(name || 'audio').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120) || 'audio';
 }
 
-function requireMediaStorage(env) {
-  if (!env.MEDIA || typeof env.MEDIA.put !== 'function') {
+function requireMediaStorage(env, operation = 'put') {
+  if (!env.MEDIA || typeof env.MEDIA[operation] !== 'function') {
     throw new ApiError(503, 'media_storage_not_configured', 'PIKK media storage is not configured yet');
   }
   return env.MEDIA;
@@ -146,7 +146,7 @@ export async function musicUploadRoute(env, req, ctx, method, path) {
   let deleteMatch = path.match(/^\/media\/music\/([\w-]{1,80})$/);
   if (method === 'DELETE' && deleteMatch) {
     const s = requireVerified(ctx);
-    const storage = requireMediaStorage(env);
+    const storage = requireMediaStorage(env, 'delete');
     const row = await env.DB.prepare(
       `SELECT id,storage_key,status FROM media_assets
         WHERE id=? AND owner_id=? AND kind='music' AND status<>'deleted'`
@@ -172,7 +172,7 @@ export async function musicUploadRoute(env, req, ctx, method, path) {
   const match = path.match(/^\/media\/music\/([\w-]{1,80})\/file$/);
   if (method === 'GET' && match) {
     const s = requireVerified(ctx);
-    const storage = requireMediaStorage(env);
+    const storage = requireMediaStorage(env, 'get');
     const row = await env.DB.prepare(
       `SELECT id,storage_key,original_name,mime_type FROM media_assets
         WHERE id=? AND owner_id=? AND kind='music' AND status<>'deleted'`
