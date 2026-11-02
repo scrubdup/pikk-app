@@ -45,9 +45,23 @@ try {
       await page.locator('#splash').waitFor({ state: 'hidden', timeout: 15000 });
       await verify('guest');
 
-      await page.goto(base + '#/profile', { waitUntil: 'domcontentloaded' });
-      await page.locator('#signinName').fill('PIKKMessageTest');
-      await page.locator('#signinBtn').click();
+      // Seed a QA-only local profile for legacy messaging screenshots after reviewing
+      // the signed-out state. Production Profile no longer exposes demo sign-in controls.
+      await page.evaluate(() => {
+        localStorage.setItem('dbs_v1', JSON.stringify({
+          user: {
+            id: 'u_pikkmessagetest',
+            username: 'PIKKMessageTest',
+            bio: 'Messages visual QA',
+            avatar: '',
+            followers: [],
+            following: ['dbs'],
+            memberships: { skeetPlus: false, backstage: false, innerCircle: false },
+            purchasedTracks: [],
+            createdAt: Date.now()
+          }
+        }));
+      });
       await page.goto(base + '#/messages', { waitUntil: 'domcontentloaded' });
       await page.locator('.pikk-messages-hero').waitFor({ state: 'visible', timeout: 10000 });
       await verify('inbox');
