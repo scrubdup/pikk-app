@@ -13,6 +13,8 @@ import { musicUploadRoute } from './music-upload.js';
 import { messagesRoute } from './messages.js';
 import { supportRoute } from './tickets.js';
 import { idvStatus, startIdv, idvWebhook } from './idv/index.js';
+import { getConsent, postConsent } from './idv/consent.js';
+import { contestRoute } from './contests.js';
 
 const HANDLE = /^[a-zA-Z0-9_]{3,30}$/;
 
@@ -64,6 +66,9 @@ async function route(req, env, ctx) {
 
   if (m === 'GET' && p === '/verification/age') return idvStatus(env, ctx);
   if (m === 'POST' && p === '/verification/age/start') return startIdv(env, req, ctx);
+  if (m === 'GET' && p === '/verification/age/consent') return getConsent(env, ctx);
+  if (m === 'POST' && p === '/verification/age/consent') return postConsent(env, req, ctx);
+  if (p.startsWith('/contests/') || p === '/account/gender') { const r = await contestRoute(env, req, ctx, m, p); if (r) return r; }
 
   if (p.startsWith('/auth/')) await rateLimit(env, `auth:${ip}`, 10, 60);
   if (m === 'POST' && p === '/auth/signup') return withCookie(await signup(env, req, await readJson(req)));

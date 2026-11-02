@@ -12,7 +12,7 @@ test('t356u: gate blocks rules until 18+ confirmed, stored locally, honest wordi
   c.confirmTwerkGate(); assert.equal(mem.get(c.TWERK_GATE_KEY), 'yes');
   const r = c.renderTwerkContest();
   assert.doesNotMatch(r, /twerkGateYes/);
-  for (const re of [/18\+ only/, /No nudity or sexual content/, /community guidelines/, /Report/, /href="#\/guidelines"/, /Entries &amp; voting coming soon/]) assert.match(r, re);
+  for (const re of [/18\+ only/, /No nudity or sexual content/, /community guidelines/, /Report/, /href="#\/guidelines"/, /Entries &amp; voting coming soon/, /women/, /No ID check is needed to watch or vote/, /id="twerkEntry"/]) assert.match(r, re);
 });
 test('t356u: Home tile is text only with 18+ badge and Enter to #/contest/twerk; route registered', () => {
   const h = renderHomeShowcase(); const s = h.slice(h.indexOf('data-hs="contest"')); const tile = s.slice(0, s.indexOf('</section>'));
@@ -23,4 +23,15 @@ test('t356u: Home tile is text only with 18+ badge and Enter to #/contest/twerk;
 test('Twerk Contest section sits directly under Dating on Home', () => {
   const order = [...renderHomeShowcase().matchAll(/data-hs="([\w-]+)"/g)].map((m) => m[1]);
   assert.equal(order[order.indexOf('dating') + 1], 'contest');
+});
+
+test('entry UI only for server-eligible accounts; others watch/vote', () => {
+  assert.match(c.renderEntryPanel({ can_enter: true, gender_ok: true, age_verified: true }), /twerkEntryForm/);
+  const male = c.renderEntryPanel({ can_enter: false, gender_ok: false, gender_set: true, age_verified: true });
+  assert.doesNotMatch(male, /twerkEntryForm|twerkGoLive/); assert.match(male, /watch and vote/);
+  const unverified = c.renderEntryPanel({ can_enter: false, gender_ok: true, age_verified: false });
+  assert.doesNotMatch(unverified, /twerkEntryForm/); assert.match(unverified, /href="#\/verify-age"/);
+  assert.doesNotMatch(c.renderEntryPanel(null), /twerkEntryForm/);
+  // viewing gate still self-confirmation only; no ID required to view
+  assert.match(c.renderTwerkGate(), /id="twerkGateYes"/);
 });

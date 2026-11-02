@@ -27,3 +27,17 @@ test('verify-age route is reachable from Dating and the Twerk gate', () => {
   assert.doesNotMatch(page, /localStorage|setItem/);
   assert.match(page, /never stores your ID images or date of birth/);
 });
+
+test('written consent: checkbox + typed full name required; consent screen and policy route exist', async () => {
+  const m = await import('../src/api/verification-client.js');
+  assert.equal(m.validConsentSignature(false, 'Jane Doe'), false);
+  assert.equal(m.validConsentSignature(true, 'Jane'), false);
+  assert.equal(m.validConsentSignature(true, '  '), false);
+  assert.equal(m.validConsentSignature(true, 'Jane Doe'), true);
+  const page = read('src/pages/verify-age.js');
+  assert.match(page, /Biometric notice &amp; written consent/); assert.match(page, /lawyer review required/); assert.match(page, /I decline/);
+  assert.match(read('src/main.js'), /'\/biometric-policy': \{ render: renderBiometricPolicy \}/);
+  const pol = read('src/pages/biometric-policy.js');
+  for (const re of [/740 ILCS 14\/15/, /503\.001/, /3 years after your last interaction/, /not sell/, /lawyer review required/]) assert.match(pol, re);
+  assert.match(read('src/pages/profile.js'), /id="accountGender"/);
+});

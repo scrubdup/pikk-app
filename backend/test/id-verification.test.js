@@ -19,6 +19,10 @@ async function signed(body, secret = SECRET, t = Math.floor(Date.now() / 1000)) 
   return new Request('https://api.test/webhooks/idv/persona', { method: 'POST', headers: { 'Persona-Signature': `t=${t},v1=${await hmacSha256Hex(secret, `${t}.${raw}`)}` }, body: raw });
 }
 const event = (name, ref, status, id = 'evt_' + Math.random().toString(36).slice(2)) => ({ data: { type: 'event', id, attributes: { name, 'created-at': '2026-11-02T16:00:00.000Z', payload: { data: { type: 'inquiry', id: ref, attributes: { status, 'name-first': 'Jane', birthdate: '1990-01-01' } } } } } });
+import { CONSENT_VERSION, consentHash } from '../src/idv/consent.js';
+async function consent(u, over = {}) {
+  return call('POST', '/verification/age/consent', { cookie: u.cookie, body: { agree: true, version: CONSENT_VERSION, sha256: await consentHash(), full_name: 'Test Person', ...over } });
+}
 const userRow = (id) => env.DB.prepare(`SELECT * FROM users WHERE id = ?`).bind(id).first();
 const resJson = async (r) => ({ status: r.status, json: await r.json() });
 
@@ -69,6 +73,7 @@ describe('Persona adapter', () => {
 describe('start + webhook flow (mocked Persona)', () => {
   async function started() {
     const e = penv(); const u = await newUser(); const ref = 'inq_' + Math.random().toString(36).slice(2);
+    await consent(u);
     const r = await resJson(await startIdv(e, new Request('https://api.test/verification/age/start', { method: 'POST' }), await ctxFor(e, u), fakeFetch([], ref)));
     expect(r.status).toBe(201); expect(r.json.hosted_url).toMatch(/^https:\/\//); expect(r.json.status).toBe('pending');
     return { e, u, ref };
@@ -108,8 +113,8 @@ describe('start + webhook flow (mocked Persona)', () => {
   it('unsigned / wrong-secret webhooks are rejected', async () => {
     const { e, u, ref } = await started();
     const ev = event('inquiry.approved', ref, 'approved');
-    await expect(idvWebhook(e, new Request('https://api.test/x', { method: 'POST', body: JSON.stringify(ev) }), 'persona', '1.2.3.4')).rejects.toMatchObject({ status: 400 });
-    await expect(idvWebhook(e, await signed(ev, 'wrong'), 'persona', '1.2.3.4')).rejects.toMatchObject({ status: 400 });
+    await expect(idvWebhook(e, new Request('https://api.test/x', { method: 'POST', body: JSON.stringify(ev) }), 'persona', '1.2.3.4')).rejects.toMatchObject({ status: 401 });
+    await expect(idvWebhook(e, await signed(ev, 'wrong'), 'persona', '1.2.3.4')).rejects.toMatchObject({ status: 401 });
     expect((await userRow(u.id)).age_verified_18).toBe(0);
   });
 
@@ -119,8 +124,81 @@ describe('start + webhook flow (mocked Persona)', () => {
   });
 
   it('provider errors fail closed', async () => {
-    const e = penv(); const u = await newUser();
+    const e = penv(); const u = await newUser(); await consent(u);
     const bad = async () => new Response('{}', { status: 500 });
     await expect(startIdv(e, new Request('https://api.test/', { method: 'POST' }), await ctxFor(e, u), bad)).rejects.toMatchObject({ status: 502 });
+  });
+});
+
+describe('biometric consent (BIPA/CUBI) gates start', () => {
+  it('start returns 403 without current consent; consent recorded with hash, ip hash, signature + audit', async () => {
+    const e = penv(); const u = await newUser();
+    await expect(startIdv(e, new Request('https://api.test/', { method: 'POST' }), await ctxFor(e, u), fakeFetch([]))).rejects.toMatchObject({ status: 403, code: 'biometric_consent_required' });
+    const g = await call('GET', '/verification/age/consent', { cookie: u.cookie });
+    expect(g.json.draft).toBe(true); expect(g.json.text).toMatch(/lawyer review required/); expect(g.json.consented).toBe(false);
+    expect((await consent(u, { agree: false })).status).toBe(422);
+    expect((await consent(u, { full_name: 'X' })).status).toBe(422);
+    expect((await consent(u, { version: 'old' })).status).toBe(409);
+    expect((await consent(u, { sha256: 'deadbeef' })).status).toBe(409);
+    expect((await consent(u)).status).toBe(201);
+    const row = await env.DB.prepare(`SELECT * FROM biometric_consents WHERE user_id = ?`).bind(u.id).first();
+    expect(row.consent_version).toBe(CONSENT_VERSION); expect(row.consent_sha256).toBe(await consentHash());
+    expect(row.signature_name).toBe('Test Person'); expect(row.ip_sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect((await env.DB.prepare(`SELECT COUNT(*) n FROM audit_log WHERE action='idv.biometric_consent' AND target=?`).bind(u.id).first()).n).toBe(1);
+    const r = await startIdv(e, new Request('https://api.test/', { method: 'POST' }), await ctxFor(e, u), fakeFetch([]));
+    expect(r.status).toBe(201);
+  });
+  it('consent requires sign-in', async () => { expect((await call('POST', '/verification/age/consent', { body: { agree: true } })).status).toBe(401); });
+});
+
+describe('webhook secret rotation (PIKK side)', () => {
+  it('accepts either of comma-separated secrets, 401 on others', async () => {
+    const e = { ...penv(), PERSONA_WEBHOOK_SECRET: `old_secret, ${SECRET}` };
+    const u = await newUser(); await consent(u); const ref = 'inq_rot' + Math.random().toString(36).slice(2);
+    await startIdv(e, new Request('https://api.test/', { method: 'POST' }), await ctxFor(e, u), fakeFetch([], ref));
+    expect((await idvWebhook(e, await signed(event('inquiry.declined', ref, 'declined'), 'old_secret'), 'persona', '1.1.1.1')).status).toBe(200);
+    await expect(idvWebhook(e, await signed(event('inquiry.approved', ref, 'approved'), 'nope'), 'persona', '1.1.1.1')).rejects.toMatchObject({ status: 401 });
+  });
+});
+
+describe('Twerk Contest: women-only contestants, open viewing/voting', () => {
+  const verify = (id) => env.DB.prepare(`UPDATE users SET age_verified_18=1, age_verification_method='test', age_verified_at='2026-11-02T00:00:00Z' WHERE id=?`).bind(id).run();
+  const enter = (u, path = 'entries') => call('POST', `/contests/twerk/${path}`, { cookie: u.cookie, body: { title: 'My entry' } });
+
+  it('verified female can submit and go live', async () => {
+    const u = await newUser(); await verify(u.id);
+    expect((await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'female' } })).status).toBe(200);
+    expect((await call('GET', '/contests/twerk/eligibility', { cookie: u.cookie })).json.can_enter).toBe(true);
+    expect((await enter(u)).status).toBe(201);
+    expect((await enter(u, 'live')).json.entry.kind).toBe('live');
+  });
+  it('break: female without ID verification gets 403 age_verification_required', async () => {
+    const u = await newUser(); await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'female' } });
+    const r = await enter(u); expect(r.status).toBe(403); expect(r.json.error.code).toBe('age_verification_required');
+  });
+  it('break: verified male / nonbinary / unset gender get 403 contestant_not_eligible', async () => {
+    for (const g of ['male', 'nonbinary', 'undisclosed', null]) {
+      const u = await newUser(); await verify(u.id);
+      if (g) await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: g } });
+      const r = await enter(u); expect(r.status).toBe(403); expect(r.json.error.code).toBe('contestant_not_eligible');
+      expect((await enter(u, 'live')).status).toBe(403);
+    }
+  });
+  it('break: client cannot smuggle gender/age into entry body or set invalid gender', async () => {
+    const u = await newUser();
+    const r = await call('POST', '/contests/twerk/entries', { cookie: u.cookie, body: { title: 't', gender: 'female', age_verified_18: true } });
+    expect(r.status).toBe(403);
+    expect((await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'woman!' } })).status).toBe(422);
+    expect((await call('POST', '/contests/twerk/entries', { body: { title: 't' } })).status).toBe(401);
+    expect((await call('POST', '/contests/nope/entries', { cookie: u.cookie, body: { title: 't' } })).status).toBe(404);
+  });
+  it('voting needs no ID verification or gender; any signed-in male voter can vote once, not for self', async () => {
+    const c = await newUser(); await verify(c.id); await call('POST', '/account/gender', { cookie: c.cookie, body: { gender: 'female' } });
+    const entry = (await enter(c)).json.entry.id;
+    const v = await newUser(); await call('POST', '/account/gender', { cookie: v.cookie, body: { gender: 'male' } });
+    expect((await call('POST', '/contests/twerk/votes', { cookie: v.cookie, body: { entry_id: entry } })).status).toBe(200);
+    expect((await call('POST', '/contests/twerk/votes', { cookie: v.cookie, body: { entry_id: entry } })).status).toBe(200);
+    expect((await env.DB.prepare(`SELECT COUNT(*) n FROM contest_votes WHERE entry_id=?`).bind(entry).first()).n).toBe(1);
+    expect((await call('POST', '/contests/twerk/votes', { cookie: c.cookie, body: { entry_id: entry } })).status).toBe(422);
   });
 });

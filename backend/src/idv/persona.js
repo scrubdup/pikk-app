@@ -56,8 +56,12 @@ export const personaAdapter = {
     return { providerRef: ref, hostedUrl: url };
   },
 
+  /** PERSONA_WEBHOOK_SECRET may hold several comma-separated secrets for PIKK-side rotation. */
   async verifyWebhook(env, req, raw) {
-    return verifyPersonaSignature(env.PERSONA_WEBHOOK_SECRET, req.headers.get('Persona-Signature'), raw);
+    const header = req.headers.get('Persona-Signature');
+    for (const secret of String(env.PERSONA_WEBHOOK_SECRET || '').split(',').map(x => x.trim()).filter(Boolean))
+      if (await verifyPersonaSignature(secret, header, raw)) return true;
+    return false;
   },
 
   /** Returns only what PIKK keeps: event id, provider ref, account reference, status. Drops all PII. */

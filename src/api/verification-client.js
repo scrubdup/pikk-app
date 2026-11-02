@@ -6,10 +6,10 @@ function base() {
 }
 export const isVerificationApiConfigured = () => !!base();
 
-async function request(path, method = 'GET') {
+async function request(path, method = 'GET', body) {
   const b = base();
   if (!b) { const e = new Error('PIKK API is not configured'); e.code = 'api_not_configured'; throw e; }
-  const res = await fetch(b + path, { method, credentials: 'include', headers: method === 'GET' ? undefined : { 'Content-Type': 'application/json' }, body: method === 'GET' ? undefined : '{}' });
+  const res = await fetch(b + path, { method, credentials: 'include', headers: method === 'GET' ? undefined : { 'Content-Type': 'application/json' }, body: method === 'GET' ? undefined : JSON.stringify(body || {}) });
   let data = null; try { data = await res.json(); } catch {}
   if (!res.ok) { const e = new Error(data?.error?.message || `Request failed (${res.status})`); e.code = data?.error?.code || 'request_failed'; e.status = res.status; throw e; }
   return data;
@@ -29,6 +29,11 @@ export const STATUS_COPY = Object.freeze({
 export const verificationApi = {
   status: () => request('/verification/age'),
   start: () => request('/verification/age/start', 'POST'),
+  consentText: () => request('/verification/age/consent'),
+  consent: ({ version, sha256, fullName }) => request('/verification/age/consent', 'POST', { agree: true, version, sha256, full_name: fullName }),
+  contestEligibility: (contest) => request(`/contests/${encodeURIComponent(contest)}/eligibility`),
+  submitEntry: (contest, title, live = false) => request(`/contests/${encodeURIComponent(contest)}/${live ? 'live' : 'entries'}`, 'POST', { title }),
+  setGender: (gender) => request('/account/gender', 'POST', { gender }),
 };
 
 /** Map any error/state into a status key. Never returns 'verified' unless the server said so. */
@@ -41,4 +46,9 @@ export function statusFromError(err) {
 /** Only https hosted URLs from the provider are opened. */
 export function safeHostedUrl(u) {
   try { const x = new URL(u); return x.protocol === 'https:' ? x.href : null; } catch { return null; }
+}
+
+/** Written e-signature is valid only with the box checked and a first + last name typed. */
+export function validConsentSignature(checked, fullName) {
+  return checked === true && /\S+\s+\S+/.test(String(fullName || '').trim()) && String(fullName).trim().length >= 3;
 }

@@ -11,6 +11,7 @@ import { auditStmt, audit } from '../audit.js';
 import { setAgeVerifiedStmt } from '../safety.js';
 import { personaAdapter } from './persona.js';
 import { diditAdapter } from './didit.js';
+import { hasCurrentConsent, CONSENT_VERSION } from './consent.js';
 
 export const ADAPTERS = { persona: personaAdapter, didit: diditAdapter };
 const nowIso = () => new Date().toISOString();
@@ -27,7 +28,7 @@ export async function idvStatus(env, ctx) {
   if (u?.age_verified_18 === 1) return json(200, { status: 'verified', connected: !!a, method: u.age_verification_method, verified_at: u.age_verified_at });
   if (!a) return json(200, { status: 'not_connected', connected: false });
   const last = await env.DB.prepare(`SELECT status FROM id_verification_sessions WHERE user_id = ? AND provider = ? ORDER BY created_at DESC LIMIT 1`).bind(s.user.id, a.id).first();
-  return json(200, { status: last ? last.status : 'not_started', connected: true, provider: a.id });
+  return json(200, { status: last ? last.status : 'not_started', connected: true, provider: a.id, consent_required: !(await hasCurrentConsent(env, s.user.id)), consent_version: CONSENT_VERSION });
 }
 
 export async function startIdv(env, req, ctx, fetchImpl = fetch) {
@@ -35,6 +36,7 @@ export async function startIdv(env, req, ctx, fetchImpl = fetch) {
   const a = activeAdapter(env);
   if (!a) throw new ApiError(503, 'provider_not_connected', 'ID verification provider not connected');
   if (s.user.age_verified_18) throw new ApiError(409, 'already_verified', 'Already verified');
+  if (!(await hasCurrentConsent(env, s.user.id))) throw new ApiError(403, 'biometric_consent_required', 'Written biometric consent is required first', { version: CONSENT_VERSION });
   await rateLimit(env, `idv:start:${s.user.id}`, 5, 86400);
   const redirectUri = env.PUBLIC_APP_URL ? `${String(env.PUBLIC_APP_URL).replace(/\/$/, '')}/#/verify-age?return=1` : undefined;
   let session;
@@ -55,7 +57,7 @@ export async function idvWebhook(env, req, providerId, ip) {
   await rateLimit(env, `idv:webhook:${providerId}:${ip}`, 300, 60);
   const raw = await req.text();
   if (raw.length > 512 * 1024) throw new ApiError(413, 'payload_too_large', 'Body too large');
-  if (!(await a.verifyWebhook(env, req, raw))) throw new ApiError(400, 'invalid_signature', 'Webhook signature verification failed');
+  if (!(await a.verifyWebhook(env, req, raw))) throw new ApiError(401, 'invalid_signature', 'Webhook signature verification failed');
   let evt; try { evt = JSON.parse(raw); } catch { throw new ApiError(400, 'invalid_json', 'Invalid JSON'); }
   const e = a.parseEvent(evt); // PII in the payload is discarded here; nothing raw is stored.
   if (!e) return json(200, { received: true, ignored: true });

@@ -163,7 +163,7 @@ export function renderProfile(route) {
   const followers = listFollowers(user.id);
   const following = listFollowing(user.id);
   const m = user.memberships || {};
-  const body = `
+  let body = `
     <section class="pikk-profile-cover" aria-label="Your PIKK profile">
       <div class="pikk-profile-cover-inner">
         <span class="pikk-profile-cover-kicker">PIKK · MY PROFILE</span>
@@ -237,10 +237,23 @@ export function renderProfile(route) {
       </div>
     </div>
   `;
+  const genderCard = `<div class="card" id="accountGenderCard">
+      <h3>Account gender</h3>
+      <p class="muted" style="font-size:12px">Saved on the PIKK server for your account (not taken from your ID). Used for women-only contests such as the Twerk Contest.</p>
+      <div class="row wrap" style="gap:8px"><select id="accountGender" aria-label="Account gender">
+        <option value="">Choose…</option><option value="female">Female</option><option value="male">Male</option><option value="nonbinary">Non-binary</option><option value="undisclosed">Prefer not to say</option>
+      </select><button type="button" class="btn" id="saveAccountGender">Save</button></div></div>`;
+  body += genderCard;
   return shellPage('Profile', body);
 }
 
 export function bindProfile(root) {
+  root.querySelector('#saveAccountGender')?.addEventListener('click', async () => {
+    const g = root.querySelector('#accountGender')?.value;
+    if (!g) return;
+    try { const api = await import('../api/verification-client.js'); await api.verificationApi.setGender(g); toast('Saved'); }
+    catch (err) { toast(err?.code === 'api_not_configured' ? 'Account server not connected yet' : (err?.message || 'Could not save')); }
+  });
   if (isPikkApiConfigured()) {
     const cachedUser = getState().user;
     if (cachedUser && cachedUser.authSource !== 'backend') {
