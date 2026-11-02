@@ -9,6 +9,8 @@ export const vaultCronEnabled = (env) => !!env && env.VAULT_CRON_ENABLED === 'tr
 // Argument order matches runMasterMindScheduled(env, event, now).
 export async function runVaultCron(env, event, now = Date.now()) {
   if (!vaultCronEnabled(env)) return { skipped: 'VAULT_CRON_ENABLED is not "true"' };
+  // R2 not provisioned: skip entirely (don't fail jobs or sweep rows whose objects we can't touch).
+  if (!env.MEDIA) return { skipped: 'vault storage not configured (binding MEDIA missing)' };
   return scheduledTick(env);
 }
 

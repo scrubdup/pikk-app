@@ -36,7 +36,7 @@ describe('music uploads', () => {
     await env.DB.prepare(
       "INSERT OR IGNORE INTO user_signup_roles(user_id,role,status,declared_at) VALUES (?, 'artist', 'declared', ?)"
     ).bind(u.id, new Date().toISOString()).run();
-    // Vault's local-placeholder MEDIA binding exists in wrangler.jsonc; simulate an unprovisioned bucket.
+    // MEDIA exists only in the test Miniflare config (vitest.config.js); simulate an unprovisioned bucket.
     const saved = env.MEDIA;
     let res;
     try { env.MEDIA = undefined; res = await postMultipart(u.cookie); } finally { env.MEDIA = saved; }
