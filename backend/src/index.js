@@ -71,6 +71,22 @@ async function route(req, env, ctx) {
     return json(200, await resendVerification(env, req, s));
   }
   if (m === 'GET' && p === '/auth/me') { const s = requireAuth(ctx); return json(200, { user: s.user, roles: s.roles, signup_roles: s.signupRoles }); }
+  if (m === 'POST' && p === '/account/profile') {
+    const s = requireActive(ctx);
+    const b = await readJson(req);
+    const displayName = b.display_name === undefined ? s.user.display_name : requireString(b, 'display_name', { min: 1, max: 60 });
+    const bio = b.bio === undefined ? (s.user.bio || '') : requireString({ bio: String(b.bio ?? '') }, 'bio', { min: 0, max: 280 });
+    const avatarUrl = b.avatar_url === undefined ? (s.user.avatar_url || '') : String(b.avatar_url ?? '').trim();
+    if (avatarUrl.length > 500) throw new ApiError(422, 'validation_failed', 'Invalid input', { avatar_url: 'up to 500 characters' });
+    if (avatarUrl && !/^https:\/\//i.test(avatarUrl) && !avatarUrl.startsWith('/')) {
+      throw new ApiError(422, 'validation_failed', 'Invalid input', { avatar_url: 'https URL or app-relative path' });
+    }
+    await env.DB.prepare(`UPDATE users SET display_name=?, bio=?, avatar_url=? WHERE id=?`)
+      .bind(displayName, bio, avatarUrl, s.user.id).run();
+    await audit(env, { actor: s.user.id, action: 'account.profile_updated', target: s.user.id, ip });
+    return json(200, { user: { ...s.user, display_name: displayName, bio, avatar_url: avatarUrl } });
+  }
+
   if (m === 'POST' && p === '/account/signup-roles') {
     // PR #110: roles can be added or changed later. Declarations only; approval/monetization handled separately.
     const s = requireActive(ctx); const b = await readJson(req);
@@ -212,10 +228,10 @@ async function route(req, env, ctx) {
   }
   if (m === 'GET' && (mm = p.match(/^\/users\/([a-zA-Z0-9_]{3,30})$/))) {
     const s = requireAuth(ctx);
-    const u = await env.DB.prepare(`SELECT id, handle, display_name, created_at FROM users WHERE handle = ? AND banned_at IS NULL AND disabled_at IS NULL`).bind(mm[1]).first();
+    const u = await env.DB.prepare(`SELECT id, handle, display_name, bio, avatar_url, created_at FROM users WHERE handle = ? AND banned_at IS NULL AND disabled_at IS NULL`).bind(mm[1]).first();
     if (!u) throw new ApiError(404, 'not_found', 'Not found');
     await assertNotBlocked(env, s.user.id, u.id, { silent: true });
-    return json(200, { user: { handle: u.handle, display_name: u.display_name, created_at: u.created_at } });
+    return json(200, { user: { handle: u.handle, display_name: u.display_name, bio: u.bio || '', avatar_url: u.avatar_url || '', created_at: u.created_at } });
   }
 
   if (m === 'GET' && p === '/ledger/balance') { const s = requireAuth(ctx); return json(200, { balance: await balance(env, s.user.id), currency: 'pikk_coin' }); }
