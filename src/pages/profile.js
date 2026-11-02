@@ -237,14 +237,24 @@ export function renderProfile(route) {
 }
 
 export function bindProfile(root) {
-  if (!getState().user && isPikkApiConfigured()) {
-    authApi.me().then((session) => {
-      if (!session?.user) return;
-      syncRemoteAuthUser(session.user);
-      refresh('#/profile');
-    }).catch((err) => {
-      if (err?.status !== 401) console.warn('PIKK auth session check failed', err);
-    });
+  if (isPikkApiConfigured()) {
+    const cachedUser = getState().user;
+    if (!cachedUser || cachedUser.authSource === 'backend') {
+      authApi.me().then((session) => {
+        if (!session?.user) return;
+        syncRemoteAuthUser(session.user);
+        if (!cachedUser || cachedUser.id !== session.user.id || !cachedUser.emailVerified === !session.user.email_verified) {
+          refresh('#/profile');
+        }
+      }).catch((err) => {
+        if (err?.status === 401 && cachedUser?.authSource === 'backend') {
+          clearAuthenticatedUser();
+          refresh('#/profile');
+          return;
+        }
+        if (err?.status !== 401) console.warn('PIKK auth session check failed', err);
+      });
+    }
   }
   root.querySelector('#signupAccountBtn')?.addEventListener('click', async () => {
     try {
