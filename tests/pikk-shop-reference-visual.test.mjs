@@ -26,6 +26,7 @@ test('Shop category shortcuts and original search filters remain available', () 
   }
   assert.ok(filterPikkShopProducts(MERCH, 'All', 'buffalo').length > 0);
   assert.ok(html.includes('id="pikkShopSearch"'));
+  assert.match(html, /id="pikkShopSearch"[^>]*aria-controls="pikkShopProducts"[^>]*aria-describedby="pikkShopCount"/);
   assert.ok(html.includes('id="pikkShopEmpty"'));
   assert.ok(html.includes('data-shop-scroll'));
 });
