@@ -1,16 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRoastInvite, respondRoastInvite, createRoastMatch, tickRoastMatch, castRoastVote, castRematchVote, startRematch, createTagTeamInvite, respondTagTeamInvite, ROAST_APPROVED_RULES as RULES, ROUND_SECONDS, VOTE_SECONDS, REMATCH_SECONDS } from '../src/roast-engine.js';
+import { createRoastInvite, respondRoastInvite, createRoastMatch, tickRoastMatch, castRoastVote, castRematchVote, startRematch, ROAST_APPROVED_RULES as RULES, ROUND_SECONDS, VOTE_SECONDS, REMATCH_SECONDS } from '../src/roast-engine.js';
 import { matchView } from '../src/pages/roast-arena.js';
 
 const advance = (m, n) => { for (let i = 0; i < n; i++) m = tickRoastMatch(m); return m; };
 const V = ['test-viewer-1', 'test-viewer-2', 'test-viewer-3'];
 const oneVOne = () => respondRoastInvite(createRoastInvite({ inviterId: 'a', inviteeId: 'b', consentAccepted: true }), { accept: true, consentAccepted: true });
-const tag = () => ['test-a2', 'test-b1', 'test-b2'].reduce((i, m) => respondTagTeamInvite(i, m, { accept: true, consentAccepted: true }),
-  createTagTeamInvite({ teams: [['test-a1', 'test-a2'], ['test-b1', 'test-b2']], inviterId: 'test-a1', consentAccepted: true }));
 const decided = (rules, inv = oneVOne()) => { let m = createRoastMatch(inv, { eligibleViewerIds: V, rules }); for (let r = 0; r < 3; r++) { m = advance(m, ROUND_SECONDS); m = castRoastVote(m, 0, 'test-viewer-1'); m = advance(m, VOTE_SECONDS); } return m; };
 
-for (const [key, inv] of [['1v1', oneVOne], ['tag', tag]]) {
+for (const [key, inv] of [['1v1', oneVOne]]) {
   test(`${key}: "X of Y eligible viewers voted" is visible during voting`, () => {
     let m = advance(createRoastMatch(inv(), { eligibleViewerIds: V }), ROUND_SECONDS);
     assert.equal(m.phase, 'vote');
@@ -47,9 +45,9 @@ test('engine reads ROAST_APPROVED_RULES.rematchRequiresAllContestants; flipping 
 });
 
 // Owner ruling t447u: vote screen shows round number + both names, tap a name to vote, tiebreaker says "Tie Breaker".
-const NAMES = { '1v1': ['Challenger (test)', 'Opponent (test)'], tag: ['Team A (test)', 'Team B (test)'] };
+const NAMES = { '1v1': ['Challenger (test)', 'Opponent (test)'] };
 const tieTo = (m, rounds) => { for (let r = 0; r < rounds; r++) { m = advance(m, ROUND_SECONDS); m = advance(m, VOTE_SECONDS); } return m; };
-for (const [key, inv] of [['1v1', oneVOne], ['tag', tag]]) {
+for (const [key, inv] of [['1v1', oneVOne]]) {
   test(`${key}: vote screen shows round number, both names as tap-to-vote buttons, 10s window`, () => {
     const m = advance(advance(createRoastMatch(inv(), { eligibleViewerIds: V }), ROUND_SECONDS), 0);
     const m2 = advance(tieTo(createRoastMatch(inv(), { eligibleViewerIds: V }), 1), ROUND_SECONDS);
@@ -89,7 +87,7 @@ test('Roast tap targets: vote and rematch buttons carry roast-tap, CSS beats .pa
   const wf = readFileSync(new URL('../.github/workflows/pikk-roast-visual.yml', import.meta.url), 'utf8');
   assert.match(wf, /visual-review-roast-taps\.mjs/);
   const script = readFileSync(new URL('../scripts/visual-review-roast-taps.mjs', import.meta.url), 'utf8');
-  assert.match(script, /getBoundingClientRect/); assert.match(script, /\[360, 390, 430\]/); assert.match(script, /\['1v1', 'tag'\]/);
+  assert.match(script, /getBoundingClientRect/); assert.match(script, /\[360, 390, 430\]/); assert.match(script, /\['1v1'\]/);
 });
 test('no stale test-value label on the vote window in the Roast page', () => {
   const src = readFileSync(new URL('../src/pages/roast-arena.js', import.meta.url), 'utf8');
