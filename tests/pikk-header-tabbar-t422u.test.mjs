@@ -32,3 +32,7 @@ test('t219u: logo centred (no shift); 34px icons, 3 per side, clear of logo at 3
     assert.ok(w - cluster > w - logoLeft, `${w}px: bell clear of logo`);
   }
 });
+test('t220u: raised Create orb overhangs via negative margin (no relative top) so the tab row has no empty band', () => {
+  assert.match(css, /tabbar-fit7 \{ align-items: end; \}/);
+  assert.match(css, /a\.tab-primary \{ top: 0 !important; margin-top: var\(--pikk-create-raise, -40px\); \}/);
+});
