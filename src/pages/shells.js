@@ -654,7 +654,7 @@ export const CREATOR_ROLE_OPTIONS = Object.freeze([
 
 export function renderSignup() {
   const remote=isAccountApiConfigured();
-  const roleOptions=CREATOR_ROLE_OPTIONS.map(role=>`<label class="card creator-role-choice" style="margin:0"><span class="row" style="align-items:flex-start"><input type="checkbox" name="creatorRole" value="${esc(role.id)}" /><span><strong>${esc(role.label)}</strong><br/><small class="muted">${esc(role.note)}</small></span></span></label>`).join('');
+  const roleOptions=CREATOR_ROLE_OPTIONS.map(role=>`<label class="card creator-role-choice" style="margin:0" data-role-card="${esc(role.id)}"><span class="row" style="align-items:flex-start"><input type="checkbox" name="creatorRole" value="${esc(role.id)}" /><span class="spacer"><strong>${esc(role.label)}</strong><br/><small class="muted">${esc(role.note)}</small></span><span class="chip creator-role-state" data-role-state="${esc(role.id)}">not selected</span></span></label>`).join('');
   return shellPage(
     'Signup & Creator Apps',
     `<div class="card">
@@ -707,9 +707,14 @@ export function bindSignup(root){
   if(!form)return;
   const setStatus=(message)=>{if(status)status.textContent=message;};
   accountApi.me().then(data=>{
-    const roles=(data.signup_roles||[]).map(r=>typeof r==='string'?r:r.role);
-    root.querySelectorAll('input[name="creatorRole"]').forEach(input=>{input.checked=roles.includes(input.value);});
-    setStatus('Current account roles loaded.');
+    const entries=(data.signup_roles||[]).map(r=>typeof r==='string'?{role:r,status:'declared'}:r);
+    const byRole=new Map(entries.map(r=>[r.role,r.status||'declared']));
+    root.querySelectorAll('input[name="creatorRole"]').forEach(input=>{
+      input.checked=byRole.has(input.value);
+      const badge=root.querySelector(`[data-role-state="${CSS.escape(input.value)}"]`);
+      if(badge) badge.textContent=byRole.get(input.value)||'not selected';
+    });
+    setStatus('Current account roles and review statuses loaded.');
   }).catch(err=>{
     setStatus(err?.status===401?'Sign in from Profile to manage creator roles.':(err?.message||'Could not load account roles.'));
   });
@@ -721,7 +726,11 @@ export function bindSignup(root){
     try{
       const data=await accountApi.updateSignupRoles(roles);
       const saved=(data.signup_roles||[]).filter(role=>role!=='member');
-      setStatus(saved.length?'Saved: '+saved.join(', ')+'.':'Saved as Member only.');
+      root.querySelectorAll('input[name="creatorRole"]').forEach(input=>{
+        const badge=root.querySelector(`[data-role-state="${CSS.escape(input.value)}"]`);
+        if(badge) badge.textContent=saved.includes(input.value)?'declared':'not selected';
+      });
+      setStatus(saved.length?'Saved role declarations: '+saved.join(', ')+'. Review status may be updated separately where required.':'Saved as Member only.');
       toast('Account roles saved');
     }catch(err){
       setStatus(err?.status===401?'Sign in to save account roles.':(err?.message||'Could not save account roles.'));
