@@ -2,12 +2,16 @@
 // no server, live video, shared votes, or real payments happen here.
 // Roast Arena is separate from PIKK Gift Battles; nothing here touches battle code.
 
-/** OWNER-APPROVED (2026-11-02): round length, vote window and round count for 1v1 and Tag-Team. */
+/** OWNER-APPROVED (2026-11-02): round length and round count for 1v1 and Tag-Team. */
 export const ROAST_APPROVED_TIMINGS = Object.freeze({
   roundSeconds: 60,
-  voteSeconds: 10,
   baseRounds: 3,
 });
+/**
+ * OWNER VERIFICATION NEEDED: the owner withdrew approval of the 10s vote window (2026-11-02,
+ * "Not 10 vote"). Kept as the prototype test value until the owner rules.
+ */
+export const ROAST_VOTE_TEST_TIMING_OWNER_VERIFICATION_NEEDED = Object.freeze({ voteSeconds: 10 });
 /** OWNER VERIFICATION NEEDED: rematch decision window was not ruled on; prototype test value. */
 export const ROAST_REMATCH_TEST_TIMING_OWNER_VERIFICATION_NEEDED = Object.freeze({ rematchSeconds: 10 });
 /**
@@ -16,7 +20,7 @@ export const ROAST_REMATCH_TEST_TIMING_OWNER_VERIFICATION_NEEDED = Object.freeze
  */
 export const ROAST_APPROVED_RULES = Object.freeze({ tiebreakerRounds: 1, contestantsMayVote: false, rematchRequiresAllContestants: true });
 export const ROUND_SECONDS = ROAST_APPROVED_TIMINGS.roundSeconds;
-export const VOTE_SECONDS = ROAST_APPROVED_TIMINGS.voteSeconds;
+export const VOTE_SECONDS = ROAST_VOTE_TEST_TIMING_OWNER_VERIFICATION_NEEDED.voteSeconds;
 export const REMATCH_SECONDS = ROAST_REMATCH_TEST_TIMING_OWNER_VERIFICATION_NEEDED.rematchSeconds;
 export const BASE_ROUNDS = ROAST_APPROVED_TIMINGS.baseRounds;
 
@@ -93,7 +97,7 @@ export function hasBothConsents(invite) {
 }
 
 /** A match can only start from an accepted invite with consent from both contestants. */
-export function createRoastMatch(invite, { eligibleViewerIds = [] } = {}) {
+export function createRoastMatch(invite, { eligibleViewerIds = [], rules = ROAST_APPROVED_RULES } = {}) {
   if (invite?.mode === 'roast_tag_team') {
     if (!hasAllConsents(invite)) throw new Error('consent_required: every team member must accept before a match starts');
   } else if (!hasBothConsents(invite)) throw new Error('consent_required: both contestants must accept before a match starts');
@@ -101,12 +105,13 @@ export function createRoastMatch(invite, { eligibleViewerIds = [] } = {}) {
   const contestants = teams ? teams.flat() : [invite.inviter_id, invite.invitee_id];
   const extra = teams ? { mode: 'roast_tag_team', teams, turnOrder: tagTeamTurnOrder(teams) } : { mode: 'roast_1v1' };
   return {
-    testMode: true, inviteId: invite.id, contestants, ...extra,
-    eligibleViewerIds: eligibleViewerIds.filter(v => !contestants.includes(v)),
+    testMode: true, inviteId: invite.id, contestants, ...extra, rules,
+    // Room viewers who may vote; contestants are excluded unless rules.contestantsMayVote.
+    eligibleViewerIds: [...new Set(eligibleViewerIds)].filter((v) => rules.contestantsMayVote || !contestants.includes(v)),
     phase: 'round', round: 1, seconds: ROUND_SECONDS,
     votes: [0, 0], votersThisRound: [], scores: [0, 0], roundWinners: [],
     gifts: [0, 0], rematchAgreement: {}, rematch: null, reports: [],
-    winner: null, result: null, tieBreaker: false,
+    winner: null, result: null, tieBreaker: false, tiebreakersPlayed: 0,
   };
 }
 
@@ -114,11 +119,17 @@ export function createRoastMatch(invite, { eligibleViewerIds = [] } = {}) {
 export function castRoastVote(match, contestant, viewerId) {
   if (match.phase !== 'vote' || ![0, 1].includes(contestant)) return match;
   if (!match.eligibleViewerIds.includes(viewerId) || match.votersThisRound.includes(viewerId)) return match;
+  if (!match.rules.contestantsMayVote && match.contestants.includes(viewerId)) return match;
   const votes = [...match.votes]; votes[contestant] += 1;
   return { ...match, votes, votersThisRound: [...match.votersThisRound, viewerId] };
 }
 
 /** TEST MODE gift tally only. Kept separate from votes; never decides the winner. */
+/** TEST MODE turnout for the current round: how many of the eligible viewers in the room voted. */
+export function roastVoteTurnout(match) {
+  return { voted: match.votersThisRound.length, eligible: match.eligibleViewerIds.length };
+}
+
 export function sendRoastTestGift(match, contestant, amount = 1) {
   if (!['round', 'vote'].includes(match.phase) || ![0, 1].includes(contestant) || !(amount > 0)) return match;
   const gifts = [...match.gifts]; gifts[contestant] += amount;
@@ -162,11 +173,12 @@ export function tickRoastMatch(match) {
       const winner = scores[0] > scores[1] ? 0 : 1;
       return { ...match, scores, roundWinners, winner, result: 'winner', phase: 'rematch', seconds: REMATCH_SECONDS };
     }
-    if (match.tieBreaker) {
-      // Tiebreaker round also tied: match ends as a tie (owner-approved).
+    if (match.round >= BASE_ROUNDS && match.tiebreakersPlayed >= match.rules.tiebreakerRounds) {
+      // Still tied after the allowed tiebreaker round(s): match ends as a tie (owner-approved).
       return { ...match, scores, roundWinners, winner: null, result: 'tie', phase: 'finished', seconds: 0 };
     }
-    return { ...match, scores, roundWinners, phase: 'round', round: match.round + 1, seconds: ROUND_SECONDS, votes: [0, 0], votersThisRound: [], tieBreaker: match.round >= BASE_ROUNDS };
+    const nextIsTiebreaker = match.round >= BASE_ROUNDS;
+    return { ...match, scores, roundWinners, phase: 'round', round: match.round + 1, seconds: ROUND_SECONDS, votes: [0, 0], votersThisRound: [], tieBreaker: nextIsTiebreaker, tiebreakersPlayed: match.tiebreakersPlayed + (nextIsTiebreaker ? 1 : 0) };
   }
   return { ...match, phase: 'finished', seconds: 0, rematch: match.rematch || 'expired' };
 }
