@@ -69,3 +69,30 @@ html body .stream-plat-spotify { color: #fff !important; border-color: var(--pik
 .apple-music-embed > summary::-webkit-details-marker { display: none; }
 .apple-music-embed > summary::before { content: "▶ "; color: var(--pikk-red, #ff3137); }
 html body .stream-meta > .chip { width: fit-content; align-self: flex-start; }
+
+/* t222u — every page's tab / filter / sub-tab groups use Home's chip geometry (measured on Home .pikk-home-filterbar a @390:
+   11px / 750 / normal tracking / 8px 10px / pill radius / 34px tall). Colours already come from the shared rules above. */
+:root {
+  --pikk-chip-fs: 11px;
+  --pikk-chip-fw: 750;
+  --pikk-chip-pad: 8px 10px;
+  --pikk-chip-h: 34px;
+  --pikk-ring-bg: linear-gradient(135deg, var(--pikk-red, #ff1f2d), #c0c6cf, var(--pikk-blue, #1e6bff));
+  --pikk-ring-shadow: 0 0 0 2px #0a0a0a, -3px 0 12px var(--pikk-red-glow, rgba(255, 31, 45, .5)), 3px 0 12px var(--pikk-blue-glow, rgba(30, 107, 255, .5));
+}
+html body :is(.pikk-home-filterbar, .home-stage-tabs, .live-disc-tabs, .admin-type-tabs, .pikk-viral-tabs, .shop-chips, .pikk-video-filters, .pikk-music-categories) > :is(a, button) {
+  font-size: var(--pikk-chip-fs) !important;
+  font-weight: var(--pikk-chip-fw) !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  padding: var(--pikk-chip-pad) !important;
+  min-height: var(--pikk-chip-h);
+  border-radius: 999px !important;
+  line-height: 1.2;
+}
+/* t222u — round avatars / story circles everywhere wear Home's red · white(chrome) · blue ring. */
+html body :is(.meta > .avatar, .shop-avatar-frame, .pikk-ring) {
+  padding: 3px; border: 0 !important; border-radius: 50% !important;
+  background: var(--pikk-ring-bg) !important; box-shadow: var(--pikk-ring-shadow) !important; background-clip: border-box;
+}
+html body .meta > img.avatar { object-fit: cover; }

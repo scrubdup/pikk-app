@@ -6,6 +6,7 @@ on:
       - 'src/**'
       - 'scripts/visual-review-duotone.mjs'
       - 'scripts/visual-review-tabbar-gap.mjs'
+      - 'scripts/visual-review-chips-match-home.mjs'
       - 'index.html'
       - '.github/workflows/pikk-duotone-visual.yml'
 permissions:
@@ -44,3 +45,5 @@ jobs:
         run: node scripts/visual-review-logo-center.mjs
       - name: Tab labels sit within 12px of the tab bar bottom at 390x844
         run: node scripts/visual-review-tabbar-gap.mjs
+      - name: Tabs / chips / rings on sample pages match Home
+        run: node scripts/visual-review-chips-match-home.mjs
