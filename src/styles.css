@@ -4972,3 +4972,29 @@ html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary > span:last
 .pikk-arcade-card[hidden],#pikkArcadeNoMatches[hidden],#pikkArcadeSearchClear[hidden]{display:none!important}
 .pikk-arcade-no-matches{margin:0 0 16px;padding:20px;text-align:center;border:1px dashed #69718d;border-radius:14px;background:#161927}
 @media(max-width:420px){.pikk-arcade-search{padding:12px}.pikk-arcade-search-row{gap:8px}.pikk-arcade-search-row .btn{padding-inline:10px}}
+
+
+/* t-owner-20261101 — Home media + mobile nav alignment from owner screenshot.
+   Give lower media the same electric-blue/red contrast as the top chrome while
+   keeping titles bright white, and reduce excess iPhone tabbar lift. */
+.pikk-home-media-card {
+  border-color: rgba(47,107,255,.88);
+  box-shadow: 0 0 0 1px rgba(47,107,255,.28), 0 0 13px rgba(47,107,255,.24), 0 5px 16px #0008;
+}
+.pikk-home-media-badge {
+  border: 1px solid #2f6bff;
+  box-shadow: 0 0 0 1px rgba(47,107,255,.38), 0 0 8px rgba(47,107,255,.46), 0 0 8px rgba(255,49,55,.30);
+  color: #fff;
+}
+.pikk-home-media-title {
+  color: #fff;
+  text-shadow: 0 1px 3px #000, 0 0 7px rgba(255,255,255,.16);
+}
+@media (max-width: 767px) {
+  html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 {
+    padding-bottom: 4px;
+  }
+  html body #app {
+    padding-bottom: calc(var(--tab-h) + 14px);
+  }
+}
