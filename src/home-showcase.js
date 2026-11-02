@@ -52,7 +52,8 @@ export const HOME_MORE = Object.freeze([
 ]);
 
 export function renderHomeShowcase() {
-  const music = STREAMING_RELEASES.map((r) => card('#/music', img(r.cover, r.title), r.title, `${r.artist} · ${r.type === 'album' ? 'Album' : 'Single'}${r.year ? ' · ' + r.year : ''}`, 'is-square', r.type === 'album' ? 'Album' : 'Track')).join('');
+  const music = STREAMING_RELEASES.map((r) => card('#/music', img(r.cover, r.title), r.title, `${r.artist} · ${r.type === 'album' ? 'Album' : 'Single'}${r.year ? ' · ' + r.year : ''}`, 'is-square', r.type === 'album' ? 'Album' : 'Track')).join('')
+    + [['#/music?view=beats', 'Beats', 'Instrumentals · TEST MODE'], ['#/music?view=playlists', 'Playlists', 'Curated lists']].map(([h, t, s]) => card(h, '<span class="hs-ph" aria-hidden="true">♪</span>', t, s, 'is-chip')).join('');
   const mv = VIDEOS.filter((v) => v.category === 'Music Videos');
   const posts = mv.slice(0, 6).map((v, i) => card(i % 3 === 1 ? '#/shorts' : '#/posts', img(thumb(v.youtube), v.title), v.title, i % 3 === 0 ? 'Picture · house' : i % 3 === 1 ? 'Short · house' : 'Video · house', i % 3 === 1 ? 'is-tall' : 'is-square', i % 3 === 0 ? 'Photo' : i % 3 === 1 ? 'Short' : 'Video')).join('');
   const videos = VIDEOS.slice(0, 8).map((v) => card('#/videos', img(thumb(v.youtube), v.title), v.title, `${v.artist || 'DatBoiSkeet'} · PIKK Official`, 'is-wide')).join('');

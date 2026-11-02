@@ -77,7 +77,7 @@ function renderStreamingReleaseCard(r) {
   const note = r.albumNote ? `<div class="muted" style="font-size:11px">${esc(r.albumNote)}</div>` : '';
   const year = r.year ? ` · ${esc(String(r.year))}` : '';
   const appleEmbed = appleEmbedUrl(r.links?.apple);
-  const applePlayer = appleEmbed ? `<details class="apple-music-embed"><summary>▶ Play in PIKK · Apple Music</summary><iframe title="Apple Music player for ${esc(r.title)}" src="${esc(appleEmbed)}" loading="lazy" allow="autoplay *; encrypted-media *; fullscreen *" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation" style="width:100%;height:175px;border:0;border-radius:12px"></iframe><small class="muted">Apple controls playback availability. Full listening may require Apple Music.</small></details>` : '';
+  const applePlayer = appleEmbed ? `<details class="apple-music-embed"><summary>Play in PIKK · Apple Music</summary><iframe title="Apple Music player for ${esc(r.title)}" src="${esc(appleEmbed)}" loading="lazy" allow="autoplay *; encrypted-media *; fullscreen *" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation" style="width:100%;height:175px;border:0;border-radius:12px"></iframe><small class="muted">Apple controls playback availability. Full listening may require Apple Music.</small></details>` : '';
   return `
     <article class="stream-release">
       ${cover}
@@ -100,6 +100,9 @@ function tierLabel(m) {
   return 'None';
 }
 
+const VAULT_TIER_LABEL = { 'skeet':'PIKK+', 'skeet+':'PIKK+', 'backstage':'Backstage', 'inner':'Inner Circle' };
+const vaultTier = (t) => VAULT_TIER_LABEL[t] || t;
+
 function renderVaultCards(unlocked) {
   return VAULT_ITEMS.map((item) => {
     const needsBackstage = item.tier === 'backstage' || item.tier === 'inner';
@@ -113,7 +116,7 @@ function renderVaultCards(unlocked) {
           <span class="chip" style="border-color:#2a4a3a;color:#8dffb0">Unlocked</span>
           <strong>${esc(item.title)}</strong>
           <div class="muted" style="font-size:12px">${esc(item.artist)} · ${esc(item.status)}</div>
-          <div class="muted" style="font-size:11px">Requires ${esc(item.tier)} · no audio yet</div>
+          <div class="muted" style="font-size:11px">Requires ${esc(vaultTier(item.tier))} · no audio yet</div>
         </div>
       </article>`;
     }
@@ -127,7 +130,7 @@ function renderVaultCards(unlocked) {
           <span class="chip">Locked</span>
           <strong>${esc(item.title)}</strong>
           <div class="muted" style="font-size:12px">${esc(item.artist)}</div>
-          <div class="muted" style="font-size:11px">Join ${esc(item.tier)} to unlock</div>
+          <div class="muted" style="font-size:11px">Join ${esc(vaultTier(item.tier))} to unlock</div>
         </div>
       </article>`;
   }).join('');
