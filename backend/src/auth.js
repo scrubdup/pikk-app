@@ -9,7 +9,8 @@ const DUMMY = { password_salt: 'AAAAAAAAAAAAAAAAAAAAAA==', password_iterations: 
 
 function sessionCookie(env, token, maxAgeSec) {
   const sameSite = ['Strict', 'Lax', 'None'].includes(env.COOKIE_SAMESITE) ? env.COOKIE_SAMESITE : 'Strict';
-  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=${sameSite}; Max-Age=${maxAgeSec}`;
+  const partitioned = sameSite === 'None' ? '; Partitioned' : '';
+  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=${sameSite}; Max-Age=${maxAgeSec}${partitioned}`;
 }
 
 function readCookie(req, name) {
