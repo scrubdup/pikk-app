@@ -10,7 +10,7 @@ import { stripeWebhook } from './webhook.js';
 import { newId } from './crypto.js';
 import { audit, auditStmt } from './audit.js';
 import { mediaRoute } from './media.js';
-import { runVaultCron } from './vault-cron.js';
+import { withVaultCron } from './vault-cron.js';
 import { musicUploadRoute } from './music-upload.js';
 import { messagesRoute } from './messages.js';
 import { supportRoute } from './tickets.js';
@@ -326,7 +326,7 @@ async function route(req, env, ctx) {
   throw new ApiError(404, 'not_found', 'Route not found');
 }
 
-export default {
+const worker = {
   async fetch(req, env, ectx) {
     const requestId = crypto.randomUUID();
     const cors = corsHeaders(env, req);
@@ -339,12 +339,8 @@ export default {
     res.headers.set('X-Request-Id', requestId);
     return res;
   },
-  // PIKK Vault slice 3: free cron trigger (wrangler.jsonc triggers.crons). Story expiry sweep + job retries.
-  // Single cron dispatcher (same shape as #336). Each module adds ONE line to the list; allSettled keeps one failure from stopping the others.
-  async scheduled(event, env, ctx) {
-    const now = Date.now();
-    ctx.waitUntil(Promise.allSettled([
-      runVaultCron(env, event, now),
-    ]).then(rs => rs.forEach(r => r.status === 'rejected' && console.error('scheduled task failed', r.reason && r.reason.message))));
-  },
 };
+
+// PIKK Vault cron is composed onto the worker's own cron handler (e.g. #336's dispatcher) by withVaultCron
+// in vault-cron.js, so index.js never needs a Vault line in its dispatcher.
+export default withVaultCron(worker);

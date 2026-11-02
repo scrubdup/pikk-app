@@ -26,4 +26,22 @@ describe('cron dispatcher + VAULT_CRON_ENABLED gate', () => {
     await fire({ ...env, VAULT_CRON_ENABLED: 'true' });
     expect(JSON.parse(await lastRun())).toMatchObject({ at: expect.any(String) });
   });
+  for (const v of ['false', '1', 'TRUE', '', ' true', 'yes', undefined, null, true, 1]) {
+    it(`gate: VAULT_CRON_ENABLED=${JSON.stringify(v)} stays off (only the exact string 'true' turns it on)`, async () => {
+      const e = { ...env, VAULT_CRON_ENABLED: v };
+      expect(await runVaultCron(e, { cron: PROCESSING.sweeperCron })).toMatchObject({ skipped: expect.any(String) });
+      await fire(e);
+      expect(await lastRun()).toBeNull();
+    });
+  }
+  it('withVaultCron runs a pre-existing scheduled() (e.g. #336 dispatcher) AND the Vault cron', async () => {
+    const { withVaultCron } = await import('../src/vault-cron.js');
+    let innerCalls = 0;
+    const w = withVaultCron({ fetch() {}, async scheduled(ev, e, c) { innerCalls++; } });
+    const ctx = createExecutionContext();
+    await w.scheduled(createScheduledController({ scheduledTime: Date.now(), cron: PROCESSING.sweeperCron }), { ...env, VAULT_CRON_ENABLED: 'true' }, ctx);
+    await waitOnExecutionContext(ctx);
+    expect(innerCalls).toBe(1);
+    expect(JSON.parse(await lastRun())).toMatchObject({ at: expect.any(String) });
+  });
 });
