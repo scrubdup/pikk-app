@@ -7,8 +7,10 @@ import { resendVerification } from '../src/auth.js';
 import { authApi } from '../../src/api/auth-client.js';
 
 let seq = 0;
+// 'undisclosed' is valid under #339's SIGNUP_GENDERS; main's validateSignup ignores unknown fields.
+const GENDER = 'undisclosed';
 const uniq = () => `ct_${Date.now().toString(36)}_${++seq}`;
-const signup = (h = uniq()) => call('POST', '/auth/signup', { body: { email: `${h}@example.com`, password: 'contract pass 123', handle: h, display_name: 'Contract' }, ip: freshIp() });
+const signup = (h = uniq()) => call('POST', '/auth/signup', { body: { email: `${h}@example.com`, password: 'contract pass 123', handle: h, display_name: 'Contract', gender: GENDER }, ip: freshIp() });
 const attrs = (sc) => sc.split(';').slice(1).map((s) => s.trim());
 
 describe('auth contract: signup -> me -> logout against the Worker', () => {
@@ -44,6 +46,14 @@ describe('auth contract: signup -> me -> logout against the Worker', () => {
     expect(after.status).toBe(401);
     const row = await env.DB.prepare('SELECT revoked_at FROM sessions WHERE user_id = ?').bind(s.json.user.id).first();
     expect(row.revoked_at).toBeTruthy();
+  });
+
+  it('expired session (expires_at in the past) => 401 on /auth/me', async () => {
+    const s = await signup();
+    expect((await call('GET', '/auth/me', { cookie: s.cookie, ip: freshIp() })).status).toBe(200);
+    await env.DB.prepare('UPDATE sessions SET expires_at = ? WHERE user_id = ?').bind(new Date(Date.now() - 60_000).toISOString(), s.json.user.id).run();
+    const r = await call('GET', '/auth/me', { cookie: s.cookie, ip: freshIp() });
+    expect(r.status).toBe(401);
   });
 
   it('no cookie => 401 on /auth/me', async () => {
@@ -99,7 +109,7 @@ describe('auth contract: frontend client paths hit real backend routes', () => {
       return res;
     };
     const h = uniq();
-    const su = await authApi.signup({ email: `${h}@example.com`, handle: h, displayName: 'Client', password: 'client pass 123' });
+    const su = await authApi.signup({ email: `${h}@example.com`, handle: h, displayName: 'Client', password: 'client pass 123', gender: GENDER });
     expect(su.user.handle).toBe(h);
     expect((await authApi.me()).user.handle).toBe(h);
     const rs = await authApi.resendVerification();
