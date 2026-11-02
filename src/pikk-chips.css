@@ -101,8 +101,9 @@ html body :is(.pikk-home-filterbar, .home-stage-tabs, .live-disc-tabs, .live-cat
 /* Scroll rows (overflow-x:auto) clip overflow on both axes, so each chip row gets +6px padding above/below to hold the
    46px tap area. Negative margins offset that padding, but vertical margins collapse with neighbouring blocks, so the
    per-row values below are measured (390px, vs fab35c8) to keep chip rows and the content after them where they were
-   (0px drift). Rows of wrapping chips keep a 10px row gap (tap areas may touch by 2px between rows). */
-html body :is(.pikk-home-filterbar, .home-stage-tabs, .live-disc-tabs, .live-cat-chips, .admin-type-tabs, .pikk-viral-tabs, .shop-chips, .pikk-video-filters, .pikk-music-categories) { row-gap: 10px; column-gap: max(6px, var(--pikk-chip-col-gap, 6px)); }
+   (0px drift). Wrapped chip rows (Live) use a 12px row gap so the 6px tap areas meet without overlapping; that moves
+   Live's lower rows down 2px, accepted by Checker on #372. */
+html body :is(.pikk-home-filterbar, .home-stage-tabs, .live-disc-tabs, .live-cat-chips, .admin-type-tabs, .pikk-viral-tabs, .shop-chips, .pikk-video-filters, .pikk-music-categories) { row-gap: 12px; column-gap: max(6px, var(--pikk-chip-col-gap, 6px)); }
 html body .pikk-home-filterbar { padding-top: 8px !important; padding-bottom: 11px !important; margin-top: -6px !important; margin-bottom: 8px !important; }
 html body .home-stage-tabs { padding-top: 6px !important; padding-bottom: 10px !important; margin-top: -6px !important; margin-bottom: 6px !important; }
 html body .live-disc-tabs { padding-top: 6px !important; padding-bottom: 10px !important; margin-top: -6px !important; margin-bottom: 4px !important; }
