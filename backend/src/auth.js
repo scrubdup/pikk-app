@@ -156,3 +156,31 @@ export async function verifyEmail(env, req, body) {
   await audit(env, { actor: row.user_id, action: 'auth.email_verified', ip: clientIp(req) });
   return { ok: true };
 }
+
+
+export async function resendVerification(env, req, session) {
+  if (session.user.email_verified) {
+    return { ok: true, verification: { delivery: 'already_verified' } };
+  }
+  const token = randomToken(32);
+  const tokenHash = await sha256Hex(token);
+  const t = nowIso();
+  await env.DB.batch([
+    env.DB.prepare(`UPDATE email_verifications SET used_at = ? WHERE user_id = ? AND used_at IS NULL`).bind(t, session.user.id),
+    env.DB.prepare(`INSERT INTO email_verifications(token_hash,user_id,expires_at) VALUES (?,?,?)`)
+      .bind(tokenHash, session.user.id, new Date(Date.now() + 86400_000).toISOString()),
+  ]);
+  const verification = await sendVerificationEmail(env, {
+    to: session.user.email,
+    token,
+    userId: session.user.id,
+  });
+  await audit(env, {
+    actor: session.user.id,
+    action: 'auth.verification_resent',
+    target: session.user.id,
+    ip: clientIp(req),
+    meta: { delivery: verification.delivery },
+  });
+  return { ok: true, verification };
+}
