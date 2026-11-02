@@ -21,6 +21,16 @@ async function userByHandle(env, handle) {
   return u;
 }
 
+async function postForEngagement(env, id) {
+  const post = await env.DB.prepare(
+    `SELECT p.id,p.author_id,p.deleted_at,u.banned_at
+       FROM posts p JOIN users u ON u.id=p.author_id
+      WHERE p.id=?`
+  ).bind(id).first();
+  if (!post || post.deleted_at || post.banned_at) throw new ApiError(404, 'not_found', 'Post not found');
+  return post;
+}
+
 async function route(req, env, ctx) {
   const url = new URL(req.url);
   const { pathname: p } = url; const m = req.method;
@@ -68,7 +78,10 @@ async function route(req, env, ctx) {
   if (m === 'GET' && p === '/posts') {
     const s = requireAuth(ctx);
     const r = await env.DB.prepare(
-      `SELECT p.id, p.kind, p.body, p.created_at, p.author_id, u.handle AS author, u.display_name
+      `SELECT p.id, p.kind, p.body, p.created_at, p.author_id, u.handle AS author, u.display_name,
+              (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id=p.id) AS like_count,
+              (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id=p.id AND pc.deleted_at IS NULL) AS comment_count,
+              EXISTS(SELECT 1 FROM post_likes mine WHERE mine.post_id=p.id AND mine.user_id=?1) AS liked_by_me
          FROM posts p JOIN users u ON u.id = p.author_id
         WHERE p.deleted_at IS NULL AND u.banned_at IS NULL
           AND ${NOT_BLOCKED_SQL('p.author_id')}
@@ -111,7 +124,11 @@ async function route(req, env, ctx) {
   if (m === 'GET' && p === '/feed') {
     const s = requireAuth(ctx);
     const r = await env.DB.prepare(
-      `SELECT p.id, p.kind, p.body, p.created_at, u.handle AS author FROM posts p JOIN users u ON u.id = p.author_id
+      `SELECT p.id, p.kind, p.body, p.created_at, u.handle AS author,u.display_name,
+              (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id=p.id) AS like_count,
+              (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id=p.id AND pc.deleted_at IS NULL) AS comment_count,
+              EXISTS(SELECT 1 FROM post_likes mine WHERE mine.post_id=p.id AND mine.user_id=?1) AS liked_by_me
+         FROM posts p JOIN users u ON u.id = p.author_id
         WHERE p.deleted_at IS NULL AND u.banned_at IS NULL
           AND (p.author_id = ?1 OR p.author_id IN (SELECT followee_id FROM follows WHERE follower_id = ?1))
           AND ${NOT_BLOCKED_SQL('p.author_id')}
@@ -119,9 +136,65 @@ async function route(req, env, ctx) {
     return json(200, { posts: r.results });
   }
   let mm;
+  if ((m === 'POST' || m === 'DELETE') && (mm = p.match(/^\/posts\/([\w-]{1,64})\/like$/))) {
+    const s = requireVerified(ctx);
+    const post = await postForEngagement(env, mm[1]);
+    await assertNotBlocked(env, s.user.id, post.author_id);
+    if (m === 'POST') {
+      await rateLimit(env, `post-like:${s.user.id}`, 300, 3600);
+      await env.DB.prepare(`INSERT OR IGNORE INTO post_likes(post_id,user_id,created_at) VALUES (?,?,?)`)
+        .bind(post.id, s.user.id, new Date().toISOString()).run();
+    } else {
+      await env.DB.prepare(`DELETE FROM post_likes WHERE post_id=? AND user_id=?`).bind(post.id, s.user.id).run();
+    }
+    const count = await env.DB.prepare(`SELECT COUNT(*) AS n FROM post_likes WHERE post_id=?`).bind(post.id).first();
+    return json(200, { liked: m === 'POST', like_count: Number(count?.n || 0) });
+  }
+
+  if (m === 'GET' && (mm = p.match(/^\/posts\/([\w-]{1,64})\/comments$/))) {
+    const s = requireAuth(ctx);
+    const post = await postForEngagement(env, mm[1]);
+    await assertNotBlocked(env, s.user.id, post.author_id, { silent: true });
+    const r = await env.DB.prepare(
+      `SELECT pc.id,pc.body,pc.created_at,u.handle AS author,u.display_name
+         FROM post_comments pc JOIN users u ON u.id=pc.author_id
+        WHERE pc.post_id=?1 AND pc.deleted_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM blocks b
+             WHERE (b.blocker_id=?2 AND b.blocked_id=pc.author_id)
+                OR (b.blocker_id=pc.author_id AND b.blocked_id=?2)
+          )
+        ORDER BY pc.created_at ASC,pc.id ASC LIMIT 200`
+    ).bind(post.id, s.user.id).all();
+    return json(200, { comments: r.results });
+  }
+
+  if (m === 'POST' && (mm = p.match(/^\/posts\/([\w-]{1,64})\/comments$/))) {
+    const s = requireVerified(ctx);
+    if (s.status.muted_until) throw new ApiError(403, 'account_muted', 'Account is muted', { until: s.status.muted_until });
+    const post = await postForEngagement(env, mm[1]);
+    await assertNotBlocked(env, s.user.id, post.author_id);
+    await rateLimit(env, `post-comment:${s.user.id}`, 100, 3600);
+    const b = await readJson(req);
+    const body = requireString(b, 'body', { max: 2000 });
+    const id = newId('cmt');
+    const createdAt = new Date().toISOString();
+    await env.DB.prepare(`INSERT INTO post_comments(id,post_id,author_id,body,created_at) VALUES (?,?,?,?,?)`)
+      .bind(id, post.id, s.user.id, body, createdAt).run();
+    const count = await env.DB.prepare(`SELECT COUNT(*) AS n FROM post_comments WHERE post_id=? AND deleted_at IS NULL`).bind(post.id).first();
+    return json(201, { comment: { id, post_id: post.id, body, author: s.user.handle, created_at: createdAt }, comment_count: Number(count?.n || 0) });
+  }
+
   if (m === 'GET' && (mm = p.match(/^\/posts\/([\w-]{1,64})$/))) {
     const s = requireAuth(ctx);
-    const post = await env.DB.prepare(`SELECT p.id, p.kind, p.body, p.created_at, p.author_id, u.handle AS author FROM posts p JOIN users u ON u.id = p.author_id WHERE p.id = ? AND p.deleted_at IS NULL`).bind(mm[1]).first();
+    const post = await env.DB.prepare(
+      `SELECT p.id,p.kind,p.body,p.created_at,p.author_id,u.handle AS author,u.display_name,
+              (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id=p.id) AS like_count,
+              (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id=p.id AND pc.deleted_at IS NULL) AS comment_count,
+              EXISTS(SELECT 1 FROM post_likes mine WHERE mine.post_id=p.id AND mine.user_id=?2) AS liked_by_me
+         FROM posts p JOIN users u ON u.id=p.author_id
+        WHERE p.id=?1 AND p.deleted_at IS NULL`
+    ).bind(mm[1], s.user.id).first();
     if (!post) throw new ApiError(404, 'not_found', 'Not found');
     await assertNotBlocked(env, s.user.id, post.author_id, { silent: true });
     const { author_id, ...pub } = post;
