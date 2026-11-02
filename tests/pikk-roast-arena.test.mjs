@@ -37,30 +37,22 @@ test('Roast Arena documents breaks, tie resolution and rematch voting', () => {
   assert.match(arena, /both contestants agree/);
 });
 
-test('Roast Arena 1v1 preview is labeled TEST MODE with placeholder tiles and test values', () => {
+test('Roast Arena 1v1 preview is labeled TEST MODE with placeholder tiles', () => {
   assert.match(arena, /id="roast-1v1"/);
   assert.match(arena, /TEST MODE/);
   assert.match(arena, /no camera connected/);
-  assert.match(arena, /test values · owner verification needed/);
+  assert.doesNotMatch(arena, /owner verification needed/, 'no unverified Roast items remain (t461u: Roast is 1v1 only)');
   assert.match(arena, /Report \(stub\)/);
   assert.match(arena, /recorded locally only/);
   assert.doesNotMatch(arena, /giftbattle|live-gift-battle/i);
 });
 
-test('Roast Arena Tag-Team preview is TEST MODE with test-value format', () => {
-  assert.match(arena, /id="roast-tagteam"/);
-  assert.match(arena, /Tag Team · TEST MODE preview/);
-  assert.match(arena, /every member must consent/i);
-  assert.match(arena, /ROAST_TAG_TEAM_TEST_FORMAT_OWNER_VERIFICATION_NEEDED/);
-});
-
-test('Roast page shows owner-approved vote/rematch timings unflagged and keeps tag-team format flagged', () => {
+test('Roast page shows owner-approved vote/rematch timings unflagged', () => {
   assert.match(arena, /Every contestant must agree/);
   assert.match(arena, /Viewers do not vote on rematches/);
   assert.match(arena, /decision window \$\{REMATCH_SECONDS\}s, rematch rounds are also \$\{ROUND_SECONDS\}s\)/);
   assert.doesNotMatch(arena, /SECONDS\}s <em>· test value/);
   assert.doesNotMatch(arena, /one tiebreaker round is played\. <em>\(test values/);
-  assert.match(arena, /Tag-Team format is a test value/);
 });
 
 test('vote window is owner-approved and turnout shown as TEST MODE', () => {

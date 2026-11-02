@@ -85,63 +85,7 @@ test('report stub records locally', () => {
   assert.equal(m.reports.length, 1); assert.equal(m.reports[0].localOnly, true);
 });
 
-import { ROAST_TAG_TEAM_TEST_FORMAT_OWNER_VERIFICATION_NEEDED as TT, createTagTeamInvite, respondTagTeamInvite, tagTeamTurnOrder } from '../src/roast-engine.js';
-const TEAMS = [['a1', 'a2'], ['b1', 'b2']];
-const tagInvite = () => createTagTeamInvite({ teams: TEAMS, inviterId: 'a1', consentAccepted: true });
-const allAccept = (inv) => ['a2', 'b1', 'b2'].reduce((i, m) => respondTagTeamInvite(i, m, { accept: true, consentAccepted: true }), inv);
-const tagMatch = () => createRoastMatch(allAccept(tagInvite()), { eligibleViewerIds: [...V, 'a2'] });
-
-test('tag-team format lives in one frozen config: 2v2, teams alternate', () => {
-  assert.deepEqual({ ...TT }, { teamSize: 2, turnOrder: 'teams-alternate' });
-  assert.ok(Object.isFrozen(TT));
-});
-test('tag-team invite validates teams and requires inviter consent', () => {
-  assert.equal(createTagTeamInvite({ teams: TEAMS, inviterId: 'a1', consentAccepted: false }).error, 'consent_required');
-  assert.equal(createTagTeamInvite({ teams: [['a1'], ['b1']], inviterId: 'a1', consentAccepted: true }).error, 'validation_failed');
-  assert.equal(createTagTeamInvite({ teams: [['a1', 'a2'], ['a1', 'b2']], inviterId: 'a1', consentAccepted: true }).error, 'validation_failed');
-  assert.equal(createTagTeamInvite({ teams: TEAMS, inviterId: 'zz', consentAccepted: true }).error, 'validation_failed');
-  assert.equal(createTagTeamInvite({ teams: TEAMS, inviterId: 'a1', consentAccepted: true, blocked: true }).error, 'blocked');
-  const inv = tagInvite();
-  assert.equal(inv.mode, 'roast_tag_team'); assert.equal(inv.status, 'pending');
-  assert.ok(inv.consents.a1); assert.equal(inv.consents.b2, null);
-});
-test('tag-team match needs consent from every member', () => {
-  let inv = tagInvite();
-  assert.equal(respondTagTeamInvite(inv, 'b1', { accept: true, consentAccepted: false }).error, 'consent_required');
-  inv = respondTagTeamInvite(inv, 'a2', { accept: true, consentAccepted: true });
-  inv = respondTagTeamInvite(inv, 'b1', { accept: true, consentAccepted: true });
-  assert.equal(inv.status, 'pending');
-  assert.throws(() => createRoastMatch(inv), /every team member/);
-  assert.throws(() => createRoastMatch({ ...inv, status: 'accepted' }), /every team member/);
-  inv = respondTagTeamInvite(inv, 'b2', { accept: true, consentAccepted: true });
-  assert.equal(inv.status, 'accepted');
-  assert.equal(createRoastMatch(inv).mode, 'roast_tag_team');
-  assert.equal(respondTagTeamInvite(inv, 'zz', { accept: true, consentAccepted: true }).error, 'not_found');
-});
-test('any member declining cancels the tag-team invite', () => {
-  const inv = respondTagTeamInvite(tagInvite(), 'b2', { accept: false });
-  assert.equal(inv.status, 'declined'); assert.equal(inv.declined_by, 'b2');
-  assert.throws(() => createRoastMatch(inv), /consent_required/);
-});
-test('tag-team turn order alternates teams', () => {
-  assert.deepEqual(tagTeamTurnOrder(TEAMS).map((t) => t.memberId), ['a1', 'b1', 'a2', 'b2']);
-  assert.deepEqual(tagMatch().turnOrder.map((t) => t.team), [0, 1, 0, 1]);
-});
-test('tag-team: one vote per viewer per round for a team; members cannot vote', () => {
-  let m = advance(tagMatch(), ROUND_SECONDS);
-  m = castRoastVote(m, 1, 'v1'); m = castRoastVote(m, 0, 'v1'); m = castRoastVote(m, 0, 'a2');
-  assert.deepEqual(m.votes, [0, 1]);
-  assert.ok(!m.eligibleViewerIds.includes('a2'));
-});
-test('tag-team: gifts separate, votes decide winner, ties resolve', () => {
-  let m = tagMatch();
-  for (let r = 0; r < 3; r++) { m = advance(m, ROUND_SECONDS); m = sendRoastTestGift(m, 0, 500); m = castRoastVote(m, 1, 'v1'); m = advance(m, VOTE_SECONDS); }
-  assert.equal(m.winner, 1); assert.deepEqual(m.gifts, [1500, 0]);
-  let t = tagMatch();
-  for (let i = 0; i < 4; i++) t = playRound(t, [[0, 'v1'], [1, 'v2']]);
-  assert.equal(t.result, 'tie');
-});
-test('1v1 still works alongside tag-team', () => {
+test('Roast matches are 1v1 only', () => {
   const m = newMatch();
   assert.equal(m.mode, 'roast_1v1'); assert.equal(m.teams, undefined);
 });
@@ -171,21 +115,6 @@ test('rematch window closing without agreement expires', () => {
   m = advance(m, REMATCH_SECONDS);
   assert.equal(m.phase, 'finished'); assert.equal(m.rematch, 'expired');
 });
-test('tag-team rematch requires every member', () => {
-  const inv = allAccept(tagInvite());
-  let m = createRoastMatch(inv, { eligibleViewerIds: V });
-  for (let r = 0; r < 3; r++) m = playRound(m, [[1, 'v1']]);
-  for (const c of ['a1', 'a2', 'b1']) m = castRematchVote(m, true, c);
-  assert.equal(m.rematch, null); assert.equal(m.phase, 'rematch');
-  m = castRematchVote(m, true, 'b2');
-  assert.equal(m.rematch, 'agreed');
-  assert.equal(startRematch(m, inv).mode, 'roast_tag_team');
-  let d = createRoastMatch(inv, { eligibleViewerIds: V });
-  for (let r = 0; r < 3; r++) d = playRound(d, [[1, 'v1']]);
-  d = castRematchVote(d, false, 'a2');
-  assert.equal(d.rematch, 'declined');
-});
-
 test('vote turnout counts eligible room viewers minus contestants', () => {
   const m0 = createRoastMatch(accepted(), { eligibleViewerIds: ['v1', 'v2', 'v3', 'a', 'v1'] });
   assert.deepEqual(roastVoteTurnout(m0), { voted: 0, eligible: 3 }, 'contestant a and duplicate v1 removed');
@@ -194,8 +123,6 @@ test('vote turnout counts eligible room viewers minus contestants', () => {
   assert.deepEqual(roastVoteTurnout(m), { voted: 2, eligible: 3 });
   m = advance(m, VOTE_SECONDS + ROUND_SECONDS);
   assert.deepEqual(roastVoteTurnout(m), { voted: 0, eligible: 3 }, 'resets each round');
-  const t = createRoastMatch(allAccept(tagInvite()), { eligibleViewerIds: ['v1', 'v2', 'a1', 'b2'] });
-  assert.deepEqual(roastVoteTurnout(t), { voted: 0, eligible: 2 });
 });
 test('engine reads ROAST_APPROVED_RULES: contestants cannot vote', () => {
   let m = advance(createRoastMatch(accepted(), { eligibleViewerIds: V }), ROUND_SECONDS);
