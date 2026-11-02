@@ -65,6 +65,7 @@ import { renderShield, bindShield } from './pages/shield.js';
 import { renderSupport, bindSupport } from './pages/support.js';
 import { renderMerch, bindMerch } from './pages/merch.js';
 import { renderProfile, bindProfile } from './pages/profile.js';
+import { renderVerifyEmail, bindVerifyEmail } from './pages/verify-email.js';
 import { renderClippers, bindClippers } from './pages/clippers.js';
 import { renderLive, bindLive } from './pages/live.js';
 import { renderViralLive, bindViralLive } from './pages/viral-live.js';
@@ -132,6 +133,7 @@ const ROUTES = {
   '/vault': { render: renderMusic, bind: bindMusic },
   '/merch': { render: renderMerch, bind: bindMerch },
   '/profile': { render: renderProfile, bind: bindProfile },
+  '/verify-email': { render: renderVerifyEmail, bind: bindVerifyEmail },
   '/clippers': { render: renderClippers, bind: bindClippers },
   '/videos': { render: renderVideos, bind: bindVideos },
   '/live': { render: renderLive, bind: bindLive },
