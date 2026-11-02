@@ -42,5 +42,7 @@ jobs:
         if: always()
         with:
           name: pikk-shop-visual-review
-          path: visual-review/shop-*.png
+          path: |
+            visual-review/shop-*.png
+            visual-review/profile-shop-*.png
           if-no-files-found: warn
