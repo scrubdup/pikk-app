@@ -4449,6 +4449,8 @@ input:focus, select:focus, textarea:focus {
 .pikk-arcade-lightbox-controls{display:flex;gap:8px;flex-shrink:0}
 .pikk-arcade-lightbox-controls button{width:43px;height:43px;border:1px solid #7585c3;border-radius:11px;background:linear-gradient(140deg,#242c55,#2a3e69);color:#fff;font-size:23px;cursor:pointer}
 .pikk-arcade-lightbox-controls button:hover,.pikk-arcade-lightbox-close:hover{background:#4a3d7b}
+.pikk-arcade-lightbox-controls button:disabled{opacity:.42;cursor:not-allowed;filter:grayscale(.4)}
+.pikk-arcade-lightbox-controls button:disabled:hover{background:linear-gradient(140deg,#242c55,#2a3e69)}
 .pikk-arcade-lightbox-note{margin:12px 3px 0;padding-top:12px;border-top:1px solid #3a4265;color:#9caacb;font-size:11px}
 @media(max-width:620px){.pikk-arcade-view{padding:8px 4px;font-size:11px}.pikk-arcade-lightbox{width:calc(100vw - 16px);border-radius:15px}.pikk-arcade-lightbox-panel{padding:10px}.pikk-arcade-lightbox-art{border-radius:10px}.pikk-arcade-lightbox-kicker{font-size:9px;letter-spacing:.08em}.pikk-arcade-lightbox-bottom{align-items:flex-start}.pikk-arcade-lightbox-controls button{width:38px;height:38px}.pikk-arcade-lightbox-description p{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.pikk-arcade-view{transition:none}.pikk-arcade-view:hover{transform:none}}
