@@ -18,7 +18,6 @@ export const SECTION_MENU_ITEMS = Object.freeze({
   connect: [
     { title: 'Connect', href: '#/connect', detail: 'Discover people and communities', icon: '♧' },
     { title: 'PIKK Communities', href: '#/communities', detail: 'Topic discussions, votes and replies · TEST MODE', icon: '#' },
-    { title: 'Communities', href: '#/communities', detail: 'Topics, votes & community spaces', icon: '☷' },
     { title: 'Messages', href: '#/messages', detail: 'Open your messages', icon: '✉' },
     { title: 'PIKK Crew', href: '#/crew', detail: 'Private story list · TEST MODE', icon: '◎' },
     { title: 'Favorites', href: '#/favorites', detail: 'People who rank first · TEST MODE', icon: '★' },
