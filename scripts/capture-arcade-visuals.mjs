@@ -28,6 +28,35 @@ try {
       if (!nav) throw new Error('Navigation missing from Arcade route');
     }
     await page.screenshot({ path: 'visual-evidence/' + file, fullPage, animations: 'disabled', timeout: 20000 });
+    // Verify the new Arcade catalog search in the real mobile/desktop browser.
+    if (route === 'games') {
+      const search = page.locator('#pikkArcadeSearch');
+      await search.fill('chess');
+      if (await page.locator('.pikk-arcade-card:visible').count() !== 1) {
+        throw new Error('Arcade search did not filter to one Chess card');
+      }
+      if (!((await page.locator('#pikkArcadeSearchStatus').textContent()) || '').includes('1 of 15')) {
+        throw new Error('Arcade search did not announce its result count');
+      }
+      await page.screenshot({
+        path: 'visual-evidence/arcade-search-' + (width === 390 ? 'mobile' : 'desktop') + '.png',
+        fullPage: true, animations: 'disabled', timeout: 20000,
+      });
+      await search.fill('not-a-real-game');
+      if (await page.locator('.pikk-arcade-card:visible').count() !== 0 ||
+          !await page.locator('#pikkArcadeNoMatches').isVisible()) {
+        throw new Error('Arcade empty-search state did not appear');
+      }
+      await search.press('Escape');
+      if (await page.locator('.pikk-arcade-card:visible').count() !== 15) {
+        throw new Error('Escape did not restore all 15 Arcade games');
+      }
+      await search.fill('pool');
+      await page.locator('#pikkArcadeSearchClear').click();
+      if (await page.locator('.pikk-arcade-card:visible').count() !== 15) {
+        throw new Error('Clear did not restore all 15 Arcade games');
+      }
+    }
     // Validate the real full-size concept-art viewer, not just the static cards.
     if (route === 'games') {
       const previewButtons = page.locator('[data-game-preview]');
