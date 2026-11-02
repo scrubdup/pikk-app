@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { env } from 'cloudflare:test';
-import { call, newUser } from './helpers.js';
+import { call, newUser, staff } from './helpers.js';
 import { hmacSha256Hex } from '../src/crypto.js';
 import { loadSession } from '../src/auth.js';
 import { startIdv, idvWebhook, idvStatus } from '../src/idv/index.js';
@@ -166,8 +166,9 @@ describe('Twerk Contest: women-only contestants, open viewing/voting', () => {
   const enter = (u, path = 'entries') => call('POST', `/contests/twerk/${path}`, { cookie: u.cookie, body: { title: 'My entry' } });
 
   it('verified female can submit and go live', async () => {
-    const u = await newUser(); await verify(u.id);
+    const u = await newUser();
     expect((await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'female' } })).status).toBe(200);
+    await verify(u.id);
     expect((await call('GET', '/contests/twerk/eligibility', { cookie: u.cookie })).json.can_enter).toBe(true);
     expect((await enter(u)).status).toBe(201);
     expect((await enter(u, 'live')).json.entry.kind).toBe('live');
@@ -178,8 +179,9 @@ describe('Twerk Contest: women-only contestants, open viewing/voting', () => {
   });
   it('break: verified male / nonbinary / unset gender get 403 contestant_not_eligible', async () => {
     for (const g of ['male', 'nonbinary', 'undisclosed', null]) {
-      const u = await newUser(); await verify(u.id);
+      const u = await newUser();
       if (g) await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: g } });
+      await verify(u.id);
       const r = await enter(u); expect(r.status).toBe(403); expect(r.json.error.code).toBe('contestant_not_eligible');
       expect((await enter(u, 'live')).status).toBe(403);
     }
@@ -193,12 +195,61 @@ describe('Twerk Contest: women-only contestants, open viewing/voting', () => {
     expect((await call('POST', '/contests/nope/entries', { cookie: u.cookie, body: { title: 't' } })).status).toBe(404);
   });
   it('voting needs no ID verification or gender; any signed-in male voter can vote once, not for self', async () => {
-    const c = await newUser(); await verify(c.id); await call('POST', '/account/gender', { cookie: c.cookie, body: { gender: 'female' } });
+    const c = await newUser(); await call('POST', '/account/gender', { cookie: c.cookie, body: { gender: 'female' } }); await verify(c.id);
     const entry = (await enter(c)).json.entry.id;
-    const v = await newUser(); await call('POST', '/account/gender', { cookie: v.cookie, body: { gender: 'male' } });
+    const v = await newUser();
+    await call('POST', '/account/gender', { cookie: v.cookie, body: { gender: 'male' } });
+    expect((await call('POST', '/contests/twerk/votes', { cookie: v.cookie, body: { entry_id: entry } })).status).toBe(404); // pending moderation
+    await env.DB.prepare(`UPDATE contest_entries SET status='approved' WHERE id=?`).bind(entry).run(); await call('POST', '/account/gender', { cookie: v.cookie, body: { gender: 'male' } });
     expect((await call('POST', '/contests/twerk/votes', { cookie: v.cookie, body: { entry_id: entry } })).status).toBe(200);
     expect((await call('POST', '/contests/twerk/votes', { cookie: v.cookie, body: { entry_id: entry } })).status).toBe(200);
     expect((await env.DB.prepare(`SELECT COUNT(*) n FROM contest_votes WHERE entry_id=?`).bind(entry).first()).n).toBe(1);
     expect((await call('POST', '/contests/twerk/votes', { cookie: c.cookie, body: { entry_id: entry } })).status).toBe(422);
+  });
+});
+
+describe('gender lock (audit must-fix)', () => {
+  const verify = (id) => env.DB.prepare(`UPDATE users SET age_verified_18=1, age_verification_method='test', age_verified_at='2026-11-02T00:00:00Z' WHERE id=?`).bind(id).run();
+  it('probe: verified male tries to switch to female, then enter -> still 403', async () => {
+    const u = await newUser();
+    await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'male' } });
+    await verify(u.id);
+    for (let i = 0; i < 6; i++) {
+      const r = await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'female' } });
+      expect([409, 429]).toContain(r.status);
+      if (r.status === 409) expect(r.json.error.code).toBe('gender_locked');
+    }
+    expect((await env.DB.prepare(`SELECT gender FROM users WHERE id=?`).bind(u.id).first()).gender).toBe('male');
+    const e = await call('POST', '/contests/twerk/entries', { cookie: u.cookie, body: { title: 'x' } });
+    expect(e.status).toBe(403); expect(e.json.error.code).toBe('contestant_not_eligible');
+    expect((await call('GET', '/account/gender', { cookie: u.cookie })).json.locked).toBe(true);
+  });
+  it('unverified account with an entry is locked too; unset+unverified can set', async () => {
+    const u = await newUser();
+    expect((await call('GET', '/account/gender', { cookie: u.cookie })).json.locked).toBe(false);
+    await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'female' } }); await verify(u.id);
+    await call('POST', '/contests/twerk/entries', { cookie: u.cookie, body: { title: 'x' } });
+    await env.DB.prepare(`UPDATE users SET age_verified_18=0 WHERE id=?`).bind(u.id).run();
+    expect((await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'male' } })).status).toBe(409);
+  });
+  it('only moderator/admin can change a locked gender, with reason + audit', async () => {
+    const u = await newUser(); await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'male' } }); await verify(u.id);
+    const body = { handle: u.handle, gender: 'female', reason: 'support ticket 123' };
+    expect((await call('POST', '/admin/account/gender', { cookie: u.cookie, body })).status).toBe(403);
+    expect((await call('POST', '/admin/account/gender', { cookie: (await staff('support_agent')).cookie, body })).status).toBe(403);
+    const mod = await staff('moderator');
+    expect((await call('POST', '/admin/account/gender', { cookie: mod.cookie, body: { ...body, reason: '' } })).status).toBe(422);
+    expect((await call('POST', '/admin/account/gender', { cookie: mod.cookie, body })).status).toBe(200);
+    const a = await env.DB.prepare(`SELECT * FROM audit_log WHERE action='admin.gender_changed' AND target=?`).bind(u.id).first();
+    expect(a.actor_id).toBe(mod.id); expect(JSON.parse(a.meta)).toMatchObject({ from: 'male', to: 'female', reason: 'support ticket 123' });
+  });
+});
+
+describe('consent IP salt fails closed outside dev', () => {
+  it('returns 503 when IP_HASH_SALT missing and not in dev mode', async () => {
+    const { postConsent } = await import('../src/idv/consent.js');
+    const e = { ...env, EXPOSE_VERIFY_TOKEN: 'false', IP_HASH_SALT: undefined }; const u = await newUser();
+    const req = new Request('https://api.test/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agree: true, version: CONSENT_VERSION, sha256: await consentHash(), full_name: 'Test Person' }) });
+    await expect(postConsent(e, req, await ctxFor(e, u))).rejects.toMatchObject({ status: 503, code: 'consent_not_configured' });
   });
 });

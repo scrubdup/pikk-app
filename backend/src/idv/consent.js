@@ -6,17 +6,8 @@ import { newId, sha256Hex } from '../crypto.js';
 import { auditStmt } from '../audit.js';
 import { requireString } from '../validate.js';
 
-export const CONSENT_VERSION = '2026-11-02.draft1';
-export const CONSENT_TEXT = `PIKK Biometric Information Notice and Written Consent (DRAFT — lawyer review required)
-
-1. What is collected. To verify that you are 18 or older, our vendor Persona Identities, Inc. ("Persona") collects a photo of your government ID and a selfie/liveness video, and creates face geometry (a biometric identifier) from them to compare your face with your ID photo.
-2. Purpose. This is used only to verify your age (18+) and identity for PIKK Dating and as a contestant in 18+ contests. It is not used for advertising, profiling or any other purpose.
-3. Who processes it. Persona processes this data as PIKK's vendor. PIKK itself never receives or stores your ID images, selfie, face geometry or date of birth. PIKK stores only: whether you are verified 18+, the method, the date and Persona's reference number.
-4. Retention and destruction. Persona keeps the data only under the retention policy PIKK configures and destroys it when the verification purpose is satisfied, and in all cases no later than the earlier of (a) when the purpose is satisfied or (b) 3 years after your last interaction with PIKK (Illinois), or within the time required by Texas and Washington law, whichever is sooner. See the PIKK Biometric Retention Policy at #/biometric-policy.
-5. No sale. PIKK and Persona will not sell, lease, trade or otherwise profit from your biometric data.
-6. Your choice. You may decline. If you decline, you can still use PIKK, view and vote in contests, but you cannot use Dating or enter 18+ contests as a contestant.
-
-By checking the box and typing your full legal name, you give written consent (electronic signature) to the collection, storage and use of your biometric identifiers and information as described above.`;
+import { CONSENT_VERSION, CONSENT_TEXT } from './consent-text.js';
+export { CONSENT_VERSION, CONSENT_TEXT };
 
 let hashCache = null;
 export async function consentHash() { return hashCache || (hashCache = await sha256Hex(CONSENT_TEXT)); }
@@ -39,7 +30,9 @@ export async function postConsent(env, req, ctx) {
   if (b.sha256 !== await consentHash()) throw new ApiError(409, 'consent_outdated', 'Consent text has changed; please re-read it');
   const name = requireString(b, 'full_name', { min: 3, max: 120 }).trim();
   if (!/\S+\s+\S+/.test(name)) throw new ApiError(422, 'validation_failed', 'Type your full name (first and last)');
-  const ipHash = await sha256Hex(`${env.IP_HASH_SALT || 'pikk'}:${clientIp(req)}`);
+  const salt = env.IP_HASH_SALT || (env.EXPOSE_VERIFY_TOKEN === 'true' ? 'dev-only-ip-salt' : null);
+  if (!salt) throw new ApiError(503, 'consent_not_configured', 'Consent recording is not configured (IP_HASH_SALT missing)');
+  const ipHash = await sha256Hex(`${salt}:${clientIp(req)}`);
   const t = new Date().toISOString(); const id = newId('bc');
   await env.DB.batch([
     env.DB.prepare(`INSERT INTO biometric_consents(id,user_id,consent_version,consent_sha256,signature_name,ip_sha256,consented_at) VALUES (?,?,?,?,?,?,?)

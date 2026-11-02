@@ -18,7 +18,9 @@ Before Persona starts, `#/verify-age` shows a written notice covering what's col
 
 ## Twerk Contest
 - Owner rule: contestants are **women only**. Submitting or going live (`POST /contests/twerk/entries`, `/contests/twerk/live`) requires server `age_verified_18 = 1` **and** account `gender = 'female'`. Otherwise it returns 403 (`contestant_not_eligible` or `age_verification_required`). The entry UI only shows when `GET /contests/twerk/eligibility` returns `can_enter`.
-- Gender is **self-declared on the account** (`POST /account/gender`, server-stored and audited). It is **not** read from the ID; we store no ID data.
+- Gender is **self-declared on the account** (`POST /account/gender`, server-stored and audited). It **locks** once the account is age-verified or has any contest entry (409 `gender_locked`). After that, only a moderator or admin can change it via `POST /admin/account/gender` {handle, gender, reason}, which is audited.
+- Votes are accepted only on entries with status `approved`.
+- Consent text and version have one source of truth, `backend/src/idv/consent-text.js`, which the policy page also uses. `IP_HASH_SALT` is required: without it consent returns 503, except in dev/test mode (`EXPOSE_VERIFY_TOKEN=true`). It is **not** read from the ID; we store no ID data.
 - Viewing uses the existing 18+ self-confirmation. Voting (`POST /contests/twerk/votes`) needs a signed-in, email-verified account and **no** ID or gender check.
 
 ## Owner setup steps
@@ -50,5 +52,4 @@ Before Persona starts, `#/verify-age` shows a written notice covering what's col
 - Not connected: no account, keys or webhook exist yet. Persona endpoints and headers were checked against public docs on 2026-11-02 but have not been tested against a live sandbox.
 - Didit is a stub, and no age-estimate path is built.
 - Contest entries are recorded server-side (title only, status `pending_review`). Media upload, live streaming and a moderator review queue for entries are not built. Viewing still uses device-only self-confirmation, as the owner requested.
-- Gender can be changed by the user (audited). There's no lock or review if it changes after entering.
 - There's no consent/BIPA notice screen yet, no staff revoke/re-verify tooling, and no polling or refresh on return beyond reloading the page.

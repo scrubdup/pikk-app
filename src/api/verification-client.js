@@ -33,6 +33,7 @@ export const verificationApi = {
   consent: ({ version, sha256, fullName }) => request('/verification/age/consent', 'POST', { agree: true, version, sha256, full_name: fullName }),
   contestEligibility: (contest) => request(`/contests/${encodeURIComponent(contest)}/eligibility`),
   submitEntry: (contest, title, live = false) => request(`/contests/${encodeURIComponent(contest)}/${live ? 'live' : 'entries'}`, 'POST', { title }),
+  getGender: () => request('/account/gender'),
   setGender: (gender) => request('/account/gender', 'POST', { gender }),
 };
 

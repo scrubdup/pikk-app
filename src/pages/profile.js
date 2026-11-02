@@ -242,17 +242,30 @@ export function renderProfile(route) {
       <p class="muted" style="font-size:12px">Saved on the PIKK server for your account (not taken from your ID). Used for women-only contests such as the Twerk Contest.</p>
       <div class="row wrap" style="gap:8px"><select id="accountGender" aria-label="Account gender">
         <option value="">Choose…</option><option value="female">Female</option><option value="male">Male</option><option value="nonbinary">Non-binary</option><option value="undisclosed">Prefer not to say</option>
-      </select><button type="button" class="btn" id="saveAccountGender">Save</button></div></div>`;
+      </select><button type="button" class="btn" id="saveAccountGender">Save</button></div>
+      <p class="muted" id="accountGenderLocked" hidden>Your account gender is locked after age verification or a contest entry. To request a change, contact <a href="#/support">Support</a>.</p></div>`;
   body += genderCard;
   return shellPage('Profile', body);
 }
 
 export function bindProfile(root) {
+  import('../api/verification-client.js').then(async (api) => {
+    if (!api.isVerificationApiConfigured() || !root.querySelector('#accountGender')) return;
+    try {
+      const g = await api.verificationApi.getGender();
+      if (g?.gender) root.querySelector('#accountGender').value = g.gender;
+      if (g?.locked) {
+        root.querySelector('#accountGender').disabled = true;
+        root.querySelector('#saveAccountGender').disabled = true;
+        root.querySelector('#accountGenderLocked').hidden = false;
+      }
+    } catch (_) { /* signed out or server unavailable */ }
+  });
   root.querySelector('#saveAccountGender')?.addEventListener('click', async () => {
     const g = root.querySelector('#accountGender')?.value;
     if (!g) return;
     try { const api = await import('../api/verification-client.js'); await api.verificationApi.setGender(g); toast('Saved'); }
-    catch (err) { toast(err?.code === 'api_not_configured' ? 'Account server not connected yet' : (err?.message || 'Could not save')); }
+    catch (err) { toast(err?.code === 'gender_locked' ? 'Gender is locked. Contact Support to request a change.' : err?.code === 'api_not_configured' ? 'Account server not connected yet' : (err?.message || 'Could not save')); }
   });
   if (isPikkApiConfigured()) {
     const cachedUser = getState().user;

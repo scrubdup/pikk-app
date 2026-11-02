@@ -3,6 +3,7 @@
 // never read from an ID document). Viewers and voters need neither.
 import { ApiError, json, readJson } from './http.js';
 import { requireVerified } from './auth.js';
+import { requirePermission } from './permissions.js';
 import { rateLimit } from './ratelimit.js';
 import { newId } from './crypto.js';
 import { auditStmt } from './audit.js';
@@ -10,6 +11,12 @@ import { requireString } from './validate.js';
 
 export const CONTESTS = Object.freeze({ twerk: { adultContestantsOnly: true, contestantGenders: ['female'] } });
 export const GENDERS = ['female', 'male', 'nonbinary', 'undisclosed'];
+
+/** Gender locks once the account is age-verified or has any contest entry. */
+export async function isGenderLocked(env, userId) {
+  const r = await env.DB.prepare(`SELECT age_verified_18 AS v, EXISTS(SELECT 1 FROM contest_entries WHERE user_id = ?1) AS e FROM users WHERE id = ?1`).bind(userId).first();
+  return !!(r && (r.v === 1 || r.e === 1));
+}
 
 export async function contestEligibility(env, userId, contest) {
   const c = CONTESTS[contest];
@@ -33,10 +40,31 @@ export async function contestRoute(env, req, ctx, m, p) {
     await rateLimit(env, `gender:${s.user.id}`, 5, 86400);
     const b = await readJson(req);
     if (!GENDERS.includes(b.gender)) throw new ApiError(422, 'validation_failed', 'Invalid input', { gender: GENDERS.join(', ') });
+    if (await isGenderLocked(env, s.user.id)) throw new ApiError(409, 'gender_locked', 'Account gender is locked after age verification or a contest entry. Contact Support to request a change.');
     const t = new Date().toISOString();
     await env.DB.batch([
       env.DB.prepare(`UPDATE users SET gender = ?, gender_set_at = ? WHERE id = ?`).bind(b.gender, t, s.user.id),
       auditStmt(env, { actor: s.user.id, action: 'account.gender_set', target: s.user.id, meta: { gender: b.gender } }),
+    ]);
+    return json(200, { gender: b.gender });
+  }
+  if (m === 'GET' && p === '/account/gender') {
+    const s = requireVerified(ctx);
+    const u = await env.DB.prepare(`SELECT gender FROM users WHERE id = ?`).bind(s.user.id).first();
+    return json(200, { gender: u?.gender || null, locked: await isGenderLocked(env, s.user.id) });
+  }
+  if (m === 'POST' && p === '/admin/account/gender') {
+    const s = requirePermission(ctx, 'moderation.action'); // moderator or admin
+    const b = await readJson(req);
+    const handle = requireString(b, 'handle', { max: 30 });
+    if (!GENDERS.includes(b.gender)) throw new ApiError(422, 'validation_failed', 'Invalid input', { gender: GENDERS.join(', ') });
+    const reason = requireString(b, 'reason', { min: 5, max: 500 });
+    const u = await env.DB.prepare(`SELECT id, gender FROM users WHERE handle = ?`).bind(handle).first();
+    if (!u) throw new ApiError(404, 'not_found', 'User not found');
+    const t = new Date().toISOString();
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE users SET gender = ?, gender_set_at = ? WHERE id = ?`).bind(b.gender, t, u.id),
+      auditStmt(env, { actor: s.user.id, action: 'admin.gender_changed', target: u.id, meta: { from: u.gender, to: b.gender, reason } }),
     ]);
     return json(200, { gender: b.gender });
   }
@@ -54,7 +82,7 @@ export async function contestRoute(env, req, ctx, m, p) {
     const s = requireVerified(ctx); // no ID verification for voters
     await rateLimit(env, `contest:vote:${s.user.id}`, 200, 3600);
     const b = await readJson(req); const entryId = requireString(b, 'entry_id', { max: 64 });
-    const e = await env.DB.prepare(`SELECT id, user_id FROM contest_entries WHERE id = ? AND contest = ?`).bind(entryId, contest).first();
+    const e = await env.DB.prepare(`SELECT id, user_id FROM contest_entries WHERE id = ? AND contest = ? AND status = 'approved'`).bind(entryId, contest).first();
     if (!e) throw new ApiError(404, 'not_found', 'Entry not found');
     if (e.user_id === s.user.id) throw new ApiError(422, 'validation_failed', 'You cannot vote for your own entry');
     await env.DB.prepare(`INSERT INTO contest_votes(entry_id,voter_id,created_at) VALUES (?,?,?) ON CONFLICT DO NOTHING`).bind(e.id, s.user.id, new Date().toISOString()).run();
