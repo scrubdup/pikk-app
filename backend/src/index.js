@@ -9,6 +9,7 @@ import { balance, transfer } from './ledger.js';
 import { stripeWebhook } from './webhook.js';
 import { newId } from './crypto.js';
 import { audit, auditStmt } from './audit.js';
+import { messagesRoute } from './messages.js';
 import { supportRoute } from './tickets.js';
 
 const HANDLE = /^[a-zA-Z0-9_]{3,30}$/;
@@ -152,6 +153,9 @@ async function route(req, env, ctx) {
 
   const support = await supportRoute(env, req, ctx, m, p);
   if (support) return json(support.status, support.body);
+
+  const messages = await messagesRoute(env, req, ctx, m, p);
+  if (messages) return json(messages.status, messages.body);
 
   const safety = await safetyRoute(env, req, ctx, m, p);
   if (safety) return safety;
