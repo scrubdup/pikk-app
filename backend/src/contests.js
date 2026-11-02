@@ -6,6 +6,11 @@ import { requireVerified } from './auth.js';
 import { requirePermission } from './permissions.js';
 import { rateLimit } from './ratelimit.js';
 import { newId } from './crypto.js';
+
+/** audit_log INSERT that only writes if the immediately preceding statement in the batch changed a row. */
+const auditIfChanged = (env, { actor, action, target, meta }) => env.DB.prepare(
+  `INSERT INTO audit_log(id,actor_id,action,target,ip,meta,created_at) SELECT ?,?,?,?,NULL,?,? WHERE changes() = 1`)
+  .bind(newId('aud'), actor, action, target, JSON.stringify(meta), new Date().toISOString());
 import { auditStmt } from './audit.js';
 import { requireString } from './validate.js';
 
@@ -24,19 +29,23 @@ export async function isGenderLocked(env, userId) {
  *  the lock check and this UPDATE (meta.changes === 0), refuse with 409 and write NO audit row. */
 export async function setOwnGenderOnce(env, userId, gender) {
   const t = new Date().toISOString();
-  const r = await env.DB.prepare(`UPDATE users SET gender = ?, gender_set_at = ? WHERE id = ? AND gender IS NULL`).bind(gender, t, userId).run();
+  // One atomic batch: the audit row is inserted only if the UPDATE changed a row (changes() = 1).
+  const [r] = await env.DB.batch([
+    env.DB.prepare(`UPDATE users SET gender = ?, gender_set_at = ? WHERE id = ? AND gender IS NULL`).bind(gender, t, userId),
+    auditIfChanged(env, { actor: userId, action: 'account.gender_set', target: userId, meta: { gender } }),
+  ]);
   if (!r?.meta?.changes) throw new ApiError(409, 'gender_locked', 'Account gender is set at signup and cannot be changed. Contact Support if it was entered by mistake.');
-  await auditStmt(env, { actor: userId, action: 'account.gender_set', target: userId, meta: { gender } }).run();
 }
 
 /** Owner rule: ONE staff correction per account, then permanently locked (even for admins).
  *  Atomic via WHERE gender_corrected_at IS NULL; audit only on success. */
 export async function staffCorrectGenderOnce(env, actorId, user, gender, reason) {
   const t = new Date().toISOString();
-  const r = await env.DB.prepare(`UPDATE users SET gender = ?, gender_set_at = ?, gender_corrected_at = ? WHERE id = ? AND gender_corrected_at IS NULL`)
-    .bind(gender, t, t, user.id).run();
+  const [r] = await env.DB.batch([
+    env.DB.prepare(`UPDATE users SET gender = ?, gender_set_at = ?, gender_corrected_at = ? WHERE id = ? AND gender_corrected_at IS NULL`).bind(gender, t, t, user.id),
+    auditIfChanged(env, { actor: actorId, action: 'admin.gender_changed', target: user.id, meta: { from: user.gender, to: gender, reason } }),
+  ]);
   if (!r?.meta?.changes) throw new ApiError(409, 'gender_correction_used', 'This account already used its one gender correction. It is permanently locked.');
-  await auditStmt(env, { actor: actorId, action: 'admin.gender_changed', target: user.id, meta: { from: user.gender, to: gender, reason } }).run();
 }
 
 export async function contestEligibility(env, userId, contest) {

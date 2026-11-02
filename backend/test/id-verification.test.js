@@ -346,3 +346,26 @@ describe('every frontend gender value is accepted by the backend', () => {
     }
   });
 });
+
+describe('gender change + audit are one atomic batch', () => {
+  it('update and audit land together; 0-row update leaves no audit; failed audit rolls back the update', async () => {
+    const { setOwnGenderOnce, staffCorrectGenderOnce } = await import('../src/contests.js');
+    const n = async (id, a) => (await env.DB.prepare(`SELECT COUNT(*) n FROM audit_log WHERE action=? AND target=?`).bind(a, id).first()).n;
+    const u = await newUser();
+    await setOwnGenderOnce(env, u.id, 'female');
+    expect(await n(u.id, 'account.gender_set')).toBe(1);
+    await expect(setOwnGenderOnce(env, u.id, 'male')).rejects.toMatchObject({ code: 'gender_locked' });
+    expect(await n(u.id, 'account.gender_set')).toBe(1);
+    // Atomicity: if the audit INSERT fails, the batch rolls back and the gender is not changed.
+    const v = await newUser(); const admin = await staff('admin');
+    const row = await env.DB.prepare(`SELECT id, gender FROM users WHERE id=?`).bind(v.id).first();
+    await env.DB.prepare(`CREATE TRIGGER fail_audit BEFORE INSERT ON audit_log WHEN NEW.action='admin.gender_changed' BEGIN SELECT RAISE(ABORT,'audit down'); END`).run();
+    try {
+      await expect(staffCorrectGenderOnce(env, admin.id, row, 'male', 'atomic test')).rejects.toThrow();
+      const after = await env.DB.prepare(`SELECT gender, gender_corrected_at FROM users WHERE id=?`).bind(v.id).first();
+      expect(after.gender).toBe(null); expect(after.gender_corrected_at).toBe(null);
+    } finally { await env.DB.prepare(`DROP TRIGGER fail_audit`).run(); }
+    await staffCorrectGenderOnce(env, admin.id, row, 'male', 'after recovery');
+    expect(await n(v.id, 'admin.gender_changed')).toBe(1);
+  });
+});
