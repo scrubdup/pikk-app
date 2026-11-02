@@ -5,6 +5,10 @@ import { openChallengeWindow, isWindowOpen, tryAccept, startBattle, addGift, tim
 const rd = (f) => readFileSync(new URL('../src/' + f, import.meta.url), 'utf8');
 const mod = rd('live-gift-battle.js'), live = rd('pages/live.js'), rooms = rd('live-rooms.js'), gbPage = rd('pages/giftbattles.js'), roast = rd('pages/roast-arena.js');
 const T0 = 1_000_000;
+const _mem = {};
+globalThis.localStorage ??= { getItem: (k) => _mem[k] ?? null, setItem: (k, v) => { _mem[k] = String(v); }, removeItem: (k) => { delete _mem[k]; } };
+globalThis.window ??= globalThis;
+const gbMod = await import('../src/pages/giftbattles.js');
 
 test('t402u: 30s challenge window opens on gift-for-all and expires', () => {
   assert.equal(CHALLENGE_WINDOW_MS, 30000);
@@ -57,8 +61,13 @@ test('t402u: wired into Live and Group Rooms; no host battle button; non-blockin
 test('t402u: Gift Battles page = explainer of the flow linking into Live; no sign-in wall; Roast untouched', () => {
   const ex = renderGiftBattleExplainer();
   for (const x of ['for all viewers', '30 seconds', '60-second', 'first', '#/live?tab=channels', '#/live?tab=rooms', 'TEST MODE']) assert.ok(ex.includes(x), x);
-  // Signed-out #/giftbattles now shows the streamer-vs-streamer preview (Supervisor request); still no sign-in wall.
-  assert.match(gbPage, /if \(!user\) return shellPage\('PIKK Battles', renderSignedOutPreview\(\)/);
+  // Signed-out #/giftbattles (and #/battles): EITHER the streamer-vs-streamer preview OR Design's Streamer Battles
+  // explainer (#377). Never a sign-in wall, never viewer-vs-viewer copy.
+  const signedOut = gbPage.match(/if \(!user\) return shellPage\([^\n]*/)?.[0] || '';
+  assert.match(signedOut, /renderSignedOutPreview\(\)|renderGiftBattleExplainer\((\)|'battles'\))/, 'signed-out view');
+  assert.doesNotMatch(signedOut, /renderSignIn/, 'no sign-in wall');
+  const shown = /renderSignedOutPreview/.test(signedOut) ? gbMod.renderSignedOutPreview() + gbMod.BATTLES_LEAD : renderGiftBattleExplainer('battles');
+  assert.doesNotMatch(shown, /viewer[\s-]+vs\.?[\s-]+viewer|gifter vs challenger/i, 'no viewer-vs-viewer copy when signed out');
   assert.ok(!/live-gift-battle/.test(roast));
 });
 import { recordResult, hasWinnerBadge, battleRecord, dailyWinners, stripWinners, gridCell, emptyRecords, BADGE_MS, DAY_MS, STRIP_MAX } from '../src/live-gift-battle.js';

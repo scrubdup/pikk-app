@@ -19,7 +19,7 @@ test('no hardcoded "<n> votes" on the Battles or Roast pages', () => {
 
 const gb = await import('../src/pages/giftbattles.js');
 test('signed-out Battles: accurate streamer-vs-streamer lead, no "Runs inside Live & Group Rooms"', () => {
-  for (const w of [/Two live streamers/, /60s round/, /audience votes decide/, /gifts don't score/, /24-hour champion badge/]) assert.match(gb.SIGNED_OUT_LEAD, w);
+  for (const w of [/Two live streamers/, /60s round/, /audience votes decide/, /gifts don't score/, /24-hour champion badge/]) assert.match(gb.BATTLES_LEAD, w);
   const src = readFileSync(new URL('../src/pages/giftbattles.js', import.meta.url), 'utf8');
   assert.doesNotMatch(src, /Runs inside Live & Group Rooms/);
 });
@@ -35,4 +35,12 @@ test('#/battles is a registered route to the same page as #/giftbattles', () => 
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /'\/battles': \{ render: renderGiftBattles, bind: bindGiftBattles \}/);
   assert.match(main, /'\/giftbattles': \{ render: renderGiftBattles, bind: bindGiftBattles \}/);
+});
+
+test('page title is PIKK Battles signed in and out; old leads gone in both views', () => {
+  const src = readFileSync(new URL('../src/pages/giftbattles.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /shellPage\(\s*'Gift Battles'/);
+  assert.match(src, /if \(!user\) return shellPage\('PIKK Battles'/);
+  assert.match(src, /return shellPage\('PIKK Battles', body, \{\s*lead: BATTLES_LEAD,/);
+  assert.doesNotMatch(src, /Runs inside Live & Group Rooms|Runs during Live · not a separate stream/);
 });

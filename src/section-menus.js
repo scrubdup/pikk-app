@@ -52,7 +52,7 @@ export const SECTION_MENU_ITEMS = Object.freeze({
       icon: game.name === 'Block Wars' ? '▣' : '♜',
     })),
     { title: 'Roast Arena', href: '#/roast-arena', detail: 'Roast battles · preview', icon: '🔥' },
-    { title: 'Gift Battles', href: '#/giftbattles', detail: 'Live gift battles · TEST MODE', icon: '⚔' },
+    { title: 'PIKK Battles', href: '#/battles', detail: 'Streamer vs streamer · audience votes decide · TEST MODE', icon: '⚔' },
     { title: 'Missions', href: '#/missions', detail: 'Daily missions · TEST MODE', icon: '★' },
     { title: 'Loyalty Rewards', href: '#/loyalty', detail: 'Play Chips & rewards · no cash value', icon: '◆' },
   ],
@@ -78,7 +78,7 @@ const MENU_ICON_KEYS = Object.freeze({
   '24/7 Viral Live': 'live', 'Spotlight': 'videos', 'Clippers': 'videos', 'Stories': 'camera', 'Premieres': 'videos',
   'Explore': 'explore', 'Live Rooms': 'live', 'Fan Clubs': 'heart', 'Party Line': 'chat', 'Notifications': 'msg', 'City Connect': 'explore', 'Events': 'explore',
   'Matches': 'heart', 'Liked You': 'heart', 'Age & ID Verification': 'profile', 'Report & Block': 'heart',
-  'Roast Arena': 'game', 'Gift Battles': 'live', 'Missions': 'game', 'Loyalty Rewards': 'game',
+  'Roast Arena': 'game', 'PIKK Battles': 'live', 'Missions': 'game', 'Loyalty Rewards': 'game',
   'Profile Shop': 'merch', 'Wallet': 'merch', 'Sell on PIKK': 'merch', 'Orders & Shipping': 'merch', 'Refunds': 'merch',
   'PIKK Shop': 'merch', 'Marketplace': 'merch', 'Foreign X-Change': 'merch', 'Creator Pricing': 'posts',
 });

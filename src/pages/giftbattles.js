@@ -57,17 +57,17 @@ function fmtClock(msLeft) {
 
 function renderSignIn() {
   return shellPage(
-    'Gift Battles',
+    'PIKK Battles',
     `<div class="card">
       <h3>Sign in required</h3>
       <p class="muted">Gift battles need a local demo account so scores and history persist on this device.</p>
       <a class="btn primary" href="#/profile">Sign in</a>
     </div>`,
-    { lead: 'Runs during Live · not a separate stream · voluntary support · TEST MODE' }
+    { lead: BATTLES_LEAD }
   );
 }
 
-export const SIGNED_OUT_LEAD = 'Two live streamers · 60s round · audience votes decide · gifts don\'t score · 24-hour champion badge · TEST MODE';
+export const BATTLES_LEAD = 'Two live streamers · 60s round · audience votes decide · gifts don\'t score · 24-hour champion badge · TEST MODE';
 
 /** Signed-out: static sample only. No buttons, no state, no actions. */
 export function renderSignedOutPreview() {
@@ -341,7 +341,7 @@ function renderPrefs(prefs) {
 export function renderGiftBattles() {
   const { user, live } = getState();
   // t401u: explainer is the main view; no sign-in wall.
-  if (!user) return shellPage('PIKK Battles', renderSignedOutPreview(), { lead: SIGNED_OUT_LEAD });
+  if (!user) return shellPage('PIKK Battles', renderSignedOutPreview(), { lead: BATTLES_LEAD });
 
   // Finalize expired battles on render
   tickGiftBattle();
@@ -368,8 +368,8 @@ export function renderGiftBattles() {
     ${renderPrefs(prefs)}
   `;
 
-  return shellPage('Gift Battles', body, {
-    lead: 'Streamer vs streamer · 60s countdown · 24-hour champion badge · TEST MODE',
+  return shellPage('PIKK Battles', body, {
+    lead: BATTLES_LEAD,
     badge: battle?.status === 'active' ? 'BATTLE' : champ ? 'CHAMP' : undefined,
   });
 }
