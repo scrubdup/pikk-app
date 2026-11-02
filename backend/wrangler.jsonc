@@ -14,7 +14,9 @@
     "ALLOWED_ORIGIN": "https://scrubdup.github.io",
     "COOKIE_SAMESITE": "None",
     "SESSION_TTL_HOURS": "720",
-    "EXPOSE_VERIFY_TOKEN": "false"
+    "EXPOSE_VERIFY_TOKEN": "false",
+    "PUBLIC_APP_URL": "https://scrubdup.github.io/pikk-app/"
   }
-  // Secret (set via `wrangler secret put`, never committed): STRIPE_WEBHOOK_SECRET
+  // Secrets (set via `wrangler secret put`, never committed): RESEND_API_KEY, STRIPE_WEBHOOK_SECRET
+  // Set EMAIL_FROM to a verified sender, e.g. "PIKK <verify@your-domain.example>", before enabling production email.
 }

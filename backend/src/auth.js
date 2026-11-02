@@ -2,6 +2,7 @@ import { ApiError, clientIp } from './http.js';
 import { hashPassword, verifyPassword, randomToken, sha256Hex, newId } from './crypto.js';
 import { validateSignup, validateLogin, requireString, validateSignupRoles } from './validate.js';
 import { audit } from './audit.js';
+import { sendVerificationEmail } from './email.js';
 
 export const SESSION_COOKIE = '__Host-pikk_session';
 const nowIso = () => new Date().toISOString();
@@ -115,11 +116,7 @@ export async function signup(env, req, body) {
   }
   await audit(env, { actor: id, action: 'auth.signup', target: id, ip: clientIp(req) });
   const cookie = await createSession(env, req, id);
-  // No email provider is configured: the token is NOT delivered anywhere. It is only echoed when
-  // EXPOSE_VERIFY_TOKEN=true (local tests). Production must wire an email provider first.
-  const verification = env.EXPOSE_VERIFY_TOKEN === 'true'
-    ? { delivery: 'exposed_for_local_testing', token: verifyToken }
-    : { delivery: 'email_provider_not_configured' };
+  const verification = await sendVerificationEmail(env, { to: v.email, token: verifyToken, userId: id });
   return { status: 201, cookie, body: { user: { id, handle: v.handle, display_name: v.display_name, email: v.email, email_verified: false }, roles: ['user'], signup_roles: signupRoles, verification } };
 }
 
