@@ -11,6 +11,8 @@ export default defineConfig(async () => {
         bindings: {
           TEST_MIGRATIONS: migrations,
           EXPOSE_VERIFY_TOKEN: 'true',
+          // Forwarded so migration-order.test.js can relax the no-gaps rule on PR CI runs.
+          GITHUB_BASE_REF: process.env.GITHUB_BASE_REF || '',
           STRIPE_WEBHOOK_SECRET: 'whsec_local_test_only_not_a_real_secret',
           AGE_VERIFY_WEBHOOK_SECRET: 'agev_local_test_only_not_a_real_secret',
           OWNER_BOOTSTRAP_TOKEN: 'owner_bootstrap_local_test_only_not_a_real_secret_0123456789',
