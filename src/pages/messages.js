@@ -58,7 +58,7 @@ function renderInbox(user) {
       const isTeam = !isGroup && t.peerId === 'dbs';
       const chips = [
         isGroup ? '<span class="chip">Group</span>' : '',
-        isTeam ? '<span class="chip">Team</span>' : '',
+        isTeam ? '<span class="chip">Artist team</span>' : '',
         t.request ? '<span class="chip">Request</span>' : '',
         t.muted ? '<span class="chip">Muted</span>' : '',
         t.blocked ? '<span class="chip">Blocked</span>' : '',
