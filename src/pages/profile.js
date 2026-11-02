@@ -237,6 +237,15 @@ export function renderProfile(route) {
 }
 
 export function bindProfile(root) {
+  if (!getState().user && isPikkApiConfigured()) {
+    authApi.me().then((session) => {
+      if (!session?.user) return;
+      syncRemoteAuthUser(session.user);
+      refresh('#/profile');
+    }).catch((err) => {
+      if (err?.status !== 401) console.warn('PIKK auth session check failed', err);
+    });
+  }
   root.querySelector('#signupAccountBtn')?.addEventListener('click', async () => {
     try {
       const result = await authApi.signup({
