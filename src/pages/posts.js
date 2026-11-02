@@ -67,6 +67,11 @@ function hotStripHtml() {
 }
 
 
+export function renderPersistentComments(comments=[]) {
+  if(!comments.length) return '<p class="muted">No comments yet.</p>';
+  return comments.map(c=>`<div class="comment"><strong>@${esc(c.author||'user')}</strong> ${esc(c.body)}<br/><small class="muted">${new Date(c.created_at).toLocaleString()}</small></div>`).join('');
+}
+
 export function renderPersistentPosts(posts=[], { focusId='', currentHandle='' } = {}) {
   if (!posts.length) return '<div class="card muted">No persistent posts yet.</div>';
   return posts.map((p) => {
@@ -429,14 +434,67 @@ export function bindPosts(root) {
   });
 
   root.addEventListener('click', async (event) => {
-    const btn = event.target.closest?.('.persistent-follow');
-    if (!btn || !remote) return;
+    if (!remote) return;
+    const followBtn = event.target.closest?.('.persistent-follow');
+    if (followBtn) {
+      try {
+        await postsApi.follow(followBtn.dataset.handle);
+        toast('Following @' + followBtn.dataset.handle);
+        await loadPersistentPosts();
+      } catch (err) {
+        toast(err?.code === 'email_unverified' ? 'Verify your email before following' : (err?.message || 'Could not follow'));
+      }
+      return;
+    }
+
+    const likeBtn = event.target.closest?.('.persistent-like');
+    if (likeBtn) {
+      try {
+        const liked = likeBtn.dataset.liked === '1';
+        await (liked ? postsApi.unlike(likeBtn.dataset.id) : postsApi.like(likeBtn.dataset.id));
+        await loadPersistentPosts();
+      } catch (err) {
+        toast(err?.code === 'email_unverified' ? 'Verify your email before liking posts' : (err?.message || 'Could not update like'));
+      }
+      return;
+    }
+
+    const commentsBtn = event.target.closest?.('.persistent-comments-toggle');
+    if (commentsBtn) {
+      const box = persistentHost?.querySelector(`[data-comments-for="${CSS.escape(commentsBtn.dataset.id)}"]`);
+      if (!box) return;
+      box.hidden = !box.hidden;
+      if (!box.hidden) {
+        const list = box.querySelector('.persistent-comments-list');
+        if (list) {
+          try {
+            const data = await postsApi.comments(commentsBtn.dataset.id);
+            list.innerHTML = renderPersistentComments(data.comments || []);
+          } catch (err) {
+            list.innerHTML = `<p class="muted">Could not load comments: ${esc(err?.message || 'Unknown error')}</p>`;
+          }
+        }
+      }
+    }
+  });
+
+  persistentHost?.addEventListener('submit', async (event) => {
+    const form = event.target.closest?.('.persistent-comment-form');
+    if (!form || !remote) return;
+    event.preventDefault();
+    const input = form.querySelector('.persistent-comment-input');
+    const body = input?.value?.trim();
+    if (!body) return;
     try {
-      await postsApi.follow(btn.dataset.handle);
-      toast('Following @' + btn.dataset.handle);
+      await postsApi.comment(form.dataset.id, body);
+      input.value = '';
+      const data = await postsApi.comments(form.dataset.id);
+      const list = form.closest('.persistent-comments')?.querySelector('.persistent-comments-list');
+      if (list) list.innerHTML = renderPersistentComments(data.comments || []);
       await loadPersistentPosts();
+      toast('Comment added');
     } catch (err) {
-      toast(err?.code === 'email_unverified' ? 'Verify your email before following' : (err?.message || 'Could not follow'));
+      toast(err?.code === 'email_unverified' ? 'Verify your email before commenting' : (err?.message || 'Could not add comment'));
     }
   });
 
