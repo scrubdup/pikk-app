@@ -57,3 +57,13 @@ test('empty topic filters identify the selected community without claiming the e
  assert.match(view,/esc\(name\)/);
  assert.match(view,/class="pikk-forum-empty" role="status"/);
 });
+
+test('filter summary identifies selected topic, visible count, and sorting without claiming public activity',()=>{
+ assert.match(view,/id="pikkForumFilterStatus" class="muted" role="status" aria-live="polite"/);
+ assert.match(view,/state\.posts\.filter\(p=>!state\.hidden\.includes\(p\.id\)/);
+ assert.match(view,/count===1\?'discussion':'discussions'/);
+ assert.match(view,/Newest first/);
+ assert.match(view,/Top voted/);
+ assert.match(view,/Most discussed/);
+ assert.match(view,/status\.textContent=/);
+});
