@@ -3,7 +3,7 @@ import { requireVerified } from './auth.js';
 import { newId } from './crypto.js';
 import { audit } from './audit.js';
 import { rateLimit } from './ratelimit.js';
-import { assertMusicKey, musicKey, MusicKeyError } from './music-keys.js';
+import { assertMusicKey, musicKey, musicPut, musicGet, musicDelete, MusicKeyError } from './music-keys.js';
 
 const MAX_AUDIO_BYTES = 50 * 1024 * 1024;
 const AUDIO_TYPES = new Set([
@@ -89,7 +89,7 @@ export async function musicUploadRoute(env, req, ctx, method, path) {
     const storageKey = musicKey(s.user.id, id);
 
     try {
-      await storage.put(assertMusicKey(storageKey, s.user.id), file.stream(), {
+      await musicPut(storage, storageKey, s.user.id, file.stream(), {
         httpMetadata: { contentType: file.type },
         customMetadata: { owner_id: s.user.id, media_id: id, kind: 'music' },
       });
@@ -109,7 +109,7 @@ export async function musicUploadRoute(env, req, ctx, method, path) {
         ).bind(id, title, artistName, albumTitle, genre, explicitContent),
       ]);
     } catch (err) {
-      try { await storage.delete(assertMusicKey(storageKey, s.user.id)); } catch {}
+      try { await musicDelete(storage, storageKey, s.user.id); } catch {}
       throw err;
     }
 
@@ -157,7 +157,7 @@ export async function musicUploadRoute(env, req, ctx, method, path) {
     let key;
     try { key = assertMusicKey(row.storage_key, s.user.id); }
     catch (e) { if (e instanceof MusicKeyError) throw new ApiError(404, 'media_missing', 'Stored audio file not found'); throw e; }
-    const object = await storage.get(key);
+    const object = await musicGet(storage, key, s.user.id);
     if (!object) throw new ApiError(404, 'media_missing', 'Stored audio file not found');
     const headers = new Headers();
     object.writeHttpMetadata?.(headers);

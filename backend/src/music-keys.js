@@ -21,3 +21,8 @@ export function assertMusicKey(key, expectedOwner) {
 export function isMusicKey(key) { try { assertMusicKey(key); return true; } catch { return false; } }
 
 export function musicKey(ownerId, mediaId) { return assertMusicKey(`${MUSIC_PREFIX}${ownerId}/${mediaId}`); }
+
+/** Guarded R2 wrappers: every music put/get/delete goes through assertMusicKey first. */
+export async function musicPut(bucket, key, ownerId, body, opts) { return bucket.put(assertMusicKey(key, ownerId), body, opts); }
+export async function musicGet(bucket, key, ownerId) { return bucket.get(assertMusicKey(key, ownerId)); }
+export async function musicDelete(bucket, key, ownerId) { return bucket.delete(assertMusicKey(key, ownerId)); }

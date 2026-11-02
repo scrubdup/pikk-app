@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { newUser, freshIp, ORIGIN } from './helpers.js';
-import { assertMusicKey, isMusicKey, musicKey, MusicKeyError } from '../src/music-keys.js';
+import { assertMusicKey, isMusicKey, musicKey, musicPut, musicGet, musicDelete, MusicKeyError } from '../src/music-keys.js';
 import { musicUploadRoute } from '../src/music-upload.js';
 import { loadSession } from '../src/auth.js';
 
@@ -81,5 +81,24 @@ describe('music R2 calls go through assertMusicKey', () => {
     await expect(musicUploadRoute(e, uploadReq(), ctx, 'POST', '/media/music')).rejects.toThrow('d1 down');
     expect(MEDIA.calls.map((c) => c[0])).toEqual(['put', 'delete']);
     expect(MEDIA.calls[1][1]).toMatch(new RegExp(`^music/${u.id}/media_[A-Za-z0-9_-]+$`));
+  });
+});
+
+describe('guarded R2 wrappers refuse bad keys before touching the bucket', () => {
+  const BAD = ['vault/audio/u/m', 'music/u/../../vault/x', 'music/u/m/extra', 'music/other/m1'];
+  it('musicDelete (used by upload cleanup) never deletes a non-music or foreign key', async () => {
+    const MEDIA = fakeBucket();
+    for (const k of BAD) await expect(musicDelete(MEDIA, k, 'u')).rejects.toThrow(MusicKeyError);
+    expect(MEDIA.calls).toEqual([]);
+    await musicDelete(MEDIA, 'music/u/m1', 'u');
+    expect(MEDIA.calls).toEqual([['delete', 'music/u/m1']]);
+  });
+  it('musicPut and musicGet refuse bad keys too', async () => {
+    const MEDIA = fakeBucket();
+    for (const k of BAD) {
+      await expect(musicPut(MEDIA, k, 'u', 'x')).rejects.toThrow(MusicKeyError);
+      await expect(musicGet(MEDIA, k, 'u')).rejects.toThrow(MusicKeyError);
+    }
+    expect(MEDIA.calls).toEqual([]);
   });
 });
