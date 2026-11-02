@@ -87,6 +87,19 @@ describe('slice 4: keys bound to their row (multipart, backup, restore)', () => 
     expect((await env.DB.prepare('SELECT owner_id FROM media WHERE id=?').bind(bid).first()).owner_id).toBe(b.id);
   });
 
+  it("ownedMedia: complete() on a row repointed at another owner's object never reads/accepts it", async () => {
+    const a = await newUser(); const b = await newUser();
+    const victim = `vault/photo/${b.id}/med_victimcomplt1`;
+    await env.MEDIA.put(victim, PNG());
+    const t = await create(a, { size: 256 });
+    await env.DB.prepare(`UPDATE media SET object_key=?, state='uploaded' WHERE id=?`).bind(victim, t.json.upload.id).run();
+    const r = await call('POST', `/media/${t.json.upload.id}/complete`, { cookie: a.cookie });
+    expect(r.status).toBeGreaterThanOrEqual(400);
+    const row = await env.DB.prepare('SELECT state, checksum_sha256 FROM media WHERE id=?').bind(t.json.upload.id).first();
+    expect(row.state).toBe('uploaded'); expect(row.checksum_sha256).toBeNull();
+    expect(await env.MEDIA.head(victim)).not.toBeNull();
+  });
+
   it('no Vault module writes or deletes bucket objects directly (only via vaultDeleteFor/vaultPutFor/vaultDelete)', () => {
     const rawMutation = /\b(?:env\.MEDIA|bucket\(env\)|storage\(env\)|bucket|targetBucket)\s*\.\s*(?:delete|put)\s*\(/;
     for (const [name, src] of Object.entries({ mediaSrc, multipartSrc, processingSrc, backupSrc, contentSrc, storageSrc })) {
