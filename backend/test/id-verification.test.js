@@ -285,3 +285,20 @@ describe('owner rule: gender chosen at signup, never self-changed', () => {
     expect((await env.DB.prepare(`SELECT gender FROM users WHERE id=?`).bind(u.id).first()).gender).toBe('male');
   });
 });
+
+describe('set-once race (meta.changes)', () => {
+  it('if gender gets set between the read and the UPDATE, returns 409 gender_locked with no audit row', async () => {
+    const { setOwnGenderOnce, isGenderLocked } = await import('../src/contests.js');
+    const u = await newUser(); // legacy: gender NULL
+    expect(await isGenderLocked(env, u.id)).toBe(false); // handler's read passes...
+    await env.DB.prepare(`UPDATE users SET gender='female', gender_set_at='x' WHERE id=?`).bind(u.id).run(); // ...concurrent request wins
+    await expect(setOwnGenderOnce(env, u.id, 'male')).rejects.toMatchObject({ status: 409, code: 'gender_locked' });
+    expect((await env.DB.prepare(`SELECT gender FROM users WHERE id=?`).bind(u.id).first()).gender).toBe('female');
+    expect((await env.DB.prepare(`SELECT COUNT(*) n FROM audit_log WHERE action='account.gender_set' AND target=?`).bind(u.id).first()).n).toBe(0);
+  });
+  it('normal set-once writes exactly one audit row', async () => {
+    const u = await newUser();
+    expect((await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'male' } })).status).toBe(200);
+    expect((await env.DB.prepare(`SELECT COUNT(*) n FROM audit_log WHERE action='account.gender_set' AND target=?`).bind(u.id).first()).n).toBe(1);
+  });
+});

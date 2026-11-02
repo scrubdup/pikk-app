@@ -19,6 +19,15 @@ export async function isGenderLocked(env, userId) {
   return !!(r && r.gender);
 }
 
+/** Atomic set-once: the UPDATE only applies while gender IS NULL. If another request set it between
+ *  the lock check and this UPDATE (meta.changes === 0), refuse with 409 and write NO audit row. */
+export async function setOwnGenderOnce(env, userId, gender) {
+  const t = new Date().toISOString();
+  const r = await env.DB.prepare(`UPDATE users SET gender = ?, gender_set_at = ? WHERE id = ? AND gender IS NULL`).bind(gender, t, userId).run();
+  if (!r?.meta?.changes) throw new ApiError(409, 'gender_locked', 'Account gender is set at signup and cannot be changed. Contact Support if it was entered by mistake.');
+  await auditStmt(env, { actor: userId, action: 'account.gender_set', target: userId, meta: { gender } }).run();
+}
+
 export async function contestEligibility(env, userId, contest) {
   const c = CONTESTS[contest];
   const u = await env.DB.prepare(`SELECT age_verified_18, gender FROM users WHERE id = ?`).bind(userId).first();
@@ -42,11 +51,7 @@ export async function contestRoute(env, req, ctx, m, p) {
     const b = await readJson(req);
     if (!GENDERS.includes(b.gender)) throw new ApiError(422, 'validation_failed', 'Invalid input', { gender: GENDERS.join(', ') });
     if (await isGenderLocked(env, s.user.id)) throw new ApiError(409, 'gender_locked', 'Account gender is set at signup and cannot be changed. Contact Support if it was entered by mistake.');
-    const t = new Date().toISOString();
-    await env.DB.batch([
-      env.DB.prepare(`UPDATE users SET gender = ?, gender_set_at = ? WHERE id = ? AND gender IS NULL`).bind(b.gender, t, s.user.id),
-      auditStmt(env, { actor: s.user.id, action: 'account.gender_set', target: s.user.id, meta: { gender: b.gender } }),
-    ]);
+    await setOwnGenderOnce(env, s.user.id, b.gender);
     return json(200, { gender: b.gender });
   }
   if (m === 'GET' && p === '/account/gender') {
