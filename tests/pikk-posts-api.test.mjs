@@ -28,7 +28,7 @@ test('real Posts mode publishes persistent text and blocks unconnected media per
 
 test('real persistent feed can follow by backend handle', () => {
   assert.match(page, /class="btn ghost persistent-follow"/);
-  assert.match(page, /await postsApi\.follow\(btn\.dataset\.handle\)/);
+  assert.match(page, /await postsApi\.follow\(followBtn\.dataset\.handle\)/);
 });
 
 test('local prototype post behavior remains as fallback', () => {
