@@ -3,8 +3,8 @@ import {
   getProfile,
   listFollowers,
   listFollowing,
-  signInLocal,
-  signOut,
+  syncRemoteAuthUser,
+  clearAuthenticatedUser,
   updateProfile,
   followUser,
   unfollowUser,
@@ -14,6 +14,7 @@ import {
 import { esc, toast, shellPage } from '../ui.js';
 import { navigate } from '../router.js';
 import { profileRouteHref } from '../profile-links.js';
+import { authApi, isPikkApiConfigured } from '../api/auth-client.js';
 
 function refresh(path) {
   navigate(path || '#/profile');
@@ -119,17 +120,24 @@ export function renderProfile(route) {
       <section class="pikk-profile-guest-hero" aria-label="Join PIKK">
         <p class="kicker">PIKK · YOUR PROFILE</p>
         <h2>Your space. Your people. <span>One PIKK.</span></h2>
-        <p>Follow artists, share posts and build your profile. Explore the official DatBoiSkeet page or create a local demo account to try the experience.</p>
-        <span class="chip">TEST MODE · Browser-local account only</span>
+        <p>Create your PIKK account or sign in to follow creators, post, message and use account tools.</p>
+        <span class="chip">${isPikkApiConfigured() ? "Backend account service connected" : "Account service configuration pending"}</span>
       </section>
       <div class="card">
         <p class="kicker">PIKK account</p>
-        <h3>Sign in · local demo</h3>
-        <p class="muted">Free fan account for this browser — follow @DatBoiSkeet, post, and apply for roles. TEST MODE: no password, email, or backend auth yet.</p>
-        <div class="field"><label>Username</label>
-          <input id="signinName" placeholder="Your PIKK name" maxlength="24" /></div>
-        <button class="btn primary block" id="signinBtn">Sign in</button>
-        <p class="chip" style="margin-top:10px">TEST MODE · demo user only</p>
+        <h3>Create account</h3>
+        <div class="field"><label>Display name</label><input id="signupDisplay" autocomplete="name" maxlength="60" /></div>
+        <div class="field"><label>Username</label><input id="signupHandle" autocomplete="username" maxlength="30" placeholder="3–30 letters, numbers or _" /></div>
+        <div class="field"><label>Email</label><input id="signupEmail" type="email" autocomplete="email" /></div>
+        <div class="field"><label>Password</label><input id="signupPassword" type="password" autocomplete="new-password" minlength="10" placeholder="10+ characters, including a letter and number" /></div>
+        <button class="btn primary block" id="signupAccountBtn">Create PIKK account</button>
+      </div>
+      <div class="card">
+        <h3>Sign in</h3>
+        <div class="field"><label>Email</label><input id="loginEmail" type="email" autocomplete="email" /></div>
+        <div class="field"><label>Password</label><input id="loginPassword" type="password" autocomplete="current-password" /></div>
+        <button class="btn primary block" id="loginAccountBtn">Sign in</button>
+        <p class="muted" style="margin:10px 0 0">PIKK uses a secure server session cookie. Your password is not stored in browser-local profile state.</p>
       </div>
       <div class="card">
         <h3>Official profile</h3>
@@ -160,7 +168,7 @@ export function renderProfile(route) {
         <div>
           <h2 style="margin:0">${esc(user.username)}</h2>
           <p class="muted" style="margin:4px 0 0">${esc(user.bio)}</p>
-          <span class="chip">TEST MODE · demo</span>
+          <span class="chip">${user.authSource === 'backend' ? (user.emailVerified ? 'Backend account · email verified' : 'Backend account · verification pending') : 'Legacy demo account'}</span>
           ${m.skeetPlus || m.backstage || m.innerCircle ? `<span class="chip">${m.innerCircle ? 'Inner Circle' : m.backstage ? 'Backstage' : 'PIKK+'}</span>` : ''}
         </div>
       </div>
@@ -229,17 +237,38 @@ export function renderProfile(route) {
 }
 
 export function bindProfile(root) {
-  root.querySelector('#signinBtn')?.addEventListener('click', () => {
-    const name = root.querySelector('#signinName')?.value;
-    signInLocal(name);
-    toast('Signed in');
-    refresh('#/profile');
+  root.querySelector('#signupAccountBtn')?.addEventListener('click', async () => {
+    try {
+      const result = await authApi.signup({
+        displayName: root.querySelector('#signupDisplay')?.value?.trim(),
+        handle: root.querySelector('#signupHandle')?.value?.trim(),
+        email: root.querySelector('#signupEmail')?.value?.trim(),
+        password: root.querySelector('#signupPassword')?.value || '',
+      });
+      syncRemoteAuthUser(result.user);
+      toast(result.user?.email_verified ? 'Account created' : 'Account created · email verification pending');
+      refresh('#/profile');
+    } catch (err) {
+      toast(err?.message || 'Could not create account');
+    }
   });
-  root.querySelector('#signinName')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') root.querySelector('#signinBtn')?.click();
+  root.querySelector('#loginAccountBtn')?.addEventListener('click', async () => {
+    try {
+      await authApi.login({
+        email: root.querySelector('#loginEmail')?.value?.trim(),
+        password: root.querySelector('#loginPassword')?.value || '',
+      });
+      const session = await authApi.me();
+      syncRemoteAuthUser(session.user);
+      toast('Signed in');
+      refresh('#/profile');
+    } catch (err) {
+      toast(err?.message || 'Could not sign in');
+    }
   });
-  root.querySelector('#signoutBtn')?.addEventListener('click', () => {
-    signOut();
+  root.querySelector('#signoutBtn')?.addEventListener('click', async () => {
+    try { await authApi.logout(); } catch {}
+    clearAuthenticatedUser();
     toast('Signed out');
     refresh('#/profile');
   });
