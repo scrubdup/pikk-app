@@ -13,6 +13,7 @@ import {
 import { POST_IMAGE_PRESETS } from '../data.js';
 import { esc, toast, timeAgo, shellPage } from '../ui.js';
 import { navigate } from '../router.js';
+import { postsApi, isPostsApiConfigured } from '../api/posts-client.js';
 
 function refresh() {
   navigate('#/posts');
@@ -65,7 +66,30 @@ function hotStripHtml() {
   </section>`;
 }
 
+
+export function renderPersistentPosts(posts=[], { focusId='', currentHandle='' } = {}) {
+  if (!posts.length) return '<div class="card muted">No persistent posts yet.</div>';
+  return posts.map((p) => {
+    const handle = p.author || 'creator';
+    const focused = focusId && focusId === p.id ? ' post-focus' : '';
+    const canFollow = currentHandle && currentHandle.toLowerCase() !== String(handle).toLowerCase();
+    return `<article class="post persistent-post${focused}" data-id="${esc(p.id)}" id="post-${esc(p.id)}">
+      <div class="meta">
+        <div class="avatar">${esc((p.display_name || handle || '?')[0].toUpperCase())}</div>
+        <div class="spacer">
+          <div class="who">@${esc(handle)} <span class="chip">Persistent</span> <span class="chip">${esc(p.kind || 'text')}</span></div>
+          <div class="when">${new Date(p.created_at).toLocaleString()}</div>
+        </div>
+        ${canFollow ? `<button class="btn ghost persistent-follow" data-handle="${esc(handle)}">Follow</button>` : ''}
+      </div>
+      <p class="body-text">${esc(p.body)}</p>
+      <p class="muted" style="font-size:11px;margin:8px 0 0">Saved to PIKK backend · likes/comments persistence is coming next.</p>
+    </article>`;
+  }).join('');
+}
+
 export function renderPosts(route) {
+  const remote = isPostsApiConfigured();
   const { posts, likes, comments, user, postShares } = getState();
   const tab = route?.query?.tab === 'following' ? 'following' : 'discover';
   const focusId = route?.query?.focus || '';
@@ -123,8 +147,8 @@ export function renderPosts(route) {
           <input id="postImg" placeholder="/music/… · YouTube URL · /merch/…" />
         </div>
         <div class="row wrap" id="postPresets" style="margin-bottom:10px">${presets}</div>
-        <p class="muted" id="postMediaNote" style="font-size:12px;margin:0 0 10px">TEST MODE · no real upload — paste a path or YouTube link.</p>
-        <button class="btn primary" id="postSubmit">Post</button>
+        <p class="muted" id="postMediaNote" style="font-size:12px;margin:0 0 10px">${remote ? 'Persistent text posting is live. Picture/Short/Video uploads are not connected yet.' : 'TEST MODE · no real upload — paste a path or YouTube link.'}</p>
+        <button class="btn primary" id="postSubmit">${remote ? 'Post to PIKK' : 'Post'}</button>
       </div>
     </div>`
     : `<div class="card"><p class="muted">Sign in from Profile to post text, a picture, short, or video.</p>
@@ -222,11 +246,16 @@ export function renderPosts(route) {
       ? '<div class="card muted">No posts from people you follow yet. Discover feed has official drops.</div>'
       : '<div class="card muted">No posts yet.</div>';
 
+  const feedHtml = remote
+    ? '<section id="pikkPersistentPosts" aria-live="polite"><div class="card muted">Loading persistent posts…</div></section>'
+    : (feed || empty);
   return shellPage(
     'Posts',
-    hotStripHtml() + composer + tabs + (feed || empty),
+    (remote ? '' : hotStripHtml()) + composer + tabs + feedHtml,
     {
-      lead: 'Post Text, a Picture, Short, or Video · Shorts live here (not separate tabs) · Hot strip ranks engagement.',
+      lead: remote
+        ? 'Persistent PIKK text posts · Discover and Following load from the backend. Media uploads are next.'
+        : 'Post Text, a Picture, Short, or Video · Shorts live here (not separate tabs) · Hot strip ranks engagement.',
     }
   );
 }
