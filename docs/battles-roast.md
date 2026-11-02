@@ -7,7 +7,7 @@ Inventory date: 2026-10-31. Branch inspected: feat/pikk-home-top-mockup-20261031
 ### Target user flow
 1. A comedian browses Upcoming / Live / Top Roasters / Clips and either requests a battle or receives an invite.
 2. Both contestants accept, explicitly consent to being roasted, and see the automated on-screen rules. No human host is involved.
-3. The match runs split-screen in the chosen format: 1v1, Tag-Team, Open Mic or Tournament.
+3. The match runs split-screen in the chosen format: 1v1, Open Mic or Tournament. There is no Tag-Team (owner ruling t461u).
 4. Each timed round is followed by a voting window. Each eligible viewer gets one vote per round, and voting locks automatically.
 5. Audience votes alone decide the winner. Gifts are tallied separately as "most supported." Ties go to a tiebreaker, and a rematch poll follows.
 6. Tournament results advance through a bracket. Clips and Top Roasters update.
@@ -17,7 +17,8 @@ Inventory date: 2026-10-31. Branch inspected: feat/pikk-home-top-mockup-20261031
 | Requirement | Status | Evidence |
 |---|---|---|
 | 1v1 round/vote/score engine | Working and unit-tested, but local only | src/roast-engine.js:6-34; tests/roast-engine.test.mjs |
-| Tag-Team, Open Mic, Tournament | Missing (shown only as chips) | src/pages/roast-arena.js:44 |
+| Open Mic, Tournament | Missing (shown only as chips) | src/pages/roast-arena.js |
+| Tag-Team | Removed: not a PIKK feature (owner ruling t461u) | |
 | No host, automated rules | Text only, plus a local demo timer | roast-arena.js:45,48-57 |
 | Split-screen video | Missing | none |
 | Timed rounds | Hardcoded values: 60s round, 10s vote, 10s rematch, 3 rounds. **UNVERIFIED** | roast-engine.js:2-5 |
@@ -58,11 +59,18 @@ tests/pikk-roast-arena.test.mjs only matches strings in the page copy, so it doe
 | Tests | Only regression string checks in tests/pikk-regression.test.mjs. No unit tests for battle logic | |
 | Persistence and auth | localStorage via store.js and a local demo account. No PIKK Backend or server auth | giftbattles.js:53 |
 
+## Owner rulings recorded (2026-11-02)
+- **t461u: there is NO Tag-Team anywhere in PIKK** (not in Roast Arena, live streams or any live feature). Roast is 1v1 only. Tag-Team code, UI and tests were removed.
+- t429u / 12:48 PM CT: 60s rounds, 3 rounds; a tie gets one tiebreaker round, then ends as a tie; contestants cannot vote; a rematch needs both contestants to agree; the page shows how many people in the room can vote.
+- t443u (2:03 PM CT): "10 secs to vote players get 5 secs to rematch". Rematch rounds keep the same 60s length.
+- t447u: the audience vote screen shows the round number and both contestant names; voters tap a name; a tiebreaker round is labeled "Tie Breaker".
+
+The items below predate these rulings. Where a ruling covers a point, the ruling wins.
+
 ## Owner verification needed (no values invented)
 - Roast round length (code says 60s, **unverified**), vote window (10s, **unverified**), rematch poll (10s, **unverified**), number of rounds (3, **unverified**).
 - Whether rounds have any break between them, and how many tiebreaker rounds are allowed.
 - Rematch rule: does it need audience majority, both contestants, or both?
-- Tag-Team format: team size, turn order, and how a team's vote is counted.
 - Open Mic format: queue, slot length, and how a winner is chosen.
 - Tournament format: bracket size, seeding, single or double elimination, and scheduling.
 - Vote eligibility: account age, verification or 18+, whether followers or paid viewers only, and anti-bot rules.
