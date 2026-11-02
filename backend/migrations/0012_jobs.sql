@@ -1,6 +1,6 @@
 -- PIKK Master Mind phase 2 (slice 2): durable job records. No PII: kind, idempotency key,
 -- state, attempt counts, schedule and a short sanitized error code only. No input payloads.
-CREATE TABLE jobs (
+CREATE TABLE IF NOT EXISTS jobs (
   id TEXT PRIMARY KEY,
   kind TEXT NOT NULL CHECK(length(kind) BETWEEN 1 AND 64),
   idempotency_key TEXT NOT NULL UNIQUE CHECK(length(idempotency_key) BETWEEN 1 AND 128),
@@ -12,5 +12,5 @@ CREATE TABLE jobs (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
-CREATE INDEX idx_jobs_state_next ON jobs(state, next_run_at);
-CREATE INDEX idx_jobs_updated ON jobs(updated_at);
+CREATE INDEX IF NOT EXISTS idx_jobs_state_next ON jobs(state, next_run_at);
+CREATE INDEX IF NOT EXISTS idx_jobs_updated ON jobs(updated_at);

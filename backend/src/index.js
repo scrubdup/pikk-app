@@ -352,7 +352,6 @@ export default {
     const now = Date.now();
     ctx.waitUntil(Promise.allSettled([
       runMasterMindScheduled(env, event, now),
-      // >>> PIKK Vault slot: runVaultCron(env, event, now),  (Vault's runVaultCron(env, event, now) from #346; add its import on merge)
     ]).then(rs => rs.forEach(r => r.status === 'rejected' && console.error('scheduled task failed', r.reason && r.reason.message))));
   },
 };
