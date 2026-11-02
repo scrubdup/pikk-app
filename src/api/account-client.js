@@ -18,4 +18,5 @@ export const accountApi={
   updateProfile:({displayName,bio,avatarUrl})=>request('/account/profile',{method:'POST',body:{display_name:displayName,bio,avatar_url:avatarUrl}}),
   listRoleReviews:(status='')=>request('/admin/signup-roles'+(status?'?status='+encodeURIComponent(status):'')),
   reviewRole:({handle,role,status,reason})=>request('/admin/signup-roles/review',{method:'POST',body:{handle,role,status,reason}}),
+  bootstrapAdmin:(token)=>request('/admin/bootstrap',{method:'POST',body:{token}}),
 };
