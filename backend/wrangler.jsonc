@@ -4,6 +4,9 @@
   "main": "src/index.js",
   "compatibility_date": "2026-10-25",
   "compatibility_flags": ["nodejs_compat"],
+  "build": {
+    "command": "npx wrangler d1 migrations apply DB --remote"
+  },
   "d1_databases": [
     { "binding": "DB", "database_name": "pikk-db", "database_id": "d545246b-49f7-4a0a-92b4-b18c570baef8", "migrations_dir": "migrations" }
   ],
