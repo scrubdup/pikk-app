@@ -50,7 +50,7 @@ const hitTest = (page) => page.evaluate(async (G) => {
       if (!(hit === e || e.contains(hit))) out.fail.push(`${e.textContent.trim().slice(0, 14)} ${lbl}@${f * 100}% -> ${hit ? (hit.className || hit.tagName).toString().slice(0, 30) : 'null'}`);
     }
   }
-  // Tap areas (from the computed ::before box) of neighbouring chips must not overlap.
+  // Tap areas (from the computed ::before box) of adjacent chips must not overlap.
   out.overlaps = 0;
   for (const g of document.querySelectorAll(G)) {
     const boxes = [...g.children].filter((c) => c.getBoundingClientRect().width).map((c) => {
