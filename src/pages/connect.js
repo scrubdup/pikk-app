@@ -1,3 +1,4 @@
+import { renderMemberOnlineNow } from '../online-now.js';
 /** §36 PIKK Connect — Monkey-style match shell + quiet multi-platform go-live (t198u). */
 import { getConnectPrefs, updateConnectPrefs } from '../store.js';
 import {
@@ -96,6 +97,7 @@ export function renderConnect() {
   return shellPage(
     'PIKK Connect',
     `<div class="connect-monkey" id="connectMonkey">
+      ${renderMemberOnlineNow()}
       <section class="pikk-connect-hero" aria-label="Find your community on PIKK">
         <div class="pikk-connect-hero-copy">
           <p class="kicker">PIKK CONNECT · PEOPLE &amp; COMMUNITIES</p>
