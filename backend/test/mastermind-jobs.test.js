@@ -154,3 +154,58 @@ describe('job leases (crashed worker recovery)', () => {
     expect(await get(j.id)).toMatchObject({ state: 'succeeded', attempts: 2 });
   });
 });
+
+describe('atomic lease transitions (checker race findings)', () => {
+  it('two concurrent reclaimers: exactly one transition, one attempt consumed', async () => {
+    await clear();
+    const j = await enqueue(env, { kind: 'k', key: 'race-a', maxAttempts: 3, now: T });
+    await claim(env, j.id, T);
+    const now = T + LEASE_SEC * 1000;
+    const [a, b] = await Promise.all([reclaimExpired(env, now), reclaimExpired(env, now)]);
+    expect([...a, ...b]).toEqual(['failed']);
+    expect(await get(j.id)).toMatchObject({ state: 'failed', attempts: 1, last_error_code: 'lease_expired' });
+  });
+  it('late complete from the original worker after reclaim is a no-op', async () => {
+    await clear();
+    const j = await enqueue(env, { kind: 'k', key: 'race-b', maxAttempts: 3, now: T });
+    const tok = await claim(env, j.id, T);
+    const now = T + LEASE_SEC * 1000;
+    expect(await reclaimExpired(env, now)).toEqual(['failed']);
+    expect(await complete(env, j.id, tok, now + 1)).toBe(false);
+    expect((await get(j.id)).state).toBe('failed');
+    // ...even after the job is re-claimed by a new worker (new attempt), the stale token can't finish it
+    const tok2 = await claim(env, j.id, now + backoffSec(1) * 1000);
+    expect(await complete(env, j.id, tok, now + backoffSec(1) * 1000 + 1)).toBe(false);
+    expect(await fail(env, j.id, tok, 'stale', now + backoffSec(1) * 1000 + 1)).toBeNull();
+    expect((await get(j.id)).state).toBe('running');
+    expect(await complete(env, j.id, tok2, now + backoffSec(1) * 1000 + 2)).toBe(true);
+    expect(await get(j.id)).toMatchObject({ state: 'succeeded', attempts: 2 });
+  });
+  it('late fail after success is a no-op; success after reclaim race keeps one outcome', async () => {
+    await clear();
+    const j = await enqueue(env, { kind: 'k', key: 'race-c', maxAttempts: 3, now: T });
+    const tok = await claim(env, j.id, T);
+    expect(await complete(env, j.id, tok, T + 1000)).toBe(true);
+    expect(await fail(env, j.id, tok, 'late_fail', T + 2000)).toBeNull();
+    expect(await reclaimExpired(env, T + LEASE_SEC * 1000 * 10)).toEqual([]);
+    expect(await get(j.id)).toMatchObject({ state: 'succeeded', last_error_code: null, attempts: 1 });
+  });
+  it('slow worker completing concurrently with reclaim: exactly one wins', async () => {
+    await clear();
+    const j = await enqueue(env, { kind: 'k', key: 'race-d', maxAttempts: 3, now: T });
+    const tok = await claim(env, j.id, T);
+    const now = T + LEASE_SEC * 1000;
+    const [r, c] = await Promise.all([reclaimExpired(env, now), complete(env, j.id, tok, now)]);
+    const state = (await get(j.id)).state;
+    expect(r.length + (c ? 1 : 0)).toBe(1);
+    expect(state).toBe(c ? 'succeeded' : 'failed');
+  });
+  it('complete/fail without a valid claim token do nothing', async () => {
+    await clear();
+    const j = await enqueue(env, { kind: 'k', key: 'race-e', now: T });
+    await claim(env, j.id, T);
+    expect(await complete(env, j.id, undefined, T)).toBe(false);
+    expect(await fail(env, j.id, { attempts: 1 }, 'x', T)).toBeNull();
+    expect((await get(j.id)).state).toBe('running');
+  });
+});
