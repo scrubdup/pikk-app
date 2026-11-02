@@ -10,9 +10,7 @@ import { stripeWebhook } from './webhook.js';
 import { newId } from './crypto.js';
 import { audit, auditStmt } from './audit.js';
 import { mediaRoute } from './media.js';
-import { scheduledTick } from './processing.js';
-import { runBackup } from './backup.js';
-import { BACKUP } from './media-config.js';
+import { runVaultCron } from './vault-cron.js';
 import { musicUploadRoute } from './music-upload.js';
 import { messagesRoute } from './messages.js';
 import { supportRoute } from './tickets.js';
@@ -341,10 +339,11 @@ export default {
     res.headers.set('X-Request-Id', requestId);
     return res;
   },
-  // PIKK Vault slice 3: free cron trigger (wrangler.jsonc triggers.crons). Story expiry sweep + job retries.
-  async scheduled(controller, env, ectx) {
-    // Slice 4: the daily backup cron runs the backup export; every other cron runs the sweeper/drain tick.
-    const job = controller && controller.cron === BACKUP.cron ? runBackup(env, 'cron') : scheduledTick(env);
-    ectx.waitUntil(job.catch((e) => console.error('vault scheduled failed', e && e.stack || e)));
+  // Single cron dispatcher. Each module adds ONE line to the list below; allSettled keeps one failure from stopping the others.
+  async scheduled(event, env, ctx) {
+    const now = Date.now();
+    ctx.waitUntil(Promise.allSettled([
+      runVaultCron(env, event, now),
+    ]).then((rs) => rs.forEach((r) => r.status === 'rejected' && console.error('scheduled task failed', r.reason && (r.reason.stack || r.reason)))));
   },
 };
