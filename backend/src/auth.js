@@ -2,6 +2,7 @@ import { ApiError, clientIp } from './http.js';
 import { hashPassword, verifyPassword, randomToken, sha256Hex, newId } from './crypto.js';
 import { validateSignup, validateLogin, requireString, validateSignupRoles } from './validate.js';
 import { audit } from './audit.js';
+import { sendVerificationEmail } from './email.js';
 
 export const SESSION_COOKIE = '__Host-pikk_session';
 const nowIso = () => new Date().toISOString();
@@ -9,7 +10,8 @@ const DUMMY = { password_salt: 'AAAAAAAAAAAAAAAAAAAAAA==', password_iterations: 
 
 function sessionCookie(env, token, maxAgeSec) {
   const sameSite = ['Strict', 'Lax', 'None'].includes(env.COOKIE_SAMESITE) ? env.COOKIE_SAMESITE : 'Strict';
-  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=${sameSite}; Max-Age=${maxAgeSec}`;
+  const partitioned = sameSite === 'None' ? '; Partitioned' : '';
+  return `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=${sameSite}; Max-Age=${maxAgeSec}${partitioned}`;
 }
 
 function readCookie(req, name) {
@@ -23,7 +25,10 @@ function readCookie(req, name) {
 
 async function createSession(env, req, userId) {
   const token = randomToken(32);
-  const ttl = Math.max(1, Number(env.SESSION_TTL_HOURS || 720)) * 3600;
+  // Keep session lifetime finite and bounded even when deployment configuration is malformed.
+  const configuredHours = Number(env.SESSION_TTL_HOURS ?? 720);
+  const hours = Number.isFinite(configuredHours) ? Math.min(720, Math.max(1, configuredHours)) : 720;
+  const ttl = Math.floor(hours * 3600);
   await env.DB.prepare(`INSERT INTO sessions(id_hash,user_id,created_at,expires_at,ip,user_agent) VALUES (?,?,?,?,?,?)`)
     .bind(await sha256Hex(token), userId, nowIso(), new Date(Date.now() + ttl * 1000).toISOString(), clientIp(req), (req.headers.get('User-Agent') || '').slice(0, 200))
     .run();
@@ -36,7 +41,7 @@ export async function loadSession(env, req) {
   if (!token || token.length > 100) return null;
   const idHash = await sha256Hex(token);
   const row = await env.DB.prepare(
-    `SELECT s.id_hash, u.id, u.handle, u.display_name, u.disabled_at, u.muted_until, u.suspended_until, u.banned_at,
+    `SELECT s.id_hash, u.id, u.handle, u.display_name, u.bio, u.avatar_url, u.disabled_at, u.muted_until, u.suspended_until, u.banned_at,
             u.age_verified_18, u.age_verification_method, u.age_verified_at, c.email, c.email_verified_at
        FROM sessions s JOIN users u ON u.id = s.user_id JOIN credentials c ON c.user_id = u.id
       WHERE s.id_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ?`).bind(idHash, nowIso()).first();
@@ -47,7 +52,7 @@ export async function loadSession(env, req) {
   ]);
   return {
     sessionIdHash: idHash,
-    user: { id: row.id, handle: row.handle, display_name: row.display_name, email: row.email, email_verified: !!row.email_verified_at,
+    user: { id: row.id, handle: row.handle, display_name: row.display_name, bio: row.bio || '', avatar_url: row.avatar_url || '', email: row.email, email_verified: !!row.email_verified_at,
       age_verified_18: row.age_verified_18 === 1, age_verified_at: row.age_verified_at, age_verification_method: row.age_verification_method },
     status: accountStatus(row),
     roles: roles.results.map(r => r.role),
@@ -112,11 +117,7 @@ export async function signup(env, req, body) {
   }
   await audit(env, { actor: id, action: 'auth.signup', target: id, ip: clientIp(req) });
   const cookie = await createSession(env, req, id);
-  // No email provider is configured: the token is NOT delivered anywhere. It is only echoed when
-  // EXPOSE_VERIFY_TOKEN=true (local tests). Production must wire an email provider first.
-  const verification = env.EXPOSE_VERIFY_TOKEN === 'true'
-    ? { delivery: 'exposed_for_local_testing', token: verifyToken }
-    : { delivery: 'email_provider_not_configured' };
+  const verification = await sendVerificationEmail(env, { to: v.email, token: verifyToken, userId: id });
   return { status: 201, cookie, body: { user: { id, handle: v.handle, display_name: v.display_name, email: v.email, email_verified: false }, roles: ['user'], signup_roles: signupRoles, verification } };
 }
 
@@ -154,4 +155,32 @@ export async function verifyEmail(env, req, body) {
   ]);
   await audit(env, { actor: row.user_id, action: 'auth.email_verified', ip: clientIp(req) });
   return { ok: true };
+}
+
+
+export async function resendVerification(env, req, session) {
+  if (session.user.email_verified) {
+    return { ok: true, verification: { delivery: 'already_verified' } };
+  }
+  const token = randomToken(32);
+  const tokenHash = await sha256Hex(token);
+  const t = nowIso();
+  await env.DB.batch([
+    env.DB.prepare(`UPDATE email_verifications SET used_at = ? WHERE user_id = ? AND used_at IS NULL`).bind(t, session.user.id),
+    env.DB.prepare(`INSERT INTO email_verifications(token_hash,user_id,expires_at) VALUES (?,?,?)`)
+      .bind(tokenHash, session.user.id, new Date(Date.now() + 86400_000).toISOString()),
+  ]);
+  const verification = await sendVerificationEmail(env, {
+    to: session.user.email,
+    token,
+    userId: session.user.id,
+  });
+  await audit(env, {
+    actor: session.user.id,
+    action: 'auth.verification_resent',
+    target: session.user.id,
+    ip: clientIp(req),
+    meta: { delivery: verification.delivery },
+  });
+  return { ok: true, verification };
 }

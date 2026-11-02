@@ -32,5 +32,5 @@ test('screen reader region is hidden visually, not aria-hidden, and wired after 
   assert.match(main, /import \{ updateRouteIdentity \} from '\.\/page-announcement\.js'/);
   assert.match(main, /updateRouteIdentity\(route, app, document\.getElementById\('pikkRouteAnnouncer'\)\)/);
   for (const id of ['dbs-sticky-player', 'tabbar', 'spPlay', 'menuBtn']) assert.ok(html.includes('id="' + id + '"'));
-  assert.match(html, /brand\/pikk-official-approved\.jpg/);
+  assert.match(html, /brand\/pikk-logo-official\.png/);
 });

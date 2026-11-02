@@ -5,6 +5,11 @@ import { esc, shellPage, ytEmbedSrc, toast } from '../ui.js';
 import { resolveMediaSrc } from '../media-db.js';
 import { PIKK_GAMES, arcadeArtSrc } from '../games/arcade-catalog.js';
 import { renderStoriesAndPromotions } from '../featured-promos.js';
+import { placementTag } from '../promote-data.js';
+import { renderHomeShowcase } from '../home-showcase.js';
+import { bindHomeMatchUp } from '../home-matchup.js';
+import { renderHomeMediaSlideshow, renderHomeCommunityHub, HOME_HUB_ORDER } from '../home-hub.js';
+export { HOME_HUB_ORDER };
 
 const SECTION_ICONS = {
   Explore: '🧭',
@@ -32,6 +37,8 @@ const STAGE_CYCLE_MS = 8000;
 const STAGE_PREF_KEY = 'dbs_home_stage_v2';
 const STAGE_PREF_LEGACY_KEYS = ['dbs_home_stage'];
 
+/** t208u: seeded viewer counts are example data — always tagged. */
+export const EXAMPLE_TAG = '<span class="chip pikk-example-tag" title="Example data · not real viewers">Example</span>';
 function fmtViewers(n) {
   const v = Number(n) || 0;
   if (v >= 1000) return `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k`;
@@ -120,7 +127,7 @@ function liveCard(l, { rising = false } = {}) {
     <a class="home-live-card" href="#/live">
       <div class="live-hoodie" aria-hidden="false">
         <span class="live-hoodie-pill">LIVE</span>
-        <span class="live-hoodie-viewers" title="${esc(viewersLabel)} watching">${esc(viewersLabel)}</span>
+        <span class="live-hoodie-viewers" title="${esc(viewersLabel)} watching · example">${esc(viewersLabel)}</span>${EXAMPLE_TAG}
       </div>
       <div class="home-live-top">
         <span class="home-live-dot" aria-hidden="true"></span>
@@ -129,7 +136,7 @@ function liveCard(l, { rising = false } = {}) {
       </div>
       <div class="home-live-title">${esc(l.title || 'Live now')}</div>
       <div class="home-live-stats muted">
-        ${esc(viewersLabel)} watching · ${esc(String(l.giftsTotal || 0))} gifts
+        ${esc(viewersLabel)} watching (example) · ${esc(String(l.giftsTotal || 0))} gifts
         ${extra}
       </div>
       <div class="home-live-score muted">Score ${esc(String(l.score || 0))} · TEST MODE seed</div>
@@ -172,14 +179,14 @@ function activityLiveRow(l) {
   return `
     <li class="la-row la-live">
       <a class="la-main" href="#/live">
-        <span class="la-hoodie" aria-label="Live · ${esc(viewersLabel)} watching">
+        <span class="la-hoodie" aria-label="Live · ${esc(viewersLabel)} watching (example data)">
           <span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span>
-          <span class="live-hoodie-viewers">${esc(viewersLabel)}</span>
+          <span class="live-hoodie-viewers">${esc(viewersLabel)}</span>${EXAMPLE_TAG}
         </span>
         <span class="la-body">
           <strong>@${esc(l.hostName)}</strong>
           <span class="la-preview">${esc(l.title || 'Live now')}</span>
-          <span class="la-stats muted">${esc(viewersLabel)} watching · ${esc(String(l.giftsTotal || 0))} gifts · score ${esc(String(l.score || 0))}</span>
+          <span class="la-stats muted">${esc(viewersLabel)} watching (example) · ${esc(String(l.giftsTotal || 0))} gifts · score ${esc(String(l.score || 0))}</span>
         </span>
       </a>
       <span class="chip">${esc(tag)}</span>
@@ -259,7 +266,16 @@ function goalTimeLeft(endsAt) {
   const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
   return ms <= 0 ? 'Ended' : `${h}h ${m}m left`;
 }
-function appGoalInner(g) {
+export function slimGoalBar(g) {
+  const pct = g ? Math.min(100, Math.round((g.raised / (g.targetAmount || 1)) * 100)) : 0;
+  return `<a class="home-goal-slim" id="home-app-goal" href="#/donate" aria-label="PIKK daily goal ${pct}% funded. Open Donate">
+    <span class="home-goal-slim-label"><strong>PIKK goal</strong><small>${g ? `${fmtUsd(g.raised)} of ${fmtUsd(g.targetAmount)} · TEST MODE` : 'No goal today'}</small></span>
+    <span class="home-goal-slim-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></span>
+    <span class="btn primary home-goal-slim-btn">Donate</span>
+  </a>`;
+}
+
+export function appGoalInner(g) {
   if (!g) return '<p class="muted" style="margin:0">No daily app goal right now.</p>';
   const pct = Math.min(100, Math.round((g.raised / (g.targetAmount || 1)) * 100));
   return `
@@ -378,7 +394,7 @@ export function renderHome() {
   const liveNow = getState().live;
   const liveSessionRow =
     liveNow && !liveNow.endedAt
-      ? `<li class="la-row la-session"><a class="la-main" href="#/live"><span class="la-hoodie" aria-label="Live now"><span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span><span class="live-hoodie-viewers">${esc(fmtViewers(liveNow.viewers || 0))}</span></span><span class="la-body"><strong>@${esc(liveNow.hostName)}</strong><span class="la-preview">${esc(liveNow.title || 'Live now')}</span><span class="la-stats muted">${esc(String(liveNow.viewers || 0))} watching · your session</span></span></a><span class="chip">Live</span></li>`
+      ? `<li class="la-row la-session"><a class="la-main" href="#/live"><span class="la-hoodie" aria-label="Live now"><span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span><span class="live-hoodie-viewers">Demo · no real viewers</span></span><span class="la-body"><strong>@${esc(liveNow.hostName)}</strong><span class="la-preview">${esc(liveNow.title || 'Live now')}</span><span class="la-stats muted">${esc(String(liveNow.viewers || 0))} watching · your session</span></span></a><span class="chip">Live</span></li>`
       : '';
 
   /* Live activity · community-first high-engagement mix + most played song */
@@ -559,12 +575,8 @@ export function renderHome() {
       <p class="chip" style="margin-top:10px">TEST MODE · no payment processing</p>
     </div>`;
 
-  const appGoalCard = `
-    <div class="card home-sell-promo home-app-goal" id="home-app-goal">
-      <p class="kicker">Daily app goal · 24h</p>
-      <div id="homeAppGoalBody">${appGoalInner(getAppDailyGoal())}</div>
-      <p class="chip" style="margin-top:10px">TEST MODE · no real payments</p>
-    </div>`;
+  // t351u: slim goal bar directly under the player on Home; full view lives at #/donate.
+  const appGoalCard = slimGoalBar(getAppDailyGoal());
 
   // Editorial content uses only existing verified artist videos and cover artwork.
   // No invented creators, view counts, live audiences or substitute model photos.
@@ -591,6 +603,7 @@ export function renderHome() {
   const realCoverCircles = STORY_RAIL.map((c, i) => `
     <a class="pikk-home-circle" href="${c.href}" aria-label="Open ${esc(c.label)}">
       <span class="pikk-home-circle-ring">${storyArt[i] ? `<img src="${esc(storyArt[i])}" alt="" loading="lazy" decoding="async"/>` : '<span aria-hidden="true">●</span>'}</span>
+      <small class="pikk-rail-tag">${esc(placementTag(c))}</small>
       <span>${esc(c.label)}</span>
     </a>`).join('');
   const visualFeed = `
@@ -600,8 +613,9 @@ export function renderHome() {
         <a href="#/explore" class="pikk-home-visual-more">Explore ↗</a>
       </div>
       <nav class="pikk-home-circle-strip" aria-label="Browse PIKK features">
-        <a class="pikk-home-circle" href="#/posts?compose=1" aria-label="Create a post on PIKK">
-          <span class="pikk-home-circle-ring pikk-home-circle-symbol pikk-home-circle-create" aria-hidden="true">＋</span><span>Create</span>
+        <a class="pikk-home-circle pikk-home-circle-me" href="#/posts?compose=1" aria-label="Create a post on PIKK">
+          <span class="pikk-home-circle-ring">${getState().user?.avatar ? `<img src="${esc(getState().user.avatar)}" alt="" loading="lazy" decoding="async"/>` : '<span class="pikk-home-circle-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" width="40" height="40"><circle cx="12" cy="8.5" r="4" fill="currentColor"/><path d="M4 21c1.4-4.2 4.6-6.3 8-6.3s6.6 2.1 8 6.3" fill="currentColor"/></svg></span>'}</span>
+          <span class="pikk-home-circle-plus" aria-hidden="true">+</span><span>Create</span>
         </a>
         ${realCoverCircles}
       </nav>
@@ -613,6 +627,7 @@ export function renderHome() {
         <a href="#/live">Live</a>
         <a href="#/shop">Shop</a>
         <a href="#/dating">Dating</a>
+        <a class="pikk-home-promote" href="#/promote">Promote</a>
       </nav>
       <div class="pikk-home-media-grid" aria-label="Official DatBoiSkeet video selections">
         ${mediaFeatureItems}
@@ -624,7 +639,10 @@ export function renderHome() {
     </section>`;
 
   const body = `
+    ${appGoalCard}
     ${visualFeed}
+    ${stageBlock}
+    ${renderHomeShowcase()}
     <section class="pikk-home-discover" aria-label="PIKK quick discovery">
       <div class="pikk-home-discover-heading">
         <div><p class="kicker">Your world on PIKK</p><h2>Discover what’s happening</h2></div>
@@ -641,11 +659,8 @@ export function renderHome() {
     </section>
 
 
-    ${stageBlock}
 
-    ${renderStoriesAndPromotions('home')}
-
-    ${bwPreview}
+    ${sellPromo}
 
     <section class="home-arcade card" id="homeArcade" aria-label="PIKK Games featured slideshow">
       <div class="home-arcade-top">
@@ -673,11 +688,6 @@ export function renderHome() {
     </section>
 
 
-    ${appGoalCard}
-
-    ${sellPromo}
-
-    ${mixHome}
 
     <p class="kicker">Coming Soon</p>
     <h2 style="margin:0 0 8px;font-size:15px;text-transform:uppercase;letter-spacing:.04em">Upcoming Releases</h2>
@@ -686,6 +696,8 @@ export function renderHome() {
     <p class="kicker">DatBoiSkeet Network</p>
     <h2 style="margin:0 0 8px;font-size:15px;text-transform:uppercase;letter-spacing:.04em">Explore PIKK</h2>
     <div class="section-swipe" style="margin-bottom:18px">${previews}</div>
+
+    ${renderHomeCommunityHub()}
 
     <div class="card live-activity" id="home-live-activity">
       <div class="live-activity-head">
@@ -702,17 +714,11 @@ export function renderHome() {
         <a class="btn ghost" href="#/posts">Posts · Hot</a>
       </div>
     </div>
-
-    <div class="card video-list">
-      <h3>Official DatBoiSkeet MVs</h3>
-      ${vids}${adminHomeVidHtml}
-      <a class="btn ghost block" href="#/videos" style="margin-top:10px">All videos</a>
-    </div>
   `;
 
   /* t227u / reject fix: never pass badge / badgeHtml / badgeHref — HOME title stays clean */
   return shellPage('Home', body, {
-    lead: 'Featured stage · Top live · Block Wars preview · Live activity (hot lives · high-engagement posts from creators &amp; community · house updates) · Mix · Coming Soon · creator sell DEMO.',
+    lead: 'Featured stage · PIKK Match Up (TEST MODE) · creator sell DEMO · PIKK Arcade · Party Line · message board · live chat · community servers · live activity.',
   });
 }
 
@@ -749,31 +755,8 @@ export function bindHome(root) {
     teardown.observe(document.body, { childList: true, subtree: true });
   }
 
-  /* t255u app goal: donate chips + countdown refresh */
-  const goalBox = root.querySelector('#homeAppGoalBody');
-  if (goalBox) {
-    const redraw = () => { if (document.body.contains(goalBox)) goalBox.innerHTML = appGoalInner(getAppDailyGoal()); else { clearInterval(goalTimer); document.removeEventListener('visibilitychange', goalVis); } };
-    const goalVis = () => { if (document.visibilityState === 'visible') redraw(); };
-    const goalTimer = setInterval(redraw, 30000);
-    document.addEventListener('visibilitychange', goalVis);
-    goalBox.addEventListener('submit', (e) => {
-      if (!e.target.matches('.home-goal-custom-form')) return;
-      e.preventDefault();
-      const amount = Number(e.target.querySelector('.home-goal-custom-coins')?.value);
-      if (!Number.isSafeInteger(amount) || amount < 1 || amount > 1000000) return toast('Enter 1–1,000,000 whole coins');
-      const goalId = getAppDailyGoal()?.id;
-      const result = donateToGoal(goalId, amount);
-      toast(result?.ok ? 'Custom donation sent · TEST MODE' : result?.error === 'insufficient' ? 'Not enough demo coins' : result?.error === 'signin' ? 'Sign in first' : 'Donation unavailable · TEST MODE');
-      redraw();
-    });
-    goalBox.addEventListener('click', (e) => {
-      const b = e.target.closest('.home-goal-donate');
-      if (!b) return;
-      const r = donateToGoal(b.dataset.goalId, Number(b.dataset.coins));
-      toast(r && r.ok ? `TEST MODE · ${b.dataset.coins} coins donated (no real payment)` : 'TEST MODE · donate unavailable');
-      redraw();
-    });
-  }
+  bindAppGoal(root);
+  bindHomeMatchUp(root);
 
   /* t227u reject fix: hard-clear any LIVE chrome that landed in the Home page-head */
   const pageHead = root.querySelector('.page-head');
@@ -981,4 +964,34 @@ export function bindHome(root) {
     }
   });
   obs.observe(document.body, { childList: true, subtree: true });
+}
+
+/** Full donate goal view binding (Home legacy + #/donate). */
+export function bindAppGoal(root) {
+  /* t255u app goal: donate chips + countdown refresh */
+  const goalBox = root.querySelector('#homeAppGoalBody');
+  if (goalBox) {
+    const redraw = () => { if (document.body.contains(goalBox)) goalBox.innerHTML = appGoalInner(getAppDailyGoal()); else { clearInterval(goalTimer); document.removeEventListener('visibilitychange', goalVis); } };
+    const goalVis = () => { if (document.visibilityState === 'visible') redraw(); };
+    const goalTimer = setInterval(redraw, 30000);
+    document.addEventListener('visibilitychange', goalVis);
+    goalBox.addEventListener('submit', (e) => {
+      if (!e.target.matches('.home-goal-custom-form')) return;
+      e.preventDefault();
+      const amount = Number(e.target.querySelector('.home-goal-custom-coins')?.value);
+      if (!Number.isSafeInteger(amount) || amount < 1 || amount > 1000000) return toast('Enter 1–1,000,000 whole coins');
+      const goalId = getAppDailyGoal()?.id;
+      const result = donateToGoal(goalId, amount);
+      toast(result?.ok ? 'Custom donation sent · TEST MODE' : result?.error === 'insufficient' ? 'Not enough demo coins' : result?.error === 'signin' ? 'Sign in first' : 'Donation unavailable · TEST MODE');
+      redraw();
+    });
+    goalBox.addEventListener('click', (e) => {
+      const b = e.target.closest('.home-goal-donate');
+      if (!b) return;
+      const r = donateToGoal(b.dataset.goalId, Number(b.dataset.coins));
+      toast(r && r.ok ? `TEST MODE · ${b.dataset.coins} coins donated (no real payment)` : 'TEST MODE · donate unavailable');
+      redraw();
+    });
+  }
+
 }

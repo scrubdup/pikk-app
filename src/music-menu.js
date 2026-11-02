@@ -8,6 +8,11 @@ export const MUSIC_MENU_ITEMS = Object.freeze([
   { label: 'Beats', href: '#/music?view=beats', detail: 'Beat marketplace not yet available', icon: '◉' },
   { label: 'Playlists', href: '#/music?view=playlists', detail: 'Verified YouTube playlists', icon: '▤' },
   { label: 'Upload Music', href: '#/music?view=upload', detail: 'Creator uploads coming later', icon: '⇧' },
+  { label: 'Trending', href: '#/music?view=songs', detail: 'Most-played released songs', icon: '↗' },
+  { label: 'Music Vault', href: '#/vault', detail: 'Vault · preview', icon: '◈' },
+  { label: 'AI Artists', href: '#/ai-artists', detail: 'AI artist area · labelled AI', icon: '✦' },
+  { label: 'Open Mic', href: '#/openmic', detail: 'Open mic sessions · TEST MODE', icon: '🎤' },
+  { label: 'Artist Earnings', href: '#/earnings', detail: 'Creator earnings · TEST MODE', icon: '$' },
 ]);
 
 const MUSIC_ICON_KEYS = Object.freeze({

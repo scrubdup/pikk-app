@@ -1,3 +1,4 @@
+import { renderGiftBattleExplainer } from '../live-gift-battle.js';
 import {
   getState,
   addWalletCredit,
@@ -323,7 +324,8 @@ function renderPrefs(prefs) {
 
 export function renderGiftBattles() {
   const { user, live } = getState();
-  if (!user) return renderSignIn();
+  // t401u: explainer is the main view; no sign-in wall.
+  if (!user) return shellPage('Gift Battles', renderGiftBattleExplainer(), { lead: 'Runs inside Live & Group Rooms · voluntary support · TEST MODE' });
 
   // Finalize expired battles on render
   tickGiftBattle();
@@ -339,6 +341,7 @@ export function renderGiftBattles() {
   else battleBlock = renderChallengeForm(liveActive, prefs);
 
   const body = `
+    ${renderGiftBattleExplainer()}
     ${renderRules()}
     ${renderChampion(champ)}
     ${renderDailyWinnersBoard()}

@@ -7,12 +7,12 @@ const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const menu = readFileSync(new URL('../src/music-menu.js', import.meta.url), 'utf8');
 const music = readFileSync(new URL('../src/pages/music.js', import.meta.url), 'utf8');
 
-test('owner-approved Music menu has exactly five options on verified Music route', () => {
+test('owner-approved Music menu has full option list (owner: every Music feature) on verified Music route', () => {
   assert.deepEqual(MUSIC_MENU_ITEMS.map(({ label }) => label),
-    ['Songs', 'Albums', 'Beats', 'Playlists', 'Upload Music']);
+    ['Songs', 'Albums', 'Beats', 'Playlists', 'Upload Music', 'Trending', 'Music Vault', 'AI Artists', 'Open Mic', 'Artist Earnings']);
   assert.deepEqual(MUSIC_MENU_ITEMS.map(({ href }) => href),
     ['#/music?view=songs', '#/music?view=albums', '#/music?view=beats',
-      '#/music?view=playlists', '#/music?view=upload']);
+      '#/music?view=playlists', '#/music?view=upload', '#/music?view=songs', '#/vault', '#/ai-artists', '#/openmic', '#/earnings']);
   assert.ok(MUSIC_MENU_ITEMS.every(({ detail }) => detail.length > 0));
 });
 
@@ -35,13 +35,16 @@ test('Music menu is keyboard accessible and dismisses on route changes', () => {
   assert.match(menu, /if \(restoreFocus\) trigger\?\.focus\(\)/);
 });
 
-test('Music focus routes show actual songs, albums and playlists without inventing uploads', () => {
+test('Music focus routes show actual songs, albums and playlists with honest backend upload gating', () => {
   assert.match(music, /route\.query\?\.view/);
   assert.match(music, /release\.type === 'album'/);
   assert.match(music, /release\.type === 'single' \|\| release\.type === 'song'/);
   assert.match(music, /YOUTUBE_CHANNEL_PLAYLISTS\.map/);
   assert.match(music, /Not available yet · TEST MODE/);
   assert.match(music, /The producer beat marketplace and licensing checkout are still in development/);
-  assert.match(music, /Creator music uploads require secure storage/);
+  assert.match(music, /isMusicUploadApiConfigured\(\)/);
+  assert.match(music, /Upload private draft/);
+  assert.match(music, /media storage is not connected yet\. No file was uploaded/);
+  assert.match(music, /Drafts are not automatically published or monetized/);
   assert.match(music, /\$\{focusedViewCard\}/);
 });

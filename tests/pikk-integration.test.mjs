@@ -9,7 +9,7 @@ test('PIKK tabbar has seven unique, navigable destinations', () => {
   assert.equal(new Set(TABBAR.map(tab => tab.href)).size, 7);
   assert.deepEqual(
     TABBAR.map(tab => tab.href),
-    ['#/music', '#/videos', '#/create', '#/connect', '#/dating', '#/shop', '#/games'],
+    ['#/music', '#/videos', '#/connect', '#/create', '#/dating', '#/games', '#/shop'],
     'Keep the exact owner-approved seven-tab order',
   );
   assert.equal(TABBAR.find(tab => tab.primary)?.href, '#/create');

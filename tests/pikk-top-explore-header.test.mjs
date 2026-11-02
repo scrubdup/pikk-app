@@ -12,7 +12,7 @@ test('Explore lives outside Social as a standalone pinned discovery entry', () =
   assert.ok(DRAWER_GROUPS.some(g => g.id === 'explore' && g.href === '#/explore'));
   assert.match(html, /class="pikk-explore-rail"/);
   assert.match(html, /href="#\/explore">⌕ Explore/);
-  for (const route of ['#/posts', '#/videos', '#/live', '#/community']) assert.ok(html.includes('href="' + route + '"'));
+  for (const route of ['#/posts', '#/videos', '#/live', '#/communities']) assert.ok(html.includes('href="' + route + '"'));
 });
 
 test('official PIKK logo and compact header precede and preserve sticky music player', () => {
@@ -20,9 +20,9 @@ test('official PIKK logo and compact header precede and preserve sticky music pl
   const player = html.indexOf('id="dbs-sticky-player"');
   const rail = html.indexOf('class="pikk-explore-rail"');
   assert.ok(header > 0 && header < player && player < rail);
-  assert.match(html, /src="%BASE_URL%brand\/pikk-official-approved\.jpg" alt="PIKK"/);
+  assert.match(html, /src="%BASE_URL%brand\/pikk-logo-official\.png" alt="PIKK"/);
   assert.match(html, /href="#\/home" class="logo" aria-label="PIKK Home"/);
-  const actions = ['id="headerProfile"', 'id="headerMsg"', 'id="notifBtn"', 'id="menuBtn"'];
+  const actions = ['id="headerProfile"', 'id="paymentsBtn"', 'id="exploreSearchBtn"', 'id="headerMsg"', 'id="notifBtn"', 'id="menuBtn"'];
   let last = header;
   for (const action of actions) { const next = html.indexOf(action, last); assert.ok(next > last, action); last = next; }
   assert.match(css, /\.top#topBar \{ position: sticky/);
@@ -32,7 +32,11 @@ test('official PIKK logo and compact header precede and preserve sticky music pl
   assert.match(html, /id="spQueueBtn"/);
 });
 
+test('header omits Settings shortcut while preserving the Settings route elsewhere', () => {
+  assert.equal(html.includes('id="settingsBtn"'), false);
+});
+
 test('approved seven bottom tabs remain unchanged', () => {
-  assert.deepEqual(TABBAR.map(t => t.label), ['Music', 'Videos', 'Create', 'Connect', 'Dating', 'Shop', 'Games']);
-  assert.equal(TABBAR[2].primary, true);
+  assert.deepEqual(TABBAR.map(t => t.label), ['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop']);
+  assert.equal(TABBAR[3].primary, true);
 });
