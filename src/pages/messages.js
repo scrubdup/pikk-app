@@ -22,7 +22,7 @@ import { messagesApi, isMessagesApiConfigured } from '../api/messages-client.js'
 
 
 export { normalizePeerHandle, canUseServerSafety, runPeerSafetyAction } from '../safety-actions.js';
-import { runPeerSafetyAction } from '../safety-actions.js';
+import { runPeerSafetyAction, renderReportCategorySelect } from '../safety-actions.js';
 
 function refresh(hash) {
   navigate(hash || '#/messages');
@@ -252,8 +252,9 @@ function renderThread(thread, { teamPriorityHint = false } = {}) {
         </div>
         <div class="row wrap msg-privacy-btns" style="gap:6px">
           <button type="button" class="btn ghost" data-flag="mute">${thread.muted ? 'Unmute' : 'Mute'}</button>
-          <button type="button" class="btn ghost" data-flag="block">${thread.blocked ? 'Unblock' : 'Block'}</button>
-          <button type="button" class="btn ghost danger" data-flag="report">Report</button>
+          <button type="button" class="btn ghost pikk-safety-tap" data-flag="block">${thread.blocked ? 'Unblock' : 'Block'}</button>
+          ${isGroup ? '' : renderReportCategorySelect('data-report-category')}
+          <button type="button" class="btn ghost danger pikk-safety-tap" data-flag="report">Report</button>
         </div>
         ${!isGroup && !resolveThreadPeerHandle(thread) ? '<p class="muted msg-device-only-note" style="font-size:12px;margin:6px 0 0">Demo contact · Report and Block save on this device only — not sent to PIKK moderators.</p>' : ''}
       </div>
@@ -310,7 +311,7 @@ export function renderPersistentThread(detail, currentUserId='') {
     </div>`;
   }).join('');
   return `<section class="pikk-msg-flow-hero pikk-msg-flow-hero-thread"><span class="pikk-msg-flow-kicker">PIKK CONNECT · DIRECT MESSAGES</span><h2>${esc(peer)}</h2><p>Persistent private conversation stored on PIKK.</p><span class="chip">Backend message thread</span></section>
-    <div class="card msg-thread-head pikk-msg-flow-panel"><button type="button" class="btn ghost" data-remote-inbox>← Inbox</button><h3 style="margin:10px 0 0">${esc(peer)}</h3>${convo.peer?.handle ? `<div class="row wrap" style="margin-top:8px"><button type="button" class="btn ghost" data-remote-flag="block" data-peer-handle="${esc(convo.peer.handle)}">Block</button><button type="button" class="btn ghost danger" data-remote-flag="report" data-peer-handle="${esc(convo.peer.handle)}">Report</button></div>` : ''}</div>
+    <div class="card msg-thread-head pikk-msg-flow-panel"><button type="button" class="btn ghost" data-remote-inbox>← Inbox</button><h3 style="margin:10px 0 0">${esc(peer)}</h3>${convo.peer?.handle ? `<div class="row wrap" style="margin-top:8px"><button type="button" class="btn ghost pikk-safety-tap" data-remote-flag="block" data-peer-handle="${esc(convo.peer.handle)}">Block</button>${renderReportCategorySelect('data-report-category')}<button type="button" class="btn ghost danger pikk-safety-tap" data-remote-flag="report" data-peer-handle="${esc(convo.peer.handle)}">Report</button></div>` : ''}</div>
     <div class="card msg-thread-card pikk-msg-flow-panel">
       <div class="msg-thread" id="remoteMsgThread">${bubbles||'<p class="muted">No messages yet — say hi.</p>'}</div>
       <div class="msg-composer"><input id="remoteMsgInput" placeholder="Message…" maxlength="4000" /><button type="button" class="btn primary" id="remoteMsgSend">Send</button></div>
@@ -369,7 +370,7 @@ async function bindPersistentMessages(root) {
       await messagesApi.markRead(id).catch(()=>{});
       host.querySelector('[data-remote-inbox]')?.addEventListener('click',()=>refresh('#/messages'));
       const peerHandle=data?.conversation?.peer?.handle||'';
-      host.querySelectorAll('[data-remote-flag]').forEach(btn=>btn.addEventListener('click',()=>runPeerSafetyAction(btn.dataset.remoteFlag==='block'?'block':'report',peerHandle)));
+      host.querySelectorAll('[data-remote-flag]').forEach(btn=>btn.addEventListener('click',()=>runPeerSafetyAction(btn.dataset.remoteFlag==='block'?'block':'report',peerHandle,{category:host.querySelector('[data-report-category]')?.value||''})));
       const send=async()=>{
         const input=host.querySelector('#remoteMsgInput');
         const message=input?.value?.trim();
@@ -441,8 +442,10 @@ export function bindLocalThreadFlags(root, thread, { go = refresh } = {}) {
         if (next.blocked) runPeerSafetyAction('block', resolveThreadPeerHandle(thread));
         else toast('Unblocked on this device');
       } else if (flag === 'report') {
+        const category = root.querySelector('[data-report-category]')?.value || '';
+        if (!category) { runPeerSafetyAction('report', '', { category }); return; }
         setThreadFlags(thread.id, { report: true });
-        runPeerSafetyAction('report', resolveThreadPeerHandle(thread));
+        runPeerSafetyAction('report', resolveThreadPeerHandle(thread), { category });
       }
       go('#/messages?t=' + encodeURIComponent(thread.id));
     });

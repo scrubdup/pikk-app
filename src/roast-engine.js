@@ -2,26 +2,22 @@
 // no server, live video, shared votes, or real payments happen here.
 // Roast Arena is separate from PIKK Gift Battles; nothing here touches battle code.
 
-/** OWNER-APPROVED (2026-11-02): round length and round count for 1v1 and Tag-Team. */
+/** OWNER-APPROVED (2026-11-02): round length, round count, vote window and rematch-agree window for 1v1 and Tag-Team. Rematch rounds reuse the same round length. */
 export const ROAST_APPROVED_TIMINGS = Object.freeze({
   roundSeconds: 60,
   baseRounds: 3,
+  // OWNER-APPROVED (2026-11-02, 2:03 PM CT): "10 secs to vote players get 5 secs to rematch".
+  voteSeconds: 10,
+  rematchSeconds: 5,
 });
-/**
- * OWNER VERIFICATION NEEDED: the owner withdrew approval of the 10s vote window (2026-11-02,
- * "Not 10 vote"). Kept as the prototype test value until the owner rules.
- */
-export const ROAST_VOTE_TEST_TIMING_OWNER_VERIFICATION_NEEDED = Object.freeze({ voteSeconds: 10 });
-/** OWNER VERIFICATION NEEDED: rematch decision window was not ruled on; prototype test value. */
-export const ROAST_REMATCH_TEST_TIMING_OWNER_VERIFICATION_NEEDED = Object.freeze({ rematchSeconds: 10 });
 /**
  * OWNER-APPROVED rules (2026-11-02): a tie after the scheduled rounds gets ONE tiebreaker round,
  * then ends as a tie; contestants cannot vote; a rematch needs every contestant to agree.
  */
 export const ROAST_APPROVED_RULES = Object.freeze({ tiebreakerRounds: 1, contestantsMayVote: false, rematchRequiresAllContestants: true });
 export const ROUND_SECONDS = ROAST_APPROVED_TIMINGS.roundSeconds;
-export const VOTE_SECONDS = ROAST_VOTE_TEST_TIMING_OWNER_VERIFICATION_NEEDED.voteSeconds;
-export const REMATCH_SECONDS = ROAST_REMATCH_TEST_TIMING_OWNER_VERIFICATION_NEEDED.rematchSeconds;
+export const VOTE_SECONDS = ROAST_APPROVED_TIMINGS.voteSeconds;
+export const REMATCH_SECONDS = ROAST_APPROVED_TIMINGS.rematchSeconds;
 export const BASE_ROUNDS = ROAST_APPROVED_TIMINGS.baseRounds;
 
 let seq = 0;
@@ -124,12 +120,12 @@ export function castRoastVote(match, contestant, viewerId) {
   return { ...match, votes, votersThisRound: [...match.votersThisRound, viewerId] };
 }
 
-/** TEST MODE gift tally only. Kept separate from votes; never decides the winner. */
 /** TEST MODE turnout for the current round: how many of the eligible viewers in the room voted. */
 export function roastVoteTurnout(match) {
   return { voted: match.votersThisRound.length, eligible: match.eligibleViewerIds.length };
 }
 
+/** TEST MODE gift tally only. Kept separate from votes; never decides the winner. */
 export function sendRoastTestGift(match, contestant, amount = 1) {
   if (!['round', 'vote'].includes(match.phase) || ![0, 1].includes(contestant) || !(amount > 0)) return match;
   const gifts = [...match.gifts]; gifts[contestant] += amount;
@@ -144,7 +140,9 @@ export function castRematchVote(match, yes, contestantId) {
   if (match.phase !== 'rematch' || !match.contestants.includes(contestantId) || contestantId in match.rematchAgreement) return match;
   const rematchAgreement = { ...match.rematchAgreement, [contestantId]: !!yes };
   if (!yes) return { ...match, rematchAgreement, rematch: 'declined', phase: 'finished', seconds: 0 };
-  const all = match.contestants.every((c) => rematchAgreement[c] === true);
+  // Reads the approved rule instead of hardcoding it. When false, one contestant's yes is enough.
+  const requireAll = match.rules?.rematchRequiresAllContestants !== false;
+  const all = requireAll ? match.contestants.every((c) => rematchAgreement[c] === true) : true;
   return all ? { ...match, rematchAgreement, rematch: 'agreed', phase: 'finished', seconds: 0 } : { ...match, rematchAgreement };
 }
 
