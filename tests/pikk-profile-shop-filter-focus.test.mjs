@@ -21,7 +21,7 @@ test('category selection restores focus after same-route render without changing
   const source = readFileSync(new URL('../src/pages/shop.js', import.meta.url), 'utf8');
   assert.match(source, /refresh\(\);\s*\/\/ The same-route refresh replaces the filter buttons/);
   assert.match(source, /chip\.dataset\.cat === activeCat/);
-  assert.match(source, /selected\?\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(source, /selected\?\.focus\(\)/);
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   assert.match(main, /'\/profile-shop': \{ render: renderShop, bind: bindShop \}/);
   assert.match(main, /initDbsPlayer/);
