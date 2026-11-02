@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { LIVE_DISCOVERY_GROUPS, renderLiveDiscoveryDirectory, matchesLiveRoomSearch, mountLiveDirectorySearch } from '../src/live-discovery.js';
+import { LIVE_DISCOVERY_GROUPS, renderLiveDiscoveryDirectory, matchesLiveRoomSearch, mountLiveDirectorySearch, liveDiscoveryRefreshHref } from '../src/live-discovery.js';
 
 const live = readFileSync(new URL('../src/pages/live.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
@@ -43,12 +43,24 @@ test('directory renders accessible collapsible groups with real channel filters'
   assert.equal((html.match(/class="live-cat-card pikk-live-room-card"/g) || []).length, 78);
   assert.equal((html.match(/class="pikk-live-directory-summary"/g) || []).length, 8);
   assert.match(html, /id="pikk-live-group-coed" open/);
-  assert.match(html, /15 rooms/);
+  assert.match(html, /id="pikk-live-group-general" open/, 'IRL and Gaming section starts expanded');
+  assert.ok(html.indexOf('id="pikk-live-group-general"') < html.indexOf('id="pikk-live-group-women"'), 'General Live is the first folder');
+  assert.match(html, /17 topics/, 'all 17 General Live topics retained');
+  assert.doesNotMatch(html, /class="pikk-live-directory-count">\d+ rooms/, 'discovery must not imply hosted rooms');
+  assert.match(html, /15 topics/);
   assert.ok(html.includes('<span class="pikk-live-directory-icon" aria-hidden="true">🫱🏻‍🫲🏿</span>'), 'Men\'s Rooms shows mixed-tone handshake in rendered directory');
-  assert.match(html, /10 rooms/);
+  assert.match(html, /10 topics/);
   assert.match(html, /category=Why%20Are%20You%20Single%3F/);
   assert.match(html, /category=Single%20%26%20Ready%20to%20Mingle/);
-  assert.match(html, /href="#\/roast-arena"/);
+  assert.ok(html.includes('href="#/roast-arena"'), 'roast preview route is preserved');
+  assert.ok(html.includes('aria-label="Comedy &amp; Roast Battles: preview Roast Arena (coming soon)"'),
+    'roast link announces preview instead of a live channel');
+  assert.ok(html.includes('<span class="pikk-live-room-action">Preview Roast Arena '),
+    'roast CTA matches its preview destination');
+  assert.equal((html.match(/<span class="pikk-live-room-action">Browse channels /g) || []).length, 77,
+    'the other 77 topics continue browsing channel filters');
+  assert.ok(html.includes('aria-label="Gaming: browse channels"'),
+    'regular topics retain their existing accessible channel action');
   assert.doesNotMatch(html, /data-fake-viewers|1000 watching/);
 });
 
@@ -159,4 +171,23 @@ test('Escape clears a filtered Live room search and restores the previous folder
     preventDefault() { prevented = true; },
   });
   assert.equal(prevented, false, 'empty search does not hijack Escape');
+});
+
+test('Following creator chips navigate to public profiles instead of the viewer profile', () => {
+  assert.ok(live.includes('href="#/profile/${encodeURIComponent(f.id)}"'),
+    'each followed creator links to their own public profile route');
+  assert.ok(!live.includes('href="#/profile">${esc('),
+    'following chips must not silently redirect to the viewer profile');
+});
+
+test('Live refresh preserves a selected channel filter without leaking it to other tabs', () => {
+  assert.equal(liveDiscoveryRefreshHref('channels'), '#/live');
+  assert.equal(liveDiscoveryRefreshHref('channels', 'IRL'), '#/live?tab=channels&category=IRL');
+  assert.equal(liveDiscoveryRefreshHref('channels', '  Gaming  '), '#/live?tab=channels&category=Gaming');
+  assert.equal(liveDiscoveryRefreshHref('channels', 'Comedy & Entertainment'), '#/live?tab=channels&category=Comedy%20%26%20Entertainment');
+  assert.equal(liveDiscoveryRefreshHref('following', 'IRL'), '#/live?tab=following');
+  assert.equal(liveDiscoveryRefreshHref('categories', 'IRL'), '#/live?tab=categories');
+  assert.equal(liveDiscoveryRefreshHref('rooms', 'IRL'), '#/live?tab=rooms');
+  assert.match(live, /navigate\(liveDiscoveryRefreshHref\(tab, category\)\)/,
+    'Live soft refresh uses the safe, category-preserving destination');
 });

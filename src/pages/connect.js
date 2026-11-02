@@ -122,7 +122,7 @@ export function renderConnect() {
         <a href="#/dating"><span aria-hidden="true">♡</span> Dating</a>
       </nav>
       <section class="pikk-connect-feature-grid" aria-label="Discover ways to connect">
-        <a class="pikk-connect-feature pikk-connect-feature-community" href="#/community">
+        <a class="pikk-connect-feature pikk-connect-feature-community" href="#/communities">
           <span class="pikk-connect-feature-icon" aria-hidden="true">♧</span>
           <span class="pikk-connect-feature-copy"><strong>Communities</strong><small>Find groups and discussions</small></span>
           <span class="pikk-connect-feature-arrow" aria-hidden="true">↗</span>

@@ -47,6 +47,61 @@ try {
       assert.match(await page.locator('#explorePanel').innerText(), /Trending Across PIKK/);
       await capture('trending');
 
+      // City/state is an actual consent-gated filter: demo data without opt-in
+      // location tags must not fabricate nearby profiles, viewers or broadcasts.
+      await page.locator('#exploreCity').fill('Houston');
+      await page.locator('#exploreState').fill('TX');
+      await page.locator('#exploreGo').click();
+      assert.match(await page.locator('#exploreResultsWrap').innerText(), /No results in Houston, TX/);
+      assert.equal(await page.locator('#exploreSearchStatus').innerText(), '0 results in Houston, TX.');
+      await capture('city-state-no-optin');
+      await page.locator('#exploreQ').fill('music');
+      await page.locator('#exploreGo').click();
+      assert.match(await page.locator('#exploreResultsWrap').innerText(), /No results for “music” in Houston, TX/);
+      assert.equal(await page.locator('#exploreSearchStatus').innerText(), '0 results for “music” in Houston, TX.');
+      await capture('keyword-city-state-no-optin');
+      // Escape from a location input clears keyword + both location filters,
+      // cancels any pending search and leaves focus in the same input.
+      await page.locator('#exploreCity').focus();
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator('#exploreQ').inputValue(), '', name + ' keyword reset from City');
+      assert.equal(await page.locator('#exploreCity').inputValue(), '', name + ' City Escape clears city');
+      assert.equal(await page.locator('#exploreState').inputValue(), '', name + ' City Escape clears state');
+      assert.equal(await page.locator('#exploreCity').evaluate(el => el === document.activeElement), true,
+        name + ' City Escape retains focus');
+      assert.match(await page.locator('#exploreResultsWrap').innerText(), /Search creators, fans, songs/);
+      assert.equal(await page.locator('#exploreSearchStatus').innerText(), 'Ready to search PIKK.');
+      await capture('city-state-escape-cleared');
+
+      // Escape from State works even with only a state filter.
+      await page.locator('#exploreState').fill('Texas');
+      await page.locator('#exploreState').press('Escape');
+      assert.equal(await page.locator('#exploreState').inputValue(), '', name + ' State Escape clears filter');
+      assert.equal(await page.locator('#exploreState').evaluate(el => el === document.activeElement), true,
+        name + ' State Escape retains focus');
+
+      // Escape from an empty keyword field must still clear location-only search.
+      await page.locator('#exploreCity').fill('Houston');
+      await page.locator('#exploreQ').focus();
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator('#exploreCity').inputValue(), '', name + ' Search Escape clears location-only filter');
+      assert.equal(await page.locator('#exploreQ').evaluate(el => el === document.activeElement), true,
+        name + ' Search Escape retains focus');
+
+      await page.locator('#exploreCity').fill('Houston');
+      await page.locator('#exploreState').fill('TX');
+      await page.locator('#exploreGo').click();
+      await page.locator('[data-explore-tab="discover"]').click();
+      assert.equal(await page.locator('#exploreCity').inputValue(), 'Houston');
+      assert.equal(await page.locator('#exploreState').inputValue(), 'TX');
+      assert.match(await page.locator('#exploreLiveInsert').innerText(), /No matching public location tags/);
+      assert.equal(await page.locator('#exploreSearchStatus').innerText(), '0 results in Houston, TX.');
+      await capture('city-state-retained');
+      await page.locator('#exploreClear').click();
+      assert.equal(await page.locator('#exploreCity').inputValue(), '');
+      assert.equal(await page.locator('#exploreState').inputValue(), '');
+      await page.locator('[data-explore-tab="trending"]').click();
+
       // Keyboard-only navigation must switch sections and restore focus after rerender.
       assert.equal(await page.locator('[role="tablist"][aria-label="Explore sections"] [role="tab"]').count(), 3);
       await page.locator('[data-explore-tab="trending"]').focus();
@@ -70,6 +125,7 @@ try {
       const artistHit = page.locator('#exploreResultsWrap .explore-hit[href="#/profile/dbs"]');
       await artistHit.waitFor({ state: 'visible', timeout: 10000 });
       assert.match(await artistHit.innerText(), /@DatBoiSkeet/);
+      assert.match(await page.locator('#exploreSearchStatus').innerText(), /results? for “DatBoiSkeet”\./);
       await capture('profile-result');
       await artistHit.click();
       await page.waitForURL(/#\/profile\/dbs$/, { timeout: 10000 });
@@ -90,9 +146,9 @@ try {
 
       // Following uses the same public route after a local demo sign-in.
       await page.goto(base + '#/profile', { waitUntil: 'domcontentloaded' });
-      await page.locator('#signinName').fill('Explore QA');
-      await page.locator('#signinBtn').click();
-      await page.locator('#signoutBtn').waitFor({ state: 'visible' });
+      // Demo sign-in was removed (7859454); seed a QA-only local profile instead (no backend session).
+      await page.evaluate((u) => localStorage.setItem('dbs_v1', JSON.stringify({ user: { ...u, createdAt: Date.now() } })), { id: 'u_exploreqa', username: 'ExploreQA', bio: 'Explore visual QA', avatar: '', followers: [], following: ['dbs'], memberships: { skeetPlus: false, backstage: false, innerCircle: false }, purchasedTracks: [] });
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await page.goto(base + '#/explore', { waitUntil: 'domcontentloaded' });
       await page.locator('[data-explore-tab="following"]').click();
       const followedArtist = page.locator('#explorePanel .explore-hit[href="#/profile/dbs"]');

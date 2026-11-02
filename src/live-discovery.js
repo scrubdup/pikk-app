@@ -66,30 +66,50 @@ export const LIVE_DISCOVERY_GROUPS = Object.freeze([
   },
 ]);
 
+/**
+ * Preserve a selected channel category after demo actions re-render Live.
+ * Category links are public, route-local filters; this does not create a room.
+ */
+export function liveDiscoveryRefreshHref(tab, category = '') {
+  if (tab !== 'channels') return '#/live?tab=' + encodeURIComponent(tab);
+  const selected = String(category || '').trim();
+  return selected
+    ? '#/live?tab=channels&category=' + encodeURIComponent(selected)
+    : '#/live';
+}
+
 export function renderLiveDiscoveryDirectory(categories, escapeHtml) {
   const byName = new Map(categories.map(entry => [entry[0], entry]));
   const assigned = new Set();
   const card = ([name, description, emoji]) => {
-    const href = name === 'Comedy & Roast Battles'
+    const isRoastPreview = name === 'Comedy & Roast Battles';
+    const href = isRoastPreview
       ? '#/roast-arena'
       : '#/live?tab=channels&category=' + encodeURIComponent(name);
+    // Roast Arena is a Coming Soon preview, not a live channel filter.
+    const action = isRoastPreview ? 'Preview Roast Arena' : 'Browse channels';
+    const destination = isRoastPreview ? 'preview Roast Arena (coming soon)' : 'browse channels';
     return '<a class="live-cat-card pikk-live-room-card" href="' + href +
-      '" aria-label="' + escapeHtml(name) + ': browse channels">' +
+      '" aria-label="' + escapeHtml(name) + ': ' + destination + '">' +
       '<span class="pikk-live-room-emoji" aria-hidden="true">' + escapeHtml(emoji) + '</span>' +
       '<strong>' + escapeHtml(name) + '</strong>' +
       '<p class="muted">' + escapeHtml(description) + '</p>' +
-      '<span class="pikk-live-room-action">Browse channels <span aria-hidden="true">›</span></span></a>';
+      '<span class="pikk-live-room-action">' + action + ' <span aria-hidden="true">›</span></span></a>';
   };
-  const groups = LIVE_DISCOVERY_GROUPS.map(group => {
+  const groups = [...LIVE_DISCOVERY_GROUPS]
+    // General livestream choices (IRL, Gaming, Music, etc.) should be visible
+    // before community room folders, without changing the approved topic roster.
+    .sort((a, b) => Number(b.id === 'general') - Number(a.id === 'general'))
+    .map(group => {
     const entries = group.names.map(name => byName.get(name)).filter(Boolean);
     entries.forEach(entry => assigned.add(entry[0]));
     return '<details class="pikk-live-directory-group" id="pikk-live-group-' + group.id +
-      '"' + (group.id === 'coed' ? ' open' : '') + '>' +
+      '"' + (group.id === 'coed' || group.id === 'general' ? ' open' : '') + '>' +
       '<summary class="pikk-live-directory-summary">' +
       '<span class="pikk-live-directory-icon" aria-hidden="true">' + group.icon + '</span>' +
       '<span class="pikk-live-directory-label"><strong>' + escapeHtml(group.title) +
       '</strong><small>' + escapeHtml(group.description) + '</small></span>' +
-      '<span class="pikk-live-directory-count">' + entries.length + ' rooms</span>' +
+      '<span class="pikk-live-directory-count">' + entries.length + ' topics</span>' +
       '<span class="pikk-live-directory-chevron" aria-hidden="true">⌄</span>' +
       '</summary><div class="live-cat-cards pikk-live-directory-cards">' +
       entries.map(card).join('') + '</div></details>';
@@ -100,7 +120,7 @@ export function renderLiveDiscoveryDirectory(categories, escapeHtml) {
     groups.push('<details class="pikk-live-directory-group" open>' +
       '<summary class="pikk-live-directory-summary"><span class="pikk-live-directory-icon" aria-hidden="true">✨</span>' +
       '<span class="pikk-live-directory-label"><strong>More Live</strong><small>Additional topics</small></span>' +
-      '<span class="pikk-live-directory-count">' + extra.length + ' rooms</span>' +
+      '<span class="pikk-live-directory-count">' + extra.length + ' topics</span>' +
       '<span class="pikk-live-directory-chevron" aria-hidden="true">⌄</span></summary>' +
       '<div class="live-cat-cards pikk-live-directory-cards">' + extra.map(card).join('') + '</div></details>');
   }
@@ -148,7 +168,7 @@ export function mountLiveDirectorySearch(root) {
       const count = group.querySelector('.pikk-live-directory-count');
       if (count) {
         const total = group.querySelectorAll('.pikk-live-room-card').length;
-        count.textContent = query ? groupMatches + ' of ' + total + ' topics' : total + ' rooms';
+        count.textContent = query ? groupMatches + ' of ' + total + ' topics' : total + ' topics';
       }
       if (query && groupMatches) group.open = true;
       visible += groupMatches;

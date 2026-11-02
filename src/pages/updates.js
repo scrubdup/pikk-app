@@ -8,11 +8,11 @@ import { freshPikkUrl } from '../refresh-url.js';
 export const PIKK_BUILD_SHA = import.meta.env.VITE_BUILD_SHA || '';
 // Curated, merged UI releases only. Keep this list factual; planned backend features are not shipped.
 export const RECENT_RELEASES = Object.freeze([
-  { title: 'Viral Live: Correct Category Destinations', detail: 'Viral Clips opens Clips, Songs opens Music, and Photos opens Home. These are links to existing PIKK sections; the 24/7 channel is still a preview, not broadcasting.', route: '#/viral-live', pr: 197, kind: 'VIRAL LIVE · PREVIEW' },
-  { title: 'Viral Live: Mobile Category Visibility', detail: 'On narrow phones, keyboard-selected Videos, Viral Clips, Songs and Photos tabs scroll into view without changing the existing swipeable design. Continuous broadcasting is not live.', route: '#/viral-live', pr: 196, kind: 'VIRAL LIVE · PREVIEW' },
-  { title: 'Viral Live: Source Queue Keyboard Browsing', detail: 'Use arrow keys or Home/End to select among three original music-video sources. The preview updates its artwork and YouTube source link; this is not a livestream.', route: '#/viral-live', pr: 195, kind: 'VIRAL LIVE · PREVIEW' },
-  { title: 'Explore: Escape Clears Search', detail: 'Press Escape in Explore search to clear the query and results while keeping focus in the search field. Existing discovery and profiles remain available.', route: '#/explore', pr: 194, kind: 'EXPLORE · NAVIGATION' },
-  { title: 'Explore: Search Survives Tab Changes', detail: 'Keep an Explore search when switching between Trending, Following and Discover; Clear resets the query and results. This improves browsing, not backend search coverage.', route: '#/explore', pr: 193, kind: 'EXPLORE · NAVIGATION' },
+  { title: 'Support: Find Answers Faster', detail: 'Search help guides with live match counts, clear your search by button or Escape, and browse consistent guide links. Tickets remain saved only on this device; AI agents are not connected.', route: '#/support', pr: 276, kind: 'SUPPORT · HELP CENTER' },
+  { title: 'Support: Accurate Saved-Draft Feedback', detail: 'Saving an identical local ticket draft now says it was already saved rather than implying a new support request was submitted. No ticket is sent to staff.', route: '#/support', pr: 274, kind: 'SUPPORT · LOCAL DRAFTS' },
+  { title: 'Support: No Duplicate Drafts', detail: 'Repeated saves of the same support issue no longer create duplicate browser-local drafts. Distinct issues can still be saved separately.', route: '#/support', pr: 272, kind: 'SUPPORT · LOCAL DRAFTS' },
+  { title: 'Communities: Accessible Reply Threads', detail: 'After posting a local reply, the conversation stays expanded and keyboard focus returns to the correct thread control. Public community hosting is not connected.', route: '#/communities', pr: 271, kind: 'COMMUNITIES · ACCESSIBILITY' },
+  { title: 'Profile: Reliable Member Links', detail: 'Follower, following and public-profile links now safely handle usernames and profile IDs containing reserved characters. Account data remains browser-local.', route: '#/profile', pr: 270, kind: 'PROFILE · NAVIGATION' },
 ]);
 
 export function renderUpdates() {
@@ -21,7 +21,7 @@ export function renderUpdates() {
     <article class="pikk-update-card">
       <span class="pikk-update-number" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>
       <div class="pikk-update-card-copy">
-        <span class="pikk-update-kind">${esc(release.kind)}</span>
+        <span class="pikk-update-kind">${esc(release.kind)}</span>${index === 0 ? '<span class="pikk-update-latest">Latest release</span>' : ''}
         <h3>${esc(release.title)}</h3>
         <p>${esc(release.detail)}</p>
         <div class="pikk-update-links">
@@ -36,7 +36,7 @@ export function renderUpdates() {
       <div>
         <p class="kicker">PIKK · WHAT'S NEW</p>
         <h2>See what changed. <span>Know what loaded.</span></h2>
-        <p>Five recent user-visible improvements are below. Open each updated section and see exactly what shipped. Backend services marked TEST MODE are not production-ready.</p>
+        <p>Five recent, verified app improvements are below, newest first. Open each updated section to see what shipped. Local demos are not live backend services.</p>
         <div class="pikk-updates-build">
           <span>Version loaded on this device</span>
           <strong id="pikkLoadedBuild" data-build="${esc(build)}">${esc(build)}</strong>

@@ -6,10 +6,9 @@ export const AUTH_STATES = Object.freeze({
 });
 
 export function resolveAuthState({ demoUser = null, session = null } = {}) {
-  // A user object in localStorage is never proof of authentication.
-  if (session?.verifiedByServer === true && typeof session.userId === 'string' && session.userId.length > 0) {
-    return AUTH_STATES.AUTHENTICATED;
-  }
+  // Client-supplied session objects (even with verifiedByServer: true) are forgeable.
+  // Authentication must be established through trusted server-side enforcement.
+  // Until a backend exists, the frontend may only identify guest/demo states.
   return demoUser ? AUTH_STATES.DEMO : AUTH_STATES.GUEST;
 }
 
@@ -17,17 +16,21 @@ export function canAccessProtectedAction(authState) {
   return authState === AUTH_STATES.AUTHENTICATED;
 }
 
-export function authReadiness() {
+export function authReadiness({ apiConfigured = false } = {}) {
   return {
-    productionAuthAvailable: false,
-    signupEnabled: false,
+    backendImplemented: true,
+    productionAuthAvailable: !!apiConfigured,
+    signupEnabled: !!apiConfigured,
+    loginEnabled: !!apiConfigured,
+    logoutEnabled: !!apiConfigured,
+    serverSessionEnabled: !!apiConfigured,
+    emailVerificationImplemented: true,
     passwordResetEnabled: false,
-    serverSessionEnabled: false,
     requiredBeforeLaunch: [
-      'Backend identity provider with verified email',
-      'Server-validated sessions and authorization',
-      'Secure logout and account recovery',
-      'Abuse prevention and rate limiting',
+      'Configure the public Worker API endpoint in the frontend',
+      'Verify signup/login/logout/session end to end in production',
+      'Configure email delivery for verification links',
+      'Add secure account recovery/password reset',
       'Account deletion and legacy demo-data migration',
     ],
   };

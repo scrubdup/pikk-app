@@ -22,7 +22,7 @@ test('official PIKK logo and compact header precede and preserve sticky music pl
   assert.ok(header > 0 && header < player && player < rail);
   assert.match(html, /src="%BASE_URL%brand\/pikk-logo-official\.png" alt="PIKK"/);
   assert.match(html, /href="#\/home" class="logo" aria-label="PIKK Home"/);
-  const actions = ['id="headerProfile"', 'id="headerMsg"', 'id="notifBtn"', 'id="menuBtn"'];
+  const actions = ['id="headerProfile"', 'id="paymentsBtn"', 'id="exploreSearchBtn"', 'id="headerMsg"', 'id="notifBtn"', 'id="menuBtn"'];
   let last = header;
   for (const action of actions) { const next = html.indexOf(action, last); assert.ok(next > last, action); last = next; }
   assert.match(css, /\.top#topBar \{ position: sticky/);
@@ -30,6 +30,10 @@ test('official PIKK logo and compact header precede and preserve sticky music pl
   assert.match(css, /\.pikk-explore-rail \{/);
   assert.match(html, /id="spPlay"/);
   assert.match(html, /id="spQueueBtn"/);
+});
+
+test('header omits Settings gear (owner t219u); Settings stays in navigation', () => {
+  assert.equal(html.includes('id="settingsBtn"'), false);
 });
 
 test('approved seven bottom tabs remain unchanged', () => {

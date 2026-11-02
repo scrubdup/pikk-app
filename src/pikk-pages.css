@@ -175,3 +175,5 @@ html.pikk-reduce-motion *{animation:none!important;transition:none!important}
 .pikk-gb-wchip{all:unset;cursor:pointer;font-size:9.5px;line-height:1.2;padding:2px 4px;border-radius:8px;color:#fff;background:#07080c;border:1px solid var(--pikk-blue);box-shadow:inset 0 -1.5px 0 rgba(255,49,55,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pikk-gb-wchip small{color:#c0c6cf}
 .pikk-gb-list summary{font-size:11px;cursor:pointer;color:#c9ccd3;margin-top:3px}
+/* t208u example-data tag next to seeded viewer counts */
+.pikk-example-tag{display:inline-block;margin-left:4px;padding:0 6px;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:16px;border-radius:999px;color:#fff;background:#07080c;border:1px solid var(--pikk-blue);box-shadow:inset 0 -1.5px 0 rgba(255,49,55,.6)}

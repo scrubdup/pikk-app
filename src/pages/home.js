@@ -37,6 +37,8 @@ const STAGE_CYCLE_MS = 8000;
 const STAGE_PREF_KEY = 'dbs_home_stage_v2';
 const STAGE_PREF_LEGACY_KEYS = ['dbs_home_stage'];
 
+/** t208u: seeded viewer counts are example data — always tagged. */
+export const EXAMPLE_TAG = '<span class="chip pikk-example-tag" title="Example data · not real viewers">Example</span>';
 function fmtViewers(n) {
   const v = Number(n) || 0;
   if (v >= 1000) return `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k`;
@@ -125,7 +127,7 @@ function liveCard(l, { rising = false } = {}) {
     <a class="home-live-card" href="#/live">
       <div class="live-hoodie" aria-hidden="false">
         <span class="live-hoodie-pill">LIVE</span>
-        <span class="live-hoodie-viewers" title="${esc(viewersLabel)} watching">${esc(viewersLabel)}</span>
+        <span class="live-hoodie-viewers" title="${esc(viewersLabel)} watching · example">${esc(viewersLabel)}</span>${EXAMPLE_TAG}
       </div>
       <div class="home-live-top">
         <span class="home-live-dot" aria-hidden="true"></span>
@@ -134,7 +136,7 @@ function liveCard(l, { rising = false } = {}) {
       </div>
       <div class="home-live-title">${esc(l.title || 'Live now')}</div>
       <div class="home-live-stats muted">
-        ${esc(viewersLabel)} watching · ${esc(String(l.giftsTotal || 0))} gifts
+        ${esc(viewersLabel)} watching (example) · ${esc(String(l.giftsTotal || 0))} gifts
         ${extra}
       </div>
       <div class="home-live-score muted">Score ${esc(String(l.score || 0))} · TEST MODE seed</div>
@@ -177,14 +179,14 @@ function activityLiveRow(l) {
   return `
     <li class="la-row la-live">
       <a class="la-main" href="#/live">
-        <span class="la-hoodie" aria-label="Live · ${esc(viewersLabel)} watching">
+        <span class="la-hoodie" aria-label="Live · ${esc(viewersLabel)} watching (example data)">
           <span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span>
-          <span class="live-hoodie-viewers">${esc(viewersLabel)}</span>
+          <span class="live-hoodie-viewers">${esc(viewersLabel)}</span>${EXAMPLE_TAG}
         </span>
         <span class="la-body">
           <strong>@${esc(l.hostName)}</strong>
           <span class="la-preview">${esc(l.title || 'Live now')}</span>
-          <span class="la-stats muted">${esc(viewersLabel)} watching · ${esc(String(l.giftsTotal || 0))} gifts · score ${esc(String(l.score || 0))}</span>
+          <span class="la-stats muted">${esc(viewersLabel)} watching (example) · ${esc(String(l.giftsTotal || 0))} gifts · score ${esc(String(l.score || 0))}</span>
         </span>
       </a>
       <span class="chip">${esc(tag)}</span>
@@ -392,7 +394,7 @@ export function renderHome() {
   const liveNow = getState().live;
   const liveSessionRow =
     liveNow && !liveNow.endedAt
-      ? `<li class="la-row la-session"><a class="la-main" href="#/live"><span class="la-hoodie" aria-label="Live now"><span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span><span class="live-hoodie-viewers">${esc(fmtViewers(liveNow.viewers || 0))}</span></span><span class="la-body"><strong>@${esc(liveNow.hostName)}</strong><span class="la-preview">${esc(liveNow.title || 'Live now')}</span><span class="la-stats muted">${esc(String(liveNow.viewers || 0))} watching · your session</span></span></a><span class="chip">Live</span></li>`
+      ? `<li class="la-row la-session"><a class="la-main" href="#/live"><span class="la-hoodie" aria-label="Live now"><span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span><span class="live-hoodie-viewers">Demo · no real viewers</span></span><span class="la-body"><strong>@${esc(liveNow.hostName)}</strong><span class="la-preview">${esc(liveNow.title || 'Live now')}</span><span class="la-stats muted">${esc(String(liveNow.viewers || 0))} watching · your session</span></span></a><span class="chip">Live</span></li>`
       : '';
 
   /* Live activity · community-first high-engagement mix + most played song */

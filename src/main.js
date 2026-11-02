@@ -38,7 +38,7 @@ import {
   notifyLiveOpen,
   notifyLiveClosed,
 } from './player.js';
-import { getState, ensureDemoPosts, markSplash, shouldShowSplash, getUnreadMessageCount, ensureDemoUnreadMessages } from './store.js';
+import { getState, ensureDemoPosts, markSplash, shouldShowSplash, getUnreadMessageCount, ensureDemoUnreadMessages, syncRemoteAuthUser, clearAuthenticatedUser, setServerRoles } from './store.js';
 import { startRouter, onRoute, getRoute } from './router.js';
 import { ICONS, esc, shellPage, toast } from './ui.js';
 import { asset, rewriteAssetUrls } from './asset.js';
@@ -46,10 +46,13 @@ import { markActiveTab } from './tabbar-state.js';
 import { updateRouteIdentity } from './page-announcement.js';
 import { applyDrawerState } from './drawer-state.js';
 import { toggleMusicMenu, closeMusicMenu } from './music-menu.js';
+import { authApi, isPikkApiConfigured } from './api/auth-client.js';
+import { messagesApi, isMessagesApiConfigured } from './api/messages-client.js';
 
 import { renderHome, bindHome } from './pages/home.js';
 import { renderUpdates, bindUpdates } from './pages/updates.js';
 import { renderAdmin, bindAdmin } from './pages/admin.js';
+import { renderMastermind, bindMastermind } from './pages/mastermind.js';
 import { renderPosts, bindPosts } from './pages/posts.js';
 import { renderPromote, bindPromote } from './pages/promote.js';
 import { renderDonate, bindDonate } from './pages/donate.js';
@@ -57,14 +60,24 @@ import { renderPayments, bindPayments } from './pages/payments.js';
 import { decoratePlayCounts, recordPlay } from './play-counter.js';
 import { renderStory, bindStory, renderCrew, bindCrew, renderFavorites, bindFavorites } from './pages/circle.js';
 import './circle.css';
+import './pikk-polish-connect.css';
+import './pikk-polish-videos.css';
+import './pikk-polish-profile.css';
+import './pikk-t422u.css';
 import './pikk-chips.css';
 import './pikk-splash.css';
 import { renderMusic, bindMusic } from './pages/music.js';
 import { renderAIArtists, bindAIArtists } from './pages/ai-artists.js';
 import { renderShield, bindShield } from './pages/shield.js';
 import { renderSupport, bindSupport } from './pages/support.js';
+import { renderVerifyAge, bindVerifyAge } from './pages/verify-age.js';
+import { renderBiometricPolicy, bindBiometricPolicy } from './pages/biometric-policy.js';
+import { renderSupportStaff, bindSupportStaff } from './pages/support-staff.js';
+import { renderCreatorReview, bindCreatorReview } from './pages/creator-review.js';
 import { renderMerch, bindMerch } from './pages/merch.js';
 import { renderProfile, bindProfile } from './pages/profile.js';
+import { renderUser, bindUser } from './pages/user.js';
+import { renderVerifyEmail, bindVerifyEmail } from './pages/verify-email.js';
 import { renderClippers, bindClippers } from './pages/clippers.js';
 import { renderLive, bindLive } from './pages/live.js';
 import { renderViralLive, bindViralLive } from './pages/viral-live.js';
@@ -99,6 +112,7 @@ import {
   renderCommunity,
   bindCommunity,
   renderSignup,
+  bindSignup,
   renderLaunch,
   renderPhases,
   renderShare,
@@ -129,9 +143,15 @@ const ROUTES = {
   '/ai-artists': { render: renderAIArtists, bind: bindAIArtists },
   '/shield': { render: renderShield, bind: bindShield },
   '/support': { render: renderSupport, bind: bindSupport },
+  '/verify-age': { render: renderVerifyAge, bind: bindVerifyAge },
+  '/biometric-policy': { render: renderBiometricPolicy, bind: bindBiometricPolicy },
+  '/support-staff': { render: renderSupportStaff, bind: bindSupportStaff },
+  '/creator-review': { render: renderCreatorReview, bind: bindCreatorReview },
   '/vault': { render: renderMusic, bind: bindMusic },
   '/merch': { render: renderMerch, bind: bindMerch },
   '/profile': { render: renderProfile, bind: bindProfile },
+  '/user': { render: renderUser, bind: bindUser },
+  '/verify-email': { render: renderVerifyEmail, bind: bindVerifyEmail },
   '/clippers': { render: renderClippers, bind: bindClippers },
   '/videos': { render: renderVideos, bind: bindVideos },
   '/live': { render: renderLive, bind: bindLive },
@@ -142,13 +162,14 @@ const ROUTES = {
   '/missions': { render: renderMissions, bind: bindMissions },
   '/pricing': { render: renderPricing, bind: bindPricing },
   '/admin': { render: renderAdmin, bind: bindAdmin },
+  '/mastermind': { render: renderMastermind, bind: bindMastermind },
   '/guidelines': { render: renderGuidelines },
   '/settings': { render: renderSettings, bind: bindSettings },
   '/contest': { render: renderTwerkContest, bind: bindTwerkContest }, // only contest today: #/contest/twerk
   '/contest/twerk': { render: renderTwerkContest, bind: bindTwerkContest },
   '/community': { render: renderCommunity, bind: bindCommunity },
   '/communities': { render: renderCommunities, bind: bindCommunities },
-  '/signup': { render: renderSignup },
+  '/signup': { render: renderSignup, bind: bindSignup },
   '/terms': { render: renderTerms, bind: bindTerms },
   '/privacy': { render: renderPrivacy },
   '/messages': { render: renderMessages, bind: bindMessages },
@@ -380,7 +401,7 @@ function updateChrome(route) {
    * Sign in lives on Profile (#/profile) only. Signed-out Messages → #/messages. */
   const headerMsg = document.getElementById('headerMsg');
   if (headerMsg) headerMsg.hidden = false;
-  if (getState().user) {
+  if (getState().user && !isMessagesApiConfigured()) {
     try {
       ensureDemoUnreadMessages();
     } catch (_) {
@@ -391,16 +412,10 @@ function updateChrome(route) {
 }
 
 /** t290u/t291u · header Messages unread badge (Messages always visible) */
-function refreshHeaderMsgBadge() {
+function paintHeaderMsgBadge(unread) {
   const badge = document.getElementById('headerMsgBadge');
   const link = document.getElementById('headerMsg');
   if (!badge || !link) return;
-  let unread = 0;
-  try {
-    unread = getUnreadMessageCount();
-  } catch (_) {
-    unread = 0;
-  }
   if (unread > 0) {
     const n = unread > 99 ? '99+' : String(unread);
     badge.textContent = n;
@@ -411,6 +426,22 @@ function refreshHeaderMsgBadge() {
     badge.hidden = true;
     link.setAttribute('aria-label', 'Messages');
   }
+}
+
+function refreshHeaderMsgBadge() {
+  if (isMessagesApiConfigured() && getState().user?.authSource === 'backend') {
+    messagesApi.unreadCount()
+      .then((data) => paintHeaderMsgBadge(Number(data?.unread || 0)))
+      .catch(() => paintHeaderMsgBadge(0));
+    return;
+  }
+  let unread = 0;
+  try {
+    unread = getUnreadMessageCount();
+  } catch (_) {
+    unread = 0;
+  }
+  paintHeaderMsgBadge(unread);
 }
 
 function render(route) {
@@ -512,7 +543,25 @@ function wireMessagesUnreadBadge() {
   });
 }
 
-function boot() {
+async function restoreBackendSession() {
+  if (!isPikkApiConfigured()) return;
+  const cached = getState().user;
+  if (cached && cached.authSource !== 'backend') clearAuthenticatedUser();
+  try {
+    const session = await authApi.me();
+    if (session?.user) syncRemoteAuthUser(session.user);
+    setServerRoles(session?.roles || []);
+  } catch (err) {
+    if (err?.status === 401) {
+      setServerRoles([]);
+      if (getState().user?.authSource === 'backend') clearAuthenticatedUser();
+      return;
+    }
+    console.warn('PIKK startup session check failed', err);
+  }
+}
+
+async function boot() {
   // Do not use a #app anchor: PIKK uses the URL hash for routing.
   document.getElementById('pikkSkipContent')?.addEventListener('click', () => {
     document.getElementById('app')?.focus();
@@ -552,6 +601,7 @@ function boot() {
     location.hash = '/notifications';
   });
 
+  await restoreBackendSession();
   onRoute(render);
   startRouter();
 

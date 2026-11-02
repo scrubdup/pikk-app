@@ -11,8 +11,9 @@ export function renderDating() {
         <h2>Find your vibe. <span>Make it mutual.</span></h2>
         <p>Explore connections through mutual interest, shared communities and conversations when our real adult eligibility and safety services are ready.</p>
         <div class="pikk-dating-hero-actions">
-          <a class="btn primary" href="#/community">Explore communities</a>
+          <a class="btn primary" href="#/communities">Explore communities</a>
           <a class="btn ghost" href="#/profile">Your profile</a>
+          <a class="btn ghost" href="#/verify-age" id="datingVerifyAge">Verify age / ID (18+)</a>
         </div>
         <small>No real matches are being created here · TEST MODE</small>
       </div>
@@ -25,7 +26,7 @@ export function renderDating() {
       <button type="button" data-dating-jump="dating-safety" aria-pressed="false">Safety</button>
     </nav>
     <section class="pikk-dating-experience-grid" id="dating-experiences" tabindex="-1" aria-label="Ways to connect">
-      <a class="pikk-dating-experience" href="#/community"><span aria-hidden="true">♧</span><strong>Meet through interests</strong><small>Community discovery</small></a>
+      <a class="pikk-dating-experience" href="#/communities"><span aria-hidden="true">♧</span><strong>Meet through interests</strong><small>Community discovery</small></a>
       <a class="pikk-dating-experience" href="#/connect#connect-random-chat"><span aria-hidden="true">◉</span><strong>Random Chat</strong><small>Separate from dating · Preview</small></a>
       <a class="pikk-dating-experience" href="#/messages"><span aria-hidden="true">✉</span><strong>Messages</strong><small>Your existing inbox</small></a>
     </section>

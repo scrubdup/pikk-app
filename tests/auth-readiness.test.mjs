@@ -14,13 +14,22 @@ test('forged or incomplete session is denied', () => {
   assert.equal(resolveAuthState({ session: { userId: 'user_1' } }), AUTH_STATES.GUEST);
   assert.equal(resolveAuthState({ session: { verifiedByServer: true } }), AUTH_STATES.GUEST);
 });
-test('only explicit server-verified identity satisfies auth contract', () => {
-  assert.equal(resolveAuthState({ session: { verifiedByServer: true, userId: 'user_1' } }), AUTH_STATES.AUTHENTICATED);
+test('a forged verifiedByServer flag never grants production identity', () => {
+  assert.equal(resolveAuthState({ session: { verifiedByServer: true, userId: 'user_1' } }), AUTH_STATES.GUEST);
+  assert.equal(canAccessProtectedAction(resolveAuthState({ session: { verifiedByServer: true, userId: 'user_1' } })), false);
 });
-test('real signup, sessions and recovery remain disabled until backend exists', () => {
-  const readiness = authReadiness();
-  assert.equal(readiness.productionAuthAvailable, false);
-  assert.equal(readiness.signupEnabled, false);
-  assert.equal(readiness.passwordResetEnabled, false);
-  assert.equal(readiness.serverSessionEnabled, false);
+test('backend auth is implemented but frontend stays gated until the API endpoint is configured', () => {
+  const off = authReadiness();
+  assert.equal(off.backendImplemented, true);
+  assert.equal(off.productionAuthAvailable, false);
+  assert.equal(off.signupEnabled, false);
+  assert.equal(off.serverSessionEnabled, false);
+  assert.equal(off.emailVerificationImplemented, true);
+  assert.equal(off.passwordResetEnabled, false);
+  const on = authReadiness({ apiConfigured: true });
+  assert.equal(on.productionAuthAvailable, true);
+  assert.equal(on.signupEnabled, true);
+  assert.equal(on.loginEnabled, true);
+  assert.equal(on.logoutEnabled, true);
+  assert.equal(on.serverSessionEnabled, true);
 });

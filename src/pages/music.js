@@ -20,6 +20,7 @@ import { esc, shellPage, toast, ytEmbedSrc } from '../ui.js';
 import { navigate } from '../router.js';
 import { resolveMediaSrc } from '../media-db.js';
 import { bindPageYoutubeEmbeds } from '../player.js';
+import { musicUploadApi, isMusicUploadApiConfigured } from '../api/music-upload-client.js';
 
 function refresh(hash) {
   navigate(hash || '#/music');
@@ -76,7 +77,7 @@ function renderStreamingReleaseCard(r) {
   const note = r.albumNote ? `<div class="muted" style="font-size:11px">${esc(r.albumNote)}</div>` : '';
   const year = r.year ? ` · ${esc(String(r.year))}` : '';
   const appleEmbed = appleEmbedUrl(r.links?.apple);
-  const applePlayer = appleEmbed ? `<details class="apple-music-embed"><summary>▶ Play in PIKK · Apple Music</summary><iframe title="Apple Music player for ${esc(r.title)}" src="${esc(appleEmbed)}" loading="lazy" allow="autoplay *; encrypted-media *; fullscreen *" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation" style="width:100%;height:175px;border:0;border-radius:12px"></iframe><small class="muted">Apple controls playback availability. Full listening may require Apple Music.</small></details>` : '';
+  const applePlayer = appleEmbed ? `<details class="apple-music-embed"><summary>Play in PIKK · Apple Music</summary><iframe title="Apple Music player for ${esc(r.title)}" src="${esc(appleEmbed)}" loading="lazy" allow="autoplay *; encrypted-media *; fullscreen *" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation" style="width:100%;height:175px;border:0;border-radius:12px"></iframe><small class="muted">Apple controls playback availability. Full listening may require Apple Music.</small></details>` : '';
   return `
     <article class="stream-release">
       ${cover}
@@ -99,6 +100,9 @@ function tierLabel(m) {
   return 'None';
 }
 
+const VAULT_TIER_LABEL = { 'skeet':'PIKK+', 'skeet+':'PIKK+', 'backstage':'Backstage', 'inner':'Inner Circle' };
+const vaultTier = (t) => VAULT_TIER_LABEL[t] || t;
+
 function renderVaultCards(unlocked) {
   return VAULT_ITEMS.map((item) => {
     const needsBackstage = item.tier === 'backstage' || item.tier === 'inner';
@@ -112,7 +116,7 @@ function renderVaultCards(unlocked) {
           <span class="chip" style="border-color:#2a4a3a;color:#8dffb0">Unlocked</span>
           <strong>${esc(item.title)}</strong>
           <div class="muted" style="font-size:12px">${esc(item.artist)} · ${esc(item.status)}</div>
-          <div class="muted" style="font-size:11px">Requires ${esc(item.tier)} · no audio yet</div>
+          <div class="muted" style="font-size:11px">Requires ${esc(vaultTier(item.tier))} · no audio yet</div>
         </div>
       </article>`;
     }
@@ -126,7 +130,7 @@ function renderVaultCards(unlocked) {
           <span class="chip">Locked</span>
           <strong>${esc(item.title)}</strong>
           <div class="muted" style="font-size:12px">${esc(item.artist)}</div>
-          <div class="muted" style="font-size:11px">Join ${esc(item.tier)} to unlock</div>
+          <div class="muted" style="font-size:11px">Join ${esc(vaultTier(item.tier))} to unlock</div>
         </div>
       </article>`;
   }).join('');
@@ -238,13 +242,40 @@ export function renderMusic(route = {}) {
     </div>`;
   } else if (musicView === 'beats' || musicView === 'upload') {
     const isUpload = musicView === 'upload';
-    focusedViewCard = `<div class="card" id="music-focused-view">
-      <h2>${isUpload ? 'Upload Music' : 'Beats'}</h2>
-      <p class="muted">Not available yet · TEST MODE. ${isUpload
-        ? 'Creator music uploads require secure storage, ownership verification and publishing tools.'
-        : 'The producer beat marketplace and licensing checkout are still in development.'}</p>
-      <a class="btn ghost" href="#/music">Music overview</a>
-    </div>`;
+    if (!isUpload) {
+      focusedViewCard = `<div class="card" id="music-focused-view">
+        <h2>Beats</h2>
+        <p class="muted">Not available yet · TEST MODE. The producer beat marketplace and licensing checkout are still in development.</p>
+        <a class="btn ghost" href="#/music">Music overview</a>
+      </div>`;
+    } else if (!isMusicUploadApiConfigured()) {
+      focusedViewCard = `<div class="card" id="music-focused-view">
+        <h2>Upload Music</h2>
+        <p class="muted">The creator upload backend is being connected. This screen will not save audio locally or pretend a file was uploaded.</p>
+        <a class="btn" href="#/profile">Account / creator profile</a>
+        <a class="btn ghost" href="#/music">Music overview</a>
+      </div>`;
+    } else {
+      focusedViewCard = `<section class="card" id="music-focused-view">
+        <h2>Upload Music</h2>
+        <p class="muted">Create a private draft in PIKK. Creator/artist/producer role, verified email and rights certification are required. Drafts are not automatically published or monetized.</p>
+        <form id="pikkMusicUploadForm" enctype="multipart/form-data">
+          <div class="grid-2">
+            <div class="field"><label for="musicUploadTitle">Track title *</label><input id="musicUploadTitle" name="title" maxlength="160" required /></div>
+            <div class="field"><label for="musicUploadArtist">Artist / credit *</label><input id="musicUploadArtist" name="artistName" maxlength="120" value="${esc(user?.username || '')}" required /></div>
+            <div class="field"><label for="musicUploadAlbum">Album / project</label><input id="musicUploadAlbum" name="albumTitle" maxlength="160" /></div>
+            <div class="field"><label for="musicUploadGenre">Genre</label><input id="musicUploadGenre" name="genre" maxlength="80" /></div>
+          </div>
+          <div class="field"><label for="musicUploadFile">Audio file *</label><input id="musicUploadFile" name="audio" type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/aac,audio/flac,audio/ogg,.mp3,.m4a,.wav,.aac,.flac,.ogg" required /><small class="muted">MP3, M4A/MP4, WAV, AAC, FLAC or OGG · maximum 50 MB.</small></div>
+          <label class="toggle" style="margin:8px 0"><input id="musicUploadExplicit" type="checkbox" /><span>Explicit content</span></label>
+          <label class="toggle" style="margin:8px 0 14px"><input id="musicUploadRights" type="checkbox" required /><span>I certify that I own or control the rights needed to upload this audio. *</span></label>
+          <button class="btn primary" type="submit" id="musicUploadSubmit">Upload private draft</button>
+          <p class="muted" id="musicUploadStatus" role="status" aria-live="polite" style="margin:10px 0 0"></p>
+        </form>
+        <div style="margin-top:18px"><h3>My draft uploads</h3><div id="pikkMusicUploadList"><p class="muted">Loading drafts…</p></div></div>
+        <a class="btn ghost" href="#/music">Music overview</a>
+      </section>`;
+    }
   }
 
   const adminMusicHtml = adminMusic.length
@@ -271,7 +302,7 @@ export function renderMusic(route = {}) {
   const musicHero = `
     <section class="pikk-music-showcase card" aria-label="Official PIKK music discovery">
       <div class="pikk-music-showcase-copy">
-        <p class="kicker">PIKK MUSIC · DATBOISKEET</p>
+        <p class="kicker">PIKK MUSIC · DISCOVER</p>
         <h2>Discover the sound.</h2>
         <p>Stream verified releases, browse albums and playlists, and explore the Vault.</p>
         <div class="pikk-music-showcase-actions">
@@ -412,7 +443,61 @@ export function renderMusic(route = {}) {
   });
 }
 
+
+export function renderMusicUploadDrafts(items=[]) {
+  if(!items.length)return '<p class="muted">No backend music drafts yet.</p>';
+  return `<div class="support-history">${items.map(item=>`<article class="card" style="margin:0 0 8px"><div class="row wrap"><strong>${esc(item.title)}</strong><span class="chip">${esc(item.status)}</span></div><p class="muted" style="margin:5px 0">${esc(item.artist_name)}${item.album_title?' · '+esc(item.album_title):''}</p><small class="muted">${esc(item.original_name)} · ${Math.max(1,Math.round((Number(item.size_bytes)||0)/1024/1024*10)/10)} MB${item.explicit_content?' · Explicit':''}</small></article>`).join('')}</div>`;
+}
+
 export function bindMusic(root) {
+  const uploadForm=root.querySelector('#pikkMusicUploadForm');
+  const uploadList=root.querySelector('#pikkMusicUploadList');
+  const uploadStatus=root.querySelector('#musicUploadStatus');
+  const loadUploads=async()=>{
+    if(!uploadList)return;
+    try{
+      const data=await musicUploadApi.list();
+      uploadList.innerHTML=renderMusicUploadDrafts(data.uploads||[]);
+    }catch(err){
+      uploadList.innerHTML=err?.status===401?'<p class="muted">Sign in from <a href="#/profile">Profile</a> to view your music drafts.</p>':`<p class="muted">Could not load drafts: ${esc(err?.message||'Unknown error')}</p>`;
+    }
+  };
+  uploadForm?.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const file=root.querySelector('#musicUploadFile')?.files?.[0];
+    if(!file)return toast('Choose an audio file');
+    const submit=root.querySelector('#musicUploadSubmit');
+    if(submit)submit.disabled=true;
+    if(uploadStatus)uploadStatus.textContent='Uploading private draft…';
+    try{
+      const data=await musicUploadApi.upload({
+        audio:file,
+        title:root.querySelector('#musicUploadTitle')?.value?.trim()||'',
+        artistName:root.querySelector('#musicUploadArtist')?.value?.trim()||'',
+        albumTitle:root.querySelector('#musicUploadAlbum')?.value?.trim()||'',
+        genre:root.querySelector('#musicUploadGenre')?.value?.trim()||'',
+        rightsCertified:!!root.querySelector('#musicUploadRights')?.checked,
+        explicitContent:!!root.querySelector('#musicUploadExplicit')?.checked,
+      });
+      if(uploadStatus)uploadStatus.textContent=`Draft uploaded: ${data.upload.title}. It is not published yet.`;
+      toast('Music draft uploaded');
+      uploadForm.reset();
+      await loadUploads();
+    }catch(err){
+      const messages={
+        unauthenticated:'Sign in to upload music.',
+        email_unverified:'Verify your email before uploading music.',
+        creator_role_required:'Add Creator, Artist or Producer to your PIKK account before uploading.',
+        media_storage_not_configured:'PIKK media storage is not connected yet. No file was uploaded.',
+        rights_required:'Confirm that you own or control the rights to this audio.',
+      };
+      const msg=messages[err?.code]||err?.message||'Could not upload music';
+      if(uploadStatus)uploadStatus.textContent=msg;
+      toast(msg);
+    }finally{if(submit)submit.disabled=false;}
+  });
+  if(uploadList)loadUploads();
+
   // §17: Mix embeds → IFrame API interrupt; Stream Everywhere / Open links do not pause
   const mixRoot = root.querySelector('#youtube-mixes') || root;
   bindPageYoutubeEmbeds(mixRoot);

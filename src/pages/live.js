@@ -42,7 +42,7 @@ import { esc, toast, shellPage, timeAgo, ytEmbedSrc } from '../ui.js';
 import { navigate, getRoute } from '../router.js';
 import { notifyLiveOpen, notifyLiveClosed } from '../player.js';
 import { giftStickerHtml, getGiftSticker } from '../gift-stickers.js';
-import { renderLiveDiscoveryDirectory, mountLiveDirectorySearch } from '../live-discovery.js';
+import { renderLiveDiscoveryDirectory, mountLiveDirectorySearch, liveDiscoveryRefreshHref } from '../live-discovery.js';
 import { renderGiftForAllControls, bindGiftForAll, renderWinnersStrip, nameHtml as gbNameHtml, hasWinnerBadge as gbHasBadge, loadRecords as gbLoad } from '../live-gift-battle.js';
 import { renderGoLiveCategoryFields, bindGoLiveCategoryFields, readGoLiveFields, renderGroupRoomsPanel, bindGroupRooms } from '../live-rooms.js';
 
@@ -56,7 +56,8 @@ function getLiveDiscTab() {
 
 function refresh() {
   const tab = getLiveDiscTab();
-  navigate(tab === 'channels' ? '#/live' : `#/live?tab=${tab}`);
+  const category = getRoute().query?.category || '';
+  navigate(liveDiscoveryRefreshHref(tab, category));
 }
 
 function fmtMoney(n) {
@@ -152,7 +153,7 @@ function renderFollowingPanel(user) {
   const followChips = following.length
     ? following
         .slice(0, 12)
-        .map((f) => `<a class="chip" href="#/profile">${esc('@' + (f.username || f.id))}</a>`)
+        .map((f) => `<a class="chip" href="#/profile/${encodeURIComponent(f.id)}">${esc('@' + (f.username || f.id))}</a>`)
         .join('')
     : '<span class="muted">Nobody followed yet · DEMO</span>';
 
@@ -176,9 +177,9 @@ function renderFollowingPanel(user) {
       .map((live) => {
         return `
         <article class="hot-live-card${live.house ? ' is-house' : ''}" data-live-id="${esc(live.id)}">
-          <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching">
+          <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching (example data)">
             <span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span>
-            <span class="live-hoodie-viewers">${esc(fmtCount(live.viewers))}</span>
+            <span class="live-hoodie-viewers">${esc(fmtCount(live.viewers))}</span><span class="chip pikk-example-tag" title="Example data · not real viewers">Example</span>
           </div>
           <div class="hot-live-body">
             <div class="hot-live-host">@${esc(live.hostName)}</div>
@@ -322,15 +323,15 @@ function renderHotLivesRail(category = '') {
       const hot = recentlySpiked(live);
       return `
       <article class="hot-live-card${hot ? ' is-hot' : ''}${live.house ? ' is-house' : ''}" data-live-id="${esc(live.id)}">
-        <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching">
+        <div class="live-hoodie" aria-label="Live · ${esc(fmtCount(live.viewers))} watching (example data)">
           <span class="live-hoodie-pill"><span class="dot" aria-hidden="true"></span> LIVE</span>
-          <span class="live-hoodie-viewers" title="${esc(fmtCount(live.viewers))} watching">${esc(fmtCount(live.viewers))}</span>
+          <span class="live-hoodie-viewers" title="${esc(fmtCount(live.viewers))} watching · example">${esc(fmtCount(live.viewers))}</span><span class="chip pikk-example-tag" title="Example data · not real viewers">Example</span>
         </div>
         <div class="hot-live-body">
           <div class="hot-live-host">@${esc(live.hostName)}</div>
           <div class="hot-live-title">${esc(live.title)}</div>
           <div class="hot-live-chips">
-            <span class="chip">${esc(fmtCount(live.viewers))} watching</span>
+            <span class="chip">${esc(fmtCount(live.viewers))} watching · Example</span>
             ${live.house ? '<span class="chip chip-ok">House</span>' : ''}
             ${hot ? '<span class="chip live-chip"><span class="dot" aria-hidden="true"></span> HOT</span>' : ''}
           </div>

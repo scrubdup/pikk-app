@@ -20,3 +20,37 @@ test('branding, player, navigation and test-mode content remain intact',()=>{
  assert.match(css,/\.pikk-create-overlay\[hidden\]/);
  assert.match(css,/\.sticky-player#dbs-sticky-player/);
 });
+
+
+test('owner mobile home polish keeps media blue/red with white titles and lower tabbar',()=>{
+ const css=readFileSync(new URL('../src/styles.css', import.meta.url),'utf8');
+ for(const token of [
+  '.pikk-home-media-card {',
+  'border-color: rgba(47,107,255,.88)',
+  '.pikk-home-media-badge {',
+  'border: 1px solid #2f6bff',
+  '.pikk-home-media-title {',
+  'color: #fff',
+  'padding-bottom: 4px'
+ ]) assert.ok(css.includes(token), token);
+});
+
+
+test('home official-video cards use strong blue chrome and bright white titles',()=>{
+ const css=readFileSync(new URL('../src/styles.css', import.meta.url),'utf8');
+ for(const token of [
+  'border: 2px solid #2f6bff !important',
+  '0 0 18px rgba(47,107,255,.58)',
+  'background: #ef252c !important',
+  '0 0 12px rgba(47,107,255,.72)',
+  'color: #fff !important',
+  'font-weight: 900'
+ ]) assert.ok(css.includes(token), token);
+});
+
+
+test('mobile tabbar sits lower while keeping seven destinations visible',()=>{
+ const css=readFileSync(new URL('../src/styles.css', import.meta.url),'utf8');
+ assert.ok(css.includes('transform: translateY(5px)'));
+ assert.ok(css.includes('padding-bottom: 0'));
+});

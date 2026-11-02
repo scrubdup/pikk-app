@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { MERCH } from '../src/data.js';
+import { MERCH, PROFILE_SHOP, SHOP_CATEGORIES } from '../src/data.js';
 import { sortPikkShopProducts } from '../src/pages/pikk-shop.js';
 
 process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = '1';
@@ -17,7 +17,9 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('http://127.0.0.1:5173/#/shop', { waitUntil: 'domcontentloaded' });
     await page.locator('.pikk-shop-real-hero').waitFor({ state: 'visible', timeout: 20000 });
-    await page.waitForTimeout(3500); // approved splash completes before capture
+    // The approved splash holds for 5 seconds plus fade; capture the actual Shop,
+    // not the splash overlay covering the top of full-page screenshots.
+    await page.locator('#splash').waitFor({ state: 'detached', timeout: 12000 });
 
     assert.equal(await page.locator('.pikk-shop-featured-product img').count(), 3);
     assert.equal(await page.locator('#pikkShopProducts .pikk-shop-product').count(), MERCH.length);
@@ -80,6 +82,12 @@ try {
     await page.screenshot({ path: 'visual-review/shop-' + name + '-hats.png', fullPage: false });
     await page.locator('#pikkShopSearch').fill('not-a-real-hat-98765');
     assert.equal(await page.locator('#pikkShopProducts .pikk-shop-product:visible').count(), 0);
+    // IME composition Escape must not clear an unfinished international-language search.
+    await page.locator('#pikkShopSearch').evaluate(el => el.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true, cancelable: true })
+    ));
+    assert.equal(await page.locator('#pikkShopSearch').inputValue(), 'not-a-real-hat-98765',
+      name + ' composing Escape must preserve search text');
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#pikkShopSearch').inputValue(), '', name + ' Escape clears search');
     assert.equal(await page.locator('.pikk-shop-category[data-category="Hats"]').getAttribute('aria-pressed'), 'true', name + ' Escape keeps category');
@@ -105,6 +113,33 @@ try {
     assert.equal(await page.locator('.pikk-shop-category[data-category="All"]').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('#pikkShopSearch').evaluate(el => document.activeElement === el), true, 'keyboard focus returned to search');
     await page.screenshot({ path: 'visual-review/shop-' + name + '-filters-cleared.png', fullPage: false });
+    // Profile Shop is a separate cosmetic preview route. Its category controls
+    // remain toggle buttons and must keep keyboard focus after route re-render.
+    await page.goto('http://127.0.0.1:5173/#/profile-shop', { waitUntil: 'domcontentloaded' });
+    await page.locator('.shop-chips').waitFor({ state: 'visible', timeout: 20000 });
+    assert.equal(await page.locator('.shop-chips').getAttribute('role'), 'group');
+    assert.equal(await page.locator('.shop-chip').count(), SHOP_CATEGORIES.length);
+    await page.waitForFunction(() => {
+      const image = document.querySelector('.shop-concept img');
+      return image?.complete && image.naturalWidth > 0;
+    }, null, { timeout: 20000 });
+    assert.equal(await page.locator('#tabbar a').count(), 7);
+    assert.equal(await page.locator('.logo-img').isVisible(), true);
+    assert.equal(await page.locator('#dbs-sticky-player').isVisible(), true);
+    await page.screenshot({ path: 'visual-review/profile-shop-' + name + '-all.png', fullPage: true });
+    await page.locator('.shop-chip[data-cat="frames"]').focus();
+    await page.keyboard.press('Enter');
+    const frames = page.locator('.shop-chip[data-cat="frames"]');
+    assert.equal(await frames.getAttribute('aria-pressed'), 'true');
+    assert.equal(await frames.evaluate(el => document.activeElement === el), true,
+      name + ' category selection should restore keyboard focus');
+    assert.equal(await page.locator('.cosmetic-card').count(),
+      PROFILE_SHOP.filter(item => item.category === 'frames').length);
+    const profileOverflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+    assert.ok(profileOverflow <= 3, name + ' Profile Shop horizontal overflow: ' + profileOverflow);
+    await page.screenshot({ path: 'visual-review/profile-shop-' + name + '-frames-focused.png', fullPage: true });
+    await page.locator('.shop-chip[data-cat="all"]').click();
+    assert.equal(await page.locator('.cosmetic-card').count(), PROFILE_SHOP.length);
     assert.deepEqual(errors, [], name + ' page exceptions');
     await context.close();
   }

@@ -5,8 +5,8 @@ const { PAYMENTS_HUB, renderPayments } = await import('../src/pages/payments.js'
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const idx = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const routeExists = (h) => main.includes(`'/${h.replace(/^#\/?/, '').split(/[?#]/)[0]}': {`);
-test('$ header button sits next to search and routes to #/payments', () => {
-  assert.match(idx, /id="exploreSearchBtn"[\s\S]*?<\/a>\s*<a class="pill header-explore-search header-pay" id="paymentsBtn" href="#\/payments"/);
+test('$ header button follows Profile and precedes Search, routing to #/payments', () => {
+  assert.match(idx, /id="headerProfile"[\s\S]*?<\/a>\s*<a class="pill header-explore-search header-pay" id="paymentsBtn" href="#\/payments"[\s\S]*?<\/a>\s*<a class="pill header-explore-search" id="exploreSearchBtn"/);
   assert.ok(routeExists('#/payments'));
 });
 test('every Payments hub item resolves to a route or an honest Coming soon', () => {

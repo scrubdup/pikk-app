@@ -9,11 +9,24 @@ try {
     const page = await browser.newPage({ viewport: { width, height }, reducedMotion: 'reduce' });
     const errors = [];
     page.on('pageerror', e => errors.push(String(e)));
-    await page.goto('http://127.0.0.1:5173/#/profile', { waitUntil: 'domcontentloaded' });
-    await page.locator('#signinName').fill('PIKK QA');
-    await page.locator('#signinBtn').click();
+    await page.addInitScript(() => {
+      localStorage.setItem('dbs_v1', JSON.stringify({
+        user: {
+          id: 'qa_user',
+          username: 'PIKK QA',
+          bio: '',
+          avatar: '',
+          followers: [],
+          following: [],
+          memberships: { skeetPlus: false, backstage: false, innerCircle: false },
+          purchasedTracks: [],
+          createdAt: Date.now(),
+        },
+      }));
+    });
     await page.goto('http://127.0.0.1:5173/#/communities', { waitUntil: 'domcontentloaded' });
     await page.locator('#pikkForum').waitFor();
+    await page.locator('#splash').waitFor({ state: 'detached', timeout: 12000 });
     if (width >= 1100) {
       const board = await page.locator('#pikkForum').boundingBox();
       assert.ok(board && board.width >= 950, 'Desktop Communities must use wide three-column canvas');
@@ -27,8 +40,14 @@ try {
     await page.locator('#pikkForumForm button[type="submit"]').click();
     await page.locator('.pikk-forum-post').waitFor();
     assert.equal(await page.locator('.pikk-forum-post').count(), 1);
-    await page.locator('.pikk-forum-votes button[data-fvote="1"]').click();
+    assert.match(await page.locator('#pikkForumFilterStatus').textContent(), /Music & Artists · 1 discussion · Newest first/);
+    const upvote = page.locator('.pikk-forum-votes button[data-fvote="1"]');
+    assert.match(await upvote.getAttribute('aria-label'), /Upvote PIKK QA discussion/);
+    await upvote.focus();
+    await upvote.press('Enter');
     assert.equal(await page.locator('.pikk-forum-votes b').textContent(), '1');
+    assert.equal(await upvote.evaluate(el => el === document.activeElement), true,
+      name + ' voting keeps keyboard focus on the upvote control');
     const disclosure = page.locator('[data-fopen]');
     const thread = page.locator('[data-thread]');
     assert.equal(await disclosure.getAttribute('aria-expanded'), 'false', 'Replies start collapsed');
@@ -44,14 +63,25 @@ try {
     assert.equal(await thread.isHidden(), true, 'Thread hidden after collapse');
     await disclosure.click();
     assert.equal(await disclosure.getAttribute('aria-expanded'), 'true', 'Click reopens replies');
+    assert.equal(await page.locator('[data-freply] textarea').evaluate(el => el.labels?.[0]?.textContent?.trim()), 'Reply');
     await page.locator('[data-freply] textarea').fill('Welcome to the PIKK discussion.');
     await page.locator('[data-freply] button').click();
     assert.equal(await page.locator('.pikk-forum-comment').count(), 1);
+    assert.equal(await disclosure.getAttribute('aria-expanded'), 'true', 'Posted reply keeps its disclosure expanded');
+    assert.equal(await thread.isVisible(), true, 'Posted reply stays visible after redraw');
+    assert.equal(await disclosure.evaluate(el => el === document.activeElement), true, 'Keyboard focus returns to the reply disclosure');
+    await page.screenshot({ path: 'visual-review/communities-'+name+'-reply-posted.png', fullPage: true });
     await page.locator('.pikk-forum-topic-cards [data-ftopic="business"]').click();
     assert.equal(await page.locator('.pikk-forum-post').count(), 0);
+    assert.match(await page.locator('#pikkForumFilterStatus').textContent(), /Business & Money · 0 discussions · Newest first/);
+    const empty = page.locator('.pikk-forum-empty');
+    assert.equal(await empty.getAttribute('role'), 'status', 'Empty topic result is announced to assistive technology');
+    assert.equal(await empty.textContent(), 'No discussions in Business & Money yet. Choose All discussions to browse other topics, or start a conversation here.');
+    await page.screenshot({ path: 'visual-review/communities-'+name+'-empty-topic.png', fullPage: true });
     await page.locator('.pikk-forum-topic-cards [data-ftopic="music"]').click();
     assert.equal(await page.locator('.pikk-forum-post').count(), 1);
     await page.locator('[data-fsort="top"]').click();
+    assert.match(await page.locator('#pikkForumFilterStatus').textContent(), /Music & Artists · 1 discussion · Top voted/);
     await page.waitForTimeout(2500);
     await page.screenshot({ path: 'visual-review/communities-'+name+'.png', fullPage: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'Horizontal overflow '+name);

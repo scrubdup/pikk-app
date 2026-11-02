@@ -14,7 +14,11 @@ export function readSupportTickets(storage){
  try{const value=JSON.parse(storage.getItem(SUPPORT_KEY)||'[]');return Array.isArray(value)?value.filter(x=>x&&typeof x.id==='string').slice(0,LIMIT):[]}catch{return []}
 }
 export function saveSupportTicket(storage,ticket){
- const all=[ticket,...readSupportTickets(storage)].slice(0,LIMIT);
+ const existing=readSupportTickets(storage);
+ // Avoid creating repeated drafts when a user double-submits or retries the same form.
+ const duplicate=existing.some(x=>x.category===ticket.category&&x.subject===ticket.subject&&x.message===ticket.message&&x.contact===ticket.contact);
+ if(duplicate)return existing;
+ const all=[ticket,...existing].slice(0,LIMIT);
  storage.setItem(SUPPORT_KEY,JSON.stringify(all));return all;
 }
 export function deleteSupportTicket(storage,id){

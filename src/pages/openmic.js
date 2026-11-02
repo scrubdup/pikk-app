@@ -10,6 +10,7 @@ import {
   setOpenMicStatus,
   getOpenMicHouseTrack,
   advanceOpenMicHouseTrack,
+  isDemoAdminAllowed,
 } from '../store.js';
 import { esc, toast, shellPage, timeAgo, ytEmbedSrc } from '../ui.js';
 import { navigate } from '../router.js';
@@ -177,7 +178,7 @@ export function renderOpenMic() {
         <a class="btn" href="#/music">Music</a>
         <a class="btn" href="#/fanclubs">Fan Clubs</a>
         <button class="btn ghost" id="omSeed">Reseed demos</button>
-        <button class="btn ghost" id="omAdmin">${admin ? 'Admin on' : 'Toggle demo admin'}</button>
+        ${isDemoAdminAllowed() ? `<button class="btn ghost" id="omAdmin">${admin ? 'Admin on' : 'Toggle demo admin'}</button>` : ''}
       </div>
       <p class="chip" style="margin-top:10px">TEST MODE · no pay-to-win</p>
     </div>

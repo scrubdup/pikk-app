@@ -1,0 +1,3 @@
+# Copy to .dev.vars (gitignored) for `wrangler dev`. PLACEHOLDERS ONLY - never commit real values.
+# Generate a real key with: openssl rand -hex 32   then `wrangler secret put VAULT_SIGNING_KEY`
+VAULT_SIGNING_KEY=replace_me_with_at_least_32_random_characters

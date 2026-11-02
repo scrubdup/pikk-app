@@ -4449,6 +4449,8 @@ input:focus, select:focus, textarea:focus {
 .pikk-arcade-lightbox-controls{display:flex;gap:8px;flex-shrink:0}
 .pikk-arcade-lightbox-controls button{width:43px;height:43px;border:1px solid #7585c3;border-radius:11px;background:linear-gradient(140deg,#242c55,#2a3e69);color:#fff;font-size:23px;cursor:pointer}
 .pikk-arcade-lightbox-controls button:hover,.pikk-arcade-lightbox-close:hover{background:#4a3d7b}
+.pikk-arcade-lightbox-controls button:disabled{opacity:.42;cursor:not-allowed;filter:grayscale(.4)}
+.pikk-arcade-lightbox-controls button:disabled:hover{background:linear-gradient(140deg,#242c55,#2a3e69)}
 .pikk-arcade-lightbox-note{margin:12px 3px 0;padding-top:12px;border-top:1px solid #3a4265;color:#9caacb;font-size:11px}
 @media(max-width:620px){.pikk-arcade-view{padding:8px 4px;font-size:11px}.pikk-arcade-lightbox{width:calc(100vw - 16px);border-radius:15px}.pikk-arcade-lightbox-panel{padding:10px}.pikk-arcade-lightbox-art{border-radius:10px}.pikk-arcade-lightbox-kicker{font-size:9px;letter-spacing:.08em}.pikk-arcade-lightbox-bottom{align-items:flex-start}.pikk-arcade-lightbox-controls button{width:38px;height:38px}.pikk-arcade-lightbox-description p{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.pikk-arcade-view{transition:none}.pikk-arcade-view:hover{transform:none}}
@@ -4960,3 +4962,99 @@ html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary > span:last
   font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
+
+/* Arcade catalog search: keep the approved gallery order and artwork intact. */
+.pikk-arcade-search{margin:12px 0 16px;padding:14px 16px;border:1px solid #34374b;border-radius:16px;background:linear-gradient(125deg,#171721,#111525)}
+.pikk-arcade-search label{display:block;margin-bottom:8px;font-size:.85rem;font-weight:750;color:#f2f3fa}
+.pikk-arcade-search-row{display:flex;gap:10px;align-items:center}
+.pikk-arcade-search input[type="search"]{min-width:0;flex:1;width:100%;padding:11px 13px;border:1px solid #555c76;border-radius:11px;background:#0e1120;color:#fff;font:inherit}
+.pikk-arcade-search input[type="search"]::placeholder{color:#a5adc4}
+.pikk-arcade-search input[type="search"]:focus-visible,.pikk-arcade-search button:focus-visible{outline:3px solid #3d79ff;outline-offset:2px}
+.pikk-arcade-search p{margin:7px 0 0;font-size:.78rem;color:#b8bfd4}
+.pikk-arcade-card[hidden],#pikkArcadeNoMatches[hidden],#pikkArcadeSearchClear[hidden]{display:none!important}
+.pikk-arcade-no-matches{margin:0 0 16px;padding:20px;text-align:center;border:1px dashed #69718d;border-radius:14px;background:#161927}
+@media(max-width:420px){.pikk-arcade-search{padding:12px}.pikk-arcade-search-row{gap:8px}.pikk-arcade-search-row .btn{padding-inline:10px}}
+
+
+/* t-owner-20261101 — Home media + mobile nav alignment from owner screenshot.
+   Give lower media the same electric-blue/red contrast as the top chrome while
+   keeping titles bright white, and reduce excess iPhone tabbar lift. */
+.pikk-home-media-card {
+  border-color: rgba(47,107,255,.88);
+  box-shadow: 0 0 0 1px rgba(47,107,255,.28), 0 0 13px rgba(47,107,255,.24), 0 5px 16px #0008;
+}
+.pikk-home-media-badge {
+  border: 1px solid #2f6bff;
+  box-shadow: 0 0 0 1px rgba(47,107,255,.38), 0 0 8px rgba(47,107,255,.46), 0 0 8px rgba(255,49,55,.30);
+  color: #fff;
+}
+.pikk-home-media-title {
+  color: #fff;
+  text-shadow: 0 1px 3px #000, 0 0 7px rgba(255,255,255,.16);
+}
+@media (max-width: 767px) {
+  html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 {
+    padding-bottom: 4px;
+  }
+  html body #app {
+    padding-bottom: calc(var(--tab-h) + 14px);
+  }
+}
+
+
+/* t-owner-20261101b — make Home official-video treatment visibly match top chrome. */
+html body .pikk-home-media-card {
+  border: 2px solid #2f6bff !important;
+  box-shadow:
+    0 0 0 1px rgba(47,107,255,.75),
+    0 0 18px rgba(47,107,255,.58),
+    0 0 8px rgba(255,49,55,.22),
+    0 7px 18px rgba(0,0,0,.62) !important;
+}
+html body .pikk-home-media-badge {
+  background: #ef252c !important;
+  border: 2px solid #2f6bff !important;
+  color: #fff !important;
+  box-shadow:
+    0 0 0 1px rgba(47,107,255,.75),
+    0 0 12px rgba(47,107,255,.72),
+    0 0 9px rgba(255,49,55,.50) !important;
+  text-shadow: 0 1px 2px #000;
+}
+html body .pikk-home-media-title {
+  color: #fff !important;
+  font-weight: 900;
+  text-shadow:
+    0 2px 3px #000,
+    0 0 5px rgba(255,255,255,.35),
+    0 0 8px rgba(47,107,255,.42),
+    0 0 5px rgba(255,49,55,.22) !important;
+}
+@media (max-width: 560px) {
+  html body .pikk-home-media-card { border-width: 2px !important; }
+  html body .pikk-home-media-badge { border-width: 2px !important; }
+  html body .pikk-home-media-title,
+  html body .pikk-home-media-card.is-featured .pikk-home-media-title {
+    color: #fff !important;
+    font-weight: 900;
+  }
+}
+
+
+/* t-owner-20261101c — lower the seven mobile nav buttons closer to the browser-safe edge. */
+@media (max-width: 767px) {
+  html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 {
+    transform: translateY(5px);
+    padding-bottom: 0;
+  }
+  html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a {
+    padding-bottom: 4px;
+  }
+}
+
+/* PIKK Master Mind (phase 1, read-only) — uses existing PIKK card/chip tokens */
+.mastermind-head img { border-radius: 10px; }
+.mastermind-detail { list-style: none; margin: .4rem 0 0; padding: 0; display: grid; gap: .2rem; }
+.mastermind-status-healthy { outline: 1px solid currentColor; }
+.mastermind-status-down, .mastermind-status-degraded, .mastermind-status-stale { font-weight: 700; }
+.mastermind-status-unknown, .mastermind-status-demo { opacity: .75; font-style: italic; }

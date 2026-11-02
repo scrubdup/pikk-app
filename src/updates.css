@@ -39,3 +39,6 @@
 .pikk-update-kind{display:inline-flex;max-width:100%;padding:3px 8px;margin-bottom:8px;border:1px solid #426286;border-radius:999px;background:#0c2337;color:#b6dcff;font-size:10px;font-weight:800;letter-spacing:.06em}
 .pikk-update-card:focus-within{outline:2px solid #68baff;outline-offset:2px}
 @media(max-width:580px){.pikk-updates-hero-mark{height:76px}.pikk-updates-hero-mark img{max-width:260px;margin:auto}.pikk-update-card h3{font-size:15px}}
+
+/* Subtle latest-release marker: uses the existing chrome/red PIKK palette. */
+.pikk-update-latest{display:inline-block;margin:0 0 8px 10px;padding:4px 8px;border:1px solid #a14b52;border-radius:999px;color:#d1d5db;background:#17284b;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;vertical-align:middle}
