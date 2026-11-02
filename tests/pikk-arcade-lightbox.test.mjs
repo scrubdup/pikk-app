@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { renderGames, bindGames, arcadePreviewAt, arcadeMatchesQuery } from '../src/pages/games.js';
+import { renderGames, bindGames, arcadePreviewAt, arcadeMatchesQuery, arcadePreviewIndexes } from '../src/pages/games.js';
 import { PIKK_GAMES } from '../src/games/arcade-catalog.js';
 
 test('all 15 approved Arcade covers open a full-size concept preview, not fake gameplay', () => {
@@ -142,4 +142,92 @@ test('Arcade search filters in place, shows empty state, clears on Escape and bu
   assert.equal(search.value, '');
   assert.equal(cards.filter(c => !c.hidden).length, 15);
   assert.equal(focused, true);
+});
+
+test('filtered artwork preview browses only matching games, wraps and disables single-result arrows', () => {
+  assert.deepEqual(arcadePreviewIndexes('Play Chips'), [8, 9, 10]);
+  assert.deepEqual(arcadePreviewIndexes('chess'), [14]);
+  assert.equal(arcadePreviewIndexes('').length, 15);
+
+  const handlers = {};
+  const cards = PIKK_GAMES.map(() => ({ hidden: false }));
+  const gallery = {
+    querySelectorAll() { return cards; },
+    addEventListener(type, fn) { handlers['gallery:' + type] = fn; },
+  };
+  const search = {
+    value: 'Play Chips',
+    addEventListener(type, fn) { handlers['search:' + type] = fn; },
+  };
+  const prev = { disabled: false };
+  const next = { disabled: false };
+  const fields = Object.fromEntries([
+    '[data-arcade-full-image]', '[data-arcade-title]',
+    '[data-arcade-description]', '[data-arcade-players]',
+    '[data-arcade-counter]',
+  ].map(key => [key, { textContent: '', src: '', alt: '' }]));
+  const dialog = {
+    open: false,
+    addEventListener(type, fn) { handlers['dialog:' + type] = fn; },
+    querySelector(selector) {
+      if (selector === '[data-arcade-prev]') return prev;
+      if (selector === '[data-arcade-next]') return next;
+      return fields[selector];
+    },
+    showModal() { this.open = true; },
+    close() { this.open = false; handlers['dialog:close'](); },
+  };
+  const root = { querySelector(selector) {
+    return ({
+      '.pikk-arcade-grid': gallery,
+      '#pikkArcadeSearch': search,
+      '#pikkArcadeLightbox': dialog,
+    })[selector] || null;
+  }};
+  bindGames(root);
+  const open = (index) => {
+    const opener = { dataset: { gamePreview: String(index) }, isConnected: true, focus() {} };
+    handlers['gallery:click']({ target: { closest(key) {
+      return key === '[data-game-preview]' ? opener : null;
+    }}});
+  };
+  const click = (key) => handlers['dialog:click']({ target: { closest(selector) {
+    return selector === key ? {} : null;
+  }}});
+
+  assert.equal(cards.filter(card => !card.hidden).length, 3);
+  open(8);
+  assert.equal(fields['[data-arcade-title]'].textContent, 'PIKK Poker');
+  assert.equal(fields['[data-arcade-counter]'].textContent, '01 / 03');
+  assert.equal(prev.disabled, false);
+  assert.equal(next.disabled, false);
+  click('[data-arcade-next]');
+  assert.equal(fields['[data-arcade-title]'].textContent, 'PIKK Blackjack');
+  assert.equal(fields['[data-arcade-counter]'].textContent, '02 / 03');
+  click('[data-arcade-next]');
+  assert.equal(fields['[data-arcade-title]'].textContent, 'PIKK Slots');
+  click('[data-arcade-next]');
+  assert.equal(fields['[data-arcade-title]'].textContent, 'PIKK Poker');
+  click('[data-arcade-prev]');
+  assert.equal(fields['[data-arcade-title]'].textContent, 'PIKK Slots');
+  dialog.close();
+
+  search.value = 'chess';
+  handlers['search:input']();
+  open(14);
+  assert.equal(fields['[data-arcade-counter]'].textContent, '01 / 01');
+  assert.equal(prev.disabled, true);
+  assert.equal(next.disabled, true);
+  handlers['dialog:keydown']({ key: 'ArrowRight', preventDefault() {} });
+  assert.equal(fields['[data-arcade-title]'].textContent, 'PIKK Chess');
+  dialog.close();
+
+  search.value = '';
+  handlers['search:input']();
+  open(14);
+  assert.equal(fields['[data-arcade-counter]'].textContent, '15 / 15');
+  assert.equal(prev.disabled, false);
+  click('[data-arcade-next]');
+  assert.equal(fields['[data-arcade-title]'].textContent, 'Block Wars');
+  assert.equal(fields['[data-arcade-counter]'].textContent, '01 / 15');
 });
