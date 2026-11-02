@@ -1,6 +1,7 @@
 /* t422u: header order profile · $ · search (left of logo); ☰ stays right. Tab bar flush to bottom edge. */
-html body .top#topBar #headerProfile { display: grid; order: -3; }
-html body .top#topBar #paymentsBtn { order: -2; }
+html body .top#topBar #headerProfile { display: grid; order: -4; }
+html body .top#topBar #paymentsBtn { order: -3; }
+html body .top#topBar #settingsBtn { display: grid; order: -2; }
 html body .top#topBar #exploreSearchBtn { order: -1; }
 html body #tabbar.tabbar,
 html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 {
@@ -12,8 +13,11 @@ html body #app { padding-bottom: calc(var(--tab-h) + 8px + env(safe-area-inset-b
 @media (max-width: 480px) {
   html body .top#topBar { gap: 4px; }
   html body .top#topBar :is(.pill, .icon-btn) { width: 32px !important; height: 32px !important; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; }
-  html body .top#topBar .logo-img { width: min(32vw, 340px); height: calc(min(32vw, 340px) * 0.2366); }
+  html body .top#topBar .logo-img { width: min(30vw, 340px); height: calc(min(30vw, 340px) * 0.2366); }
+  /* gear added: nudge centred logo right by half an icon+gap so the 4-icon left cluster stays clear */
+  html body .top#topBar .logo { transform: translateX(var(--t422u-logo-shift, 18px)) !important; }
 }
 @media (max-width: 370px) {
   html body .top#topBar :is(.pill, .icon-btn) { width: 30px !important; height: 30px !important; }
+  html body .top#topBar .logo { --t422u-logo-shift: 17px; }
 }

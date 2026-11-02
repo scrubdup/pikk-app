@@ -3,8 +3,8 @@ const css = readFileSync(new URL('../src/pikk-t422u.css', import.meta.url), 'utf
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const ord = id => Number(css.match(new RegExp(`#${id}\\s*\\{[^}]*order:\\s*(-?\\d+)`))[1]);
-test('t422u header order: profile, $, search', () => {
-  assert.ok(ord('headerProfile') < ord('paymentsBtn') && ord('paymentsBtn') < ord('exploreSearchBtn'));
+test('t422u header order: profile, $, gear, search', () => {
+  assert.ok(ord('headerProfile') < ord('paymentsBtn') && ord('paymentsBtn') < ord('settingsBtn') && ord('settingsBtn') < ord('exploreSearchBtn'));
   assert.match(css, /#headerProfile\s*\{[^}]*display:\s*grid/);
   assert.match(html, /id="headerProfile" href="#\/profile"/);
 });
@@ -14,14 +14,15 @@ test('t422u tab bar flush bottom with safe-area padding', () => {
   assert.match(html, /viewport-fit=cover/);
   assert.match(main, /import '.\/pikk-t422u.css'/);
 });
-test('t422u-fix: search icon right edge < logo left edge at 360/390/430', () => {
+test('t422u-gear: search icon right edge < logo left edge at 360/390/430 (4 left icons, logo nudged right)', () => {
   const icon = (w) => Number(css.match(new RegExp(`max-width: ${w}px\\)[^@]*?:is\\(\\.pill, \\.icon-btn\\) \\{ width: (\\d+)px`))[1]);
   const gap = Number(css.match(/\.top#topBar \{ gap: (\d+)px/)[1]);
   const logoVw = Number(css.match(/logo-img \{ width: min\((\d+)vw/)[1]);
+  const shift = (small) => Number(small ? css.match(/--t422u-logo-shift: (\d+)px/)[1] : css.match(/var\(--t422u-logo-shift, (\d+)px\)/)[1]);
   for (const [w, padL] of [[360, 5], [390, 9], [430, 9]]) {
-    const size = w <= 370 ? icon(370) : icon(480);
-    const searchRight = padL + 3 * size + 2 * gap;
-    const logoLeft = (w - (w * logoVw) / 100) / 2;
+    const small = w <= 370; const size = small ? icon(370) : icon(480);
+    const searchRight = padL + 4 * size + 3 * gap;
+    const logoLeft = (w - (w * logoVw) / 100) / 2 + shift(small);
     assert.ok(searchRight < logoLeft, `${w}px: search right ${searchRight} must be < logo left ${logoLeft}`);
   }
 });

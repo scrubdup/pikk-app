@@ -15,7 +15,7 @@ test('polish-music: single play glyph on Apple embed summary, fit-width type chi
 test('polish-music: Vault lock copy shows PIKK+ not skeet+', () => {
   assert.match(music, /'skeet\+':'PIKK\+'/);
 });
-test('polish-music: Home reaches Beats and Playlists', () => {
-  assert.match(show, /'#\/music\?view=beats', 'Beats'/);
+test('polish-music: Home reaches Playlists; Beats stays off Home until it has real content (Checker #350)', () => {
+  assert.doesNotMatch(show, /view=beats/);
   assert.match(show, /'#\/music\?view=playlists', 'Playlists'/);
 });
