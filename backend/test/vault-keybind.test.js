@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { SELF, env } from 'cloudflare:test';
 import { call, newUser, ORIGIN } from './helpers.js';
-import { assertVaultKey, assertVaultKeyFor, VaultKeyError } from '../src/vault-keys.js';
+import { assertVaultKey, assertVaultKeyFor, VaultKeyError, VAULT_MEDIA_TYPES } from '../src/vault-keys.js';
 
 const VICTIM_BYTES = 'victim vault object';
 async function put(u, url, bytes) {
@@ -25,6 +25,24 @@ describe('Vault keys are bound to their row (owner, type, id)', () => {
     }
     expect(() => assertVaultKeyFor('vault/notatype/u1/med_1', { ...row, media_type: 'notatype' })).toThrow(VaultKeyError);
     expect(() => assertVaultKeyFor('vault/photo/u1/med_1', null)).toThrow(VaultKeyError);
+  });
+
+  it('assertVaultKeyFor requires row.id: a non-empty string equal to the key id segment', () => {
+    const k = 'vault/photo/u1/med_1';
+    for (const id of [undefined, null, '', 0, 1, {}, ['med_1'], 'med_2']) {
+      expect(() => assertVaultKeyFor(k, { id, owner_id: 'u1', media_type: 'photo' })).toThrow(VaultKeyError);
+    }
+    expect(() => assertVaultKeyFor(k, { owner_id: 'u1', media_type: 'photo' })).toThrow(VaultKeyError);
+    expect(assertVaultKeyFor(k, { id: 'med_1', owner_id: 'u1', media_type: 'photo' })).toBe(k);
+  });
+
+  it('type allowlist is pinned to exactly photo, video, audio', () => {
+    expect([...VAULT_MEDIA_TYPES]).toEqual(['photo', 'video', 'audio']);
+    expect(Object.isFrozen(VAULT_MEDIA_TYPES)).toBe(true);
+    for (const t of ['photo', 'video', 'audio']) expect(assertVaultKeyFor(`vault/${t}/u1/med_1`, { id: 'med_1', owner_id: 'u1', media_type: t })).toBeTruthy();
+    for (const t of ['music', 'story', 'image', 'file', 'doc', 'Photo']) {
+      expect(() => assertVaultKeyFor(`vault/${t}/u1/med_1`, { id: 'med_1', owner_id: 'u1', media_type: t })).toThrow(VaultKeyError);
+    }
   });
 
   it("ownedMedia: a row repointed at another owner's vault key cannot overwrite it", async () => {
