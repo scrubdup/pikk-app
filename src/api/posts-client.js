@@ -17,4 +17,8 @@ export const postsApi={
   following:()=>request('/feed'),
   createText:(body)=>request('/posts',{method:'POST',body:{kind:'text',body}}),
   follow:(handle)=>request('/follows',{method:'POST',body:{handle}}),
+  like:(id)=>request('/posts/'+encodeURIComponent(id)+'/like',{method:'POST',body:{}}),
+  unlike:(id)=>request('/posts/'+encodeURIComponent(id)+'/like',{method:'DELETE',body:{}}),
+  comments:(id)=>request('/posts/'+encodeURIComponent(id)+'/comments'),
+  comment:(id,body)=>request('/posts/'+encodeURIComponent(id)+'/comments',{method:'POST',body:{body}}),
 };
