@@ -37,15 +37,10 @@ function gateHtml(user) {
   return shellPage(
     'Admin',
     `<div class="card admin-gate">
-      <h3>Admin gate · TEST MODE</h3>
-      <p class="muted">Demo-only. No real auth. Enable one of:</p>
-      <ol class="admin-gate-steps">
-        <li>Sign in on <a href="#/profile">Profile</a>, then toggle <strong>Demo Admin</strong>.</li>
-        <li>While signed in, open <code>#/admin?admin=1</code> (sets <code>user.role='admin'</code> in <code>dbs_v1</code>).</li>
-      </ol>
+      <h3>Staff only</h3>
+      <p class="muted">The admin dashboard is for PIKK staff. Access comes from your server-verified account role; it cannot be turned on from the browser.</p>
       <p>Signed in as: <strong>${esc(user?.username || 'guest')}</strong>
         ${user ? '' : '· <a class="btn" href="#/profile">Sign in</a>'}</p>
-      ${user ? `<a class="btn primary" href="#/admin?admin=1">Enable Admin · TEST MODE</a>` : ''}
     </div>
     <div class="card muted">Full team roles, revenue, and moderation ship later phases.</div>`,
     { lead: 'Gated demo dashboard.' }
@@ -383,10 +378,7 @@ export function renderAdmin() {
   const route = getRoute();
   const { posts, clipperApps, user } = getState();
 
-  if (route.query?.admin === '1' && user && user.role !== 'admin') {
-    setAdminRole(true);
-  }
-
+  // ?admin=1 no longer grants anything: admin is staff-only and checked by the server.
   if (!isAdmin()) return gateHtml(user);
 
   ensureOpenMicSeeded();
@@ -406,7 +398,7 @@ export function renderAdmin() {
         <span class="spacer muted">Signed in as <strong>${esc(user.username)}</strong></span>
         <button class="btn ghost" id="adminRevoke">Revoke admin</button>
       </div>
-      <p class="muted admin-gate-hint">Gate: Profile toggle or <code>?admin=1</code> → <code>user.role='admin'</code> in <code>dbs_v1</code>. Phase 2 panels deep-link to owner pages.</p>
+      <p class="muted admin-gate-hint">Gate: server-verified staff role (dev demo builds may use the local toggle). Phase 2 panels deep-link to owner pages.</p>
     </div>
 
     ${quickLinksHtml()}

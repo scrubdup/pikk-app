@@ -1,0 +1,57 @@
+# PIKK ID / age verification
+
+Status: **built, not connected.** With no provider secrets set, the API reports `provider not connected`, nobody can be verified, and Dating / 18+ contests stay locked. Nothing in the browser can mark anyone verified.
+
+## How it works
+- Adapter interface (`backend/src/idv/index.js`): `isConfigured(env)`, `createSession(env, {userId, redirectUri})` → `{providerRef, hostedUrl}`, `verifyWebhook(env, req, raw)`, `parseEvent(json)` → `{eventId, providerRef, status, occurredAt}`. Status is one of `pending | verified | declined | needs_review | expired`.
+- **Persona** (primary, `backend/src/idv/persona.js`): hosted inquiry flow (government ID + selfie/liveness, set by your template). It calls `POST https://api.withpersona.com/api/v1/inquiries` with `inquiry-template-id` and `meta.auto-create-account-reference-id` = PIKK user id, and `auto-create-one-time-link` (the hosted URL). Webhooks are checked against the `Persona-Signature` header: `t=<unix>,v1=<hex HMAC-SHA256 of "t.body">`, with space-separated sets during secret rotation. Any `v1` may match, and there's a 5-minute tolerance.
+- **Didit** (backup, `backend/src/idv/didit.js`): **stub only** and never connects. It fits the same interface (hosted session + signed webhook) and also has room for a cheap selfie-only **age estimate** for contest voters (planned method `age_estimate`). To build it, read docs.didit.me for the session endpoint and webhook signature, then implement the four functions.
+- Endpoints:
+  - `GET /verification/age` returns `not_connected | not_started | pending | needs_review | verified | declined | expired`.
+  - `POST /verification/age/start` requires a signed-in user with a verified email. It's limited to 5 a day and returns `hosted_url`.
+  - `POST /webhooks/idv/persona` (and `/webhooks/idv/<provider>`) verifies the signature, is rate-limited, is idempotent per event id, and writes to `audit_log`.
+- **Data kept:** `users.age_verified_18`, `age_verification_method` (e.g. `persona:government_id+selfie`), `age_verified_at` and `age_verification_ref` (`persona:inq_…`). There's also a session table with status only. **No ID images, names, document numbers or dates of birth are stored.** The webhook payload is reduced to id/status and then discarded. An approved result is never downgraded by a later event; revocation has to be a staff action.
+- Frontend: `#/verify-age`, linked from Dating and the Twerk Contest gate. It shows the server status and opens the provider's https hosted page. It never claims success unless the server says so.
+
+## Biometric consent (draft, lawyer review required)
+Before Persona starts, `#/verify-age` shows a written notice covering what's collected (ID photo, selfie, face geometry), the purpose (18+ only), Persona as vendor, retention and destruction (PIKK stores no biometrics, Illinois at the latest when the purpose is met or 3 years after the last interaction), no sale, and the right to decline. The user has to check a box and type their full name. `POST /verification/age/consent` stores the user, consent version, SHA-256 of the text, timestamp, salted IP hash and signed name in `biometric_consents`, plus an `audit_log` row. `/verification/age/start` returns 403 `biometric_consent_required` without consent to the current version. The public policy is at `#/biometric-policy`.
+
+## Twerk Contest
+- Owner rulings: contestants are **women only**, and entries are **live and solo only**. `POST /contests/twerk/entries` returns 410 `recorded_entries_disabled`. Co-host, guest, duo and group fields on `/contests/twerk/live`, and `POST /contests/twerk/live/:id/(guests|cohosts|invites)`, return 422 `solo_only`. Going live (`POST /contests/twerk/live`) requires server `age_verified_18 = 1` **and** account `gender = 'female'`. Otherwise it returns 403 (`contestant_not_eligible` or `age_verification_required`). The entry UI only shows when `GET /contests/twerk/eligibility` returns `can_enter`.
+- **Gender is chosen at signup** (`POST /auth/signup` with `gender`: female, male, nonbinary or undisclosed). The signup form and the backend both require it (missing or invalid → 422), and it is stored server-side at account creation. It's self-declared and **never read from ID**. Owner rule: **it can never be self-changed.** `POST /account/gender` returns 409 `gender_locked` for any account that already has a gender. Legacy accounts created before this (gender null) can set it **once**, and it locks immediately. Profile shows it read-only.
+- Staff correction for genuine data-entry mistakes only: `POST /admin/account/gender` {handle, gender, reason} (moderator/admin), recorded in `audit_log` with from/to/reason. **Only ONE correction per account, ever.** It's atomic on `users.gender_corrected_at IS NULL`. Any later correction, even by an admin, returns 409 `gender_correction_used` and writes no audit row. *Pending owner confirmation.*
+- Accepted values (single source `backend/src/genders.js`, matching the 0013 CHECK): `female` (Female), `male` (Male), `nonbinary` (Non-binary), `undisclosed` (Prefer not to say). The signup and profile selects are generated from the same file.
+- Votes are accepted only on entries with status `approved`.
+- Consent text and version have one source of truth, `backend/src/idv/consent-text.js`, which the policy page also uses. `IP_HASH_SALT` is required: without it consent returns 503, except in dev/test mode (`EXPOSE_VERIFY_TOKEN=true`). It is **not** read from the ID; we store no ID data.
+- Viewing uses the existing 18+ self-confirmation. Voting (`POST /contests/twerk/votes`) needs a signed-in, email-verified account and **no** ID or gender check.
+
+## Owner setup steps
+1. Create a Persona account at withpersona.com and finish their business onboarding and contract. Start in **Sandbox**.
+2. In Persona, create or choose an **Inquiry Template** with Government ID + Selfie (liveness). Turn on an age check (18+) in the template/workflow so that only adults get **approved**. Copy the template id (`itmpl_…`).
+3. In Persona → Integration → **API keys**, create an API key.
+4. In Persona → Integration → **Webhooks**, add `https://<your-pikk-api-worker>/webhooks/idv/persona` and enable the `inquiry.approved`, `inquiry.declined`, `inquiry.marked-for-review`, `inquiry.expired` and `inquiry.failed` events. Use an attribute blocklist to strip birthdate, name and photos from webhook payloads (PIKK ignores them anyway). Copy the webhook secret.
+5. Set the Cloudflare Worker secrets (never commit them):
+   ```
+   cd backend
+   npx wrangler secret put PERSONA_API_KEY
+   npx wrangler secret put PERSONA_TEMPLATE_ID
+   npx wrangler secret put PERSONA_WEBHOOK_SECRET   # comma-separate old,new during PIKK-side rotation
+   npx wrangler secret put IP_HASH_SALT             # salt for hashing consent IPs
+   # optional: ID_VERIFICATION_PROVIDER (default "persona")
+   ```
+6. Apply migration `0013_id_verification.sql` (agreed order: main 0001–0007, #234 0008, Vault 0009–0010, #336 0011–0012, #339 0013) (the Worker build runs `d1 migrations apply`) and deploy.
+7. Test in Sandbox end to end, then switch to Production keys and template.
+
+## Lawyer review needed (not legal advice)
+- **Illinois BIPA**, plus Texas CUBI and Washington's biometric law: selfie/liveness is biometric data. These need written notice, written consent before capture, a public retention and destruction policy, and no sale of the data. BIPA has a private right of action. Confirm Persona's role (processor) and its retention settings, and add a consent screen before launching the flow.
+- **State age-verification laws** (e.g. Texas HB 1181, Utah, Louisiana, Virginia and others) and the UK Online Safety Act, EU DSA, GDPR Art. 9 and CCPA/CPRA: confirm which ones apply to Dating and 18+ contests and whether "store only the result" meets them.
+- Data processing agreement with Persona, retention period for results and audit logs, and a user appeal path for wrong declines.
+
+- **Women-only contest:** a sex-restricted contest may raise anti-discrimination issues (e.g. state public-accommodation laws such as California's Unruh Act, and platform policies) and sweepstakes/contest-law issues, especially if prizes are involved. Gender is self-declared on the account and not verified from ID, so it can be misstated. Counsel should approve the rule, the contest's official rules and the wording.
+- The consent text and retention policy are drafts. Confirm Persona's actual retention configuration matches them.
+
+## Gaps
+- Not connected: no account, keys or webhook exist yet. Persona endpoints and headers were checked against public docs on 2026-11-02 but have not been tested against a live sandbox.
+- Didit is a stub, and no age-estimate path is built.
+- Contest entries are recorded server-side (title only, status `pending_review`). Media upload, live streaming and a moderator review queue for entries are not built. Viewing still uses device-only self-confirmation, as the owner requested.
+- There's no consent/BIPA notice screen yet, no staff revoke/re-verify tooling, and no polling or refresh on return beyond reloading the page.
