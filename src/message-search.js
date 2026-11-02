@@ -7,7 +7,8 @@ export function messageSearchText(thread) {
   const messages = Array.isArray(thread?.messages) ? thread.messages : [];
   const latest = messages.length ? messages[messages.length - 1] : null;
   const participant = String(thread?.peerName || thread?.peerId || '');
-  const preview = String(latest?.text || '');
+  // Inbox previews display at most 80 characters; do not match text the user cannot see.
+  const preview = String(latest?.text || '').slice(0, 80);
   return `${participant} ${preview}`.toLowerCase();
 }
 
