@@ -36,3 +36,28 @@ test('Roast Arena documents breaks, tie resolution and rematch voting', () => {
   assert.match(arena, /Rematch: No/);
   assert.match(arena, /both contestants agree/);
 });
+
+test('Roast Arena 1v1 preview is labeled TEST MODE with placeholder tiles and test values', () => {
+  assert.match(arena, /id="roast-1v1"/);
+  assert.match(arena, /TEST MODE/);
+  assert.match(arena, /no camera connected/);
+  assert.match(arena, /test values · owner verification needed/);
+  assert.match(arena, /Report \(stub\)/);
+  assert.match(arena, /recorded locally only/);
+  assert.doesNotMatch(arena, /giftbattle|live-gift-battle/i);
+});
+
+test('Roast Arena Tag-Team preview is TEST MODE with test-value format', () => {
+  assert.match(arena, /id="roast-tagteam"/);
+  assert.match(arena, /Tag Team · TEST MODE preview/);
+  assert.match(arena, /every member must consent/i);
+  assert.match(arena, /ROAST_TAG_TEAM_TEST_FORMAT_OWNER_VERIFICATION_NEEDED/);
+});
+
+test('Roast page marks approved timings and keeps only rematch window and tag-team format flagged', () => {
+  assert.match(arena, /Every contestant must agree/);
+  assert.match(arena, /Viewers do not vote on rematches/);
+  assert.match(arena, /decision window \$\{REMATCH_SECONDS\}s <em>· test value · owner verification needed/);
+  assert.doesNotMatch(arena, /one tiebreaker round is played\. <em>\(test values/);
+  assert.match(arena, /Tag-Team format is a test value/);
+});
