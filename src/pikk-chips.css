@@ -95,7 +95,7 @@ html body :is(.pikk-home-filterbar, .home-stage-tabs, .live-disc-tabs, .live-cat
   position: relative;
 }
 /* t222u — invisible rectangular tap area (radius 0 so off-centre points on narrow chips still hit): 34px visual + 6px beyond
-   the border above/below (46px hit box) and 3px sideways = half the 6px column gap, so neighbours meet at the midpoint without overlapping, 2px each side); groups keep >=10px row gap so areas don't overlap. */
+   the border above/below (46px hit box) and 3px sideways = half the 6px column gap, so neighbours meet at the midpoint without overlapping; groups keep >=10px row gap so areas don't overlap. */
 html body :is(.pikk-home-filterbar, .home-stage-tabs, .live-disc-tabs, .live-cat-chips, .admin-type-tabs, .pikk-viral-tabs, .shop-chips, .pikk-video-filters, .pikk-music-categories) > :is(a, button)::before {
   content: ""; position: absolute; inset: calc((var(--pikk-chip-h) - var(--pikk-chip-tap)) / 2 - var(--pikk-chip-bw, 1px) - 1px) calc(-1 * var(--pikk-chip-tap-x, 3px)); border-radius: 0; background: transparent;
 }

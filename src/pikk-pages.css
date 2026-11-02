@@ -181,3 +181,10 @@ html.pikk-reduce-motion *{animation:none!important;transition:none!important}
 /* Safety Block/Report/category: 44px tap targets (#369) */
 html body .pikk-safety-tap{min-height:44px;box-sizing:border-box}
 html body .page .btn.pikk-safety-tap{min-height:44px;box-sizing:border-box}
+
+/* t463u Winner Takes All toggle + explainer drawer (44px taps, palette only) */
+.pikk-gb-controls .chip{min-height:44px}
+.pikk-gb-wta-on{color:#fff;border-color:var(--pikk-blue)}
+.pikk-gb-how{margin:8px 0}
+.pikk-gb-how>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;color:#fff;font-weight:750}
+.pikk-gb-payout{margin:4px 0 8px;font-size:12px}
