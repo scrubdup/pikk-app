@@ -40,6 +40,15 @@ export function computeWinner(b) {
 }
 
 /* ---------- t403u/t404u winners: badge (24h), W-L record, daily top-10 (pure) ---------- */
+/** t463u Winner Takes All (TEST MODE demo coins only). Off: each side keeps its own gifts. On: the winner gets every coin
+ *  sent in the battle; a tie always falls back to each side keeping its own. Returns demo-coin payouts per side. */
+export function computePayout(b, winnerTakesAll = false) {
+  const a = Math.max(0, Number(b?.a?.total) || 0), c = Math.max(0, Number(b?.b?.total) || 0);
+  const w = computeWinner(b);
+  if (!winnerTakesAll || w.result === 'tie') return { a, b: c, pot: a + c, winnerTakesAll: !!winnerTakesAll && w.result !== 'tie', tie: w.result === 'tie' };
+  return w.result === 'a' ? { a: a + c, b: 0, pot: a + c, winnerTakesAll: true, tie: false } : { a: 0, b: a + c, pot: a + c, winnerTakesAll: true, tie: false };
+}
+
 export const BADGE_MS = 24 * 3600000;
 export const DAY_MS = 24 * 3600000;
 export const STRIP_MAX = 10;
@@ -118,7 +127,9 @@ export function renderGiftForAllControls(scope) {
   return `<div class="pikk-gb-controls row wrap" data-gb-controls="${e(scope)}" style="gap:6px">
     <button type="button" class="chip pikk-chip" data-gb-giftall="me">🎁 Send gift for all viewers · demo</button>
     <button type="button" class="chip pikk-chip" data-gb-giftall="demo">Demo: placeholder sends gift for all</button>
+    <button type="button" class="chip pikk-chip pikk-gb-wta" data-gb-wta aria-pressed="false" title="Optional · TEST MODE demo coins only">🏆 Winner Takes All: Off <small>TEST MODE</small></button>
   </div>
+  <details class="pikk-gb-how"><summary>How Gift Battles work</summary>${renderGiftBattleExplainer(scope)}</details>
   <div class="pikk-gb" data-gb-slot="${e(scope)}" hidden aria-live="polite"></div>`;
 }
 
@@ -135,11 +146,12 @@ function battleHtml(b, me, now) {
   const side = (k) => nameHtml(b[k].name);
   const gifts = (k) => GB_GIFTS.map(([slug, pts]) => `<button type="button" class="chip pikk-chip pikk-gb-gift" data-gb-side="${k}" data-gb-pts="${pts}" aria-label="Gift +${pts} for ${e(b[k].name)} · TEST MODE">${getGiftSticker(slug, { className: 'gift-sticker gift-sticker--sm' }).html}<small>+${pts}</small></button>`).join('');
   const w = over ? computeWinner(b) : null;
-  return `<div class="pikk-gb-head"><strong>⚔️ Gift Battle</strong> <span class="chip">TEST MODE · demo gifts · no charges</span><span class="pikk-gb-timer" data-gb-timer>${over ? 'Ended' : clock(timeLeftMs(b, now))}</span></div>
+  const pay = over ? computePayout(b, b.wta) : null;
+  return `<div class="pikk-gb-head"><strong>⚔️ Gift Battle</strong> <span class="chip">TEST MODE · demo gifts · no charges</span>${b.wta ? '<span class="chip pikk-gb-wta-on">🏆 Winner Takes All · TEST MODE</span>' : ''}<span class="pikk-gb-timer" data-gb-timer>${over ? 'Ended' : clock(timeLeftMs(b, now))}</span></div>
     <div class="pikk-gb-bar" role="img" aria-label="${e(b.a.name)} ${b.a.total} vs ${e(b.b.name)} ${b.b.total}">
       <div class="pikk-gb-a" style="width:${pa}%"><span>${side('a')} · ${b.a.total}</span></div>
       <div class="pikk-gb-b" style="width:${100 - pa}%"><span>${b.b.total} · ${side('b')}</span></div></div>
-    ${over ? `<p class="pikk-gb-winner" role="status">${getGiftSticker('battle-win', { className: 'gift-sticker gift-sticker--sm' }).html} <strong>${w.result === 'tie' ? 'Tie' : `${e(w.name)} wins`}</strong> · ${b.a.total}–${b.b.total} · TEST MODE</p><button type="button" class="chip pikk-chip" data-gb-close>Close</button>`
+    ${over ? `<p class="pikk-gb-winner" role="status">${getGiftSticker('battle-win', { className: 'gift-sticker gift-sticker--sm' }).html} <strong>${w.result === 'tie' ? 'Tie' : `${e(w.name)} wins`}</strong> · ${b.a.total}–${b.b.total} · TEST MODE</p><p class="pikk-gb-payout muted" data-gb-payout>${pay.winnerTakesAll ? `Winner Takes All: ${e(w.name)} receives all ${pay.pot} demo coins` : `${pay.tie && b.wta ? 'Tie, so Winner Takes All does not apply: ' : ''}each side keeps its own: ${e(b.a.name)} ${pay.a} · ${e(b.b.name)} ${pay.b} demo coins`} · TEST MODE · no real money</p><button type="button" class="chip pikk-chip" data-gb-close>Close</button>`
     : `<div class="pikk-gb-gifts"><div>${gifts('a')}</div><div>${gifts('b')}</div></div><small class="muted">Totals change only by taps on this device · the placeholder side moves only when you tap it.</small>`}`;
 }
 
@@ -147,7 +159,7 @@ export function bindGiftForAll(root, { me = 'You', toast = () => {} } = {}) {
   bindBattleNames(root, toast); refreshWinnersStrips(root);
   root.querySelectorAll('[data-gb-slot]').forEach((slot) => {
     const ctr = root.querySelector(`[data-gb-controls="${slot.dataset.gbSlot}"]`); if (!ctr) return;
-    const s = { w: null, b: null, t: null };
+    const s = { w: null, b: null, t: null, wta: false };
     const draw = () => {
       const now = Date.now();
       if (s.b) slot.innerHTML = battleHtml(s.b, me, now);
@@ -158,6 +170,12 @@ export function bindGiftForAll(root, { me = 'You', toast = () => {} } = {}) {
     };
     const tick = () => { clearInterval(s.t); s.t = setInterval(() => (document.body.contains(slot) ? draw() : clearInterval(s.t)), 1000); };
     ctr.addEventListener('click', (ev) => {
+      const t = ev.target.closest('[data-gb-wta]');
+      if (t) {
+        if (s.b && !isOver(s.b)) return toast('Winner Takes All is set before a battle starts');
+        s.wta = !s.wta; t.setAttribute('aria-pressed', String(s.wta)); t.classList.toggle('on', s.wta);
+        t.innerHTML = `🏆 Winner Takes All: ${s.wta ? 'On' : 'Off'} <small>TEST MODE</small>`; return;
+      }
       const b = ev.target.closest('[data-gb-giftall]'); if (!b) return;
       if (s.b && !isOver(s.b)) return toast('A Gift Battle is already running');
       s.b = null; s.w = openChallengeWindow({ gifter: b.dataset.gbGiftall === 'me' ? me : DEMO_PLACEHOLDER });
@@ -168,7 +186,7 @@ export function bindGiftForAll(root, { me = 'You', toast = () => {} } = {}) {
         const challenger = s.w?.gifter === me ? DEMO_PLACEHOLDER : me;
         const r = tryAccept(s.w, challenger); s.w = r.window || s.w;
         if (!r.ok) return toast(r.reason === 'expired' ? 'Challenge expired' : 'Someone already accepted');
-        s.b = r.battle; draw(); tick(); return;
+        s.b = { ...r.battle, wta: !!s.wta }; draw(); tick(); return;
       }
       const g = ev.target.closest('[data-gb-side]');
       if (g && s.b) { s.b = addGift(s.b, g.dataset.gbSide, Number(g.dataset.gbPts)); draw(); return; }
@@ -177,7 +195,7 @@ export function bindGiftForAll(root, { me = 'You', toast = () => {} } = {}) {
   });
 }
 
-export function renderGiftBattleExplainer() {
+export function renderGiftBattleExplainer(scope) {
   return `
     <div class="card pikk-gb-explainer" id="gbExplainer">
       <h3 style="margin:0 0 6px">Gift Battles happen inside Live &amp; Group Rooms</h3>
@@ -185,6 +203,7 @@ export function renderGiftBattleExplainer() {
         <li>A viewer sends a gift <strong>for all viewers</strong>.</li>
         <li>Everyone else sees a <strong>Challenge to Gift Battle</strong> tab for <strong>30 seconds</strong>.</li>
         <li>The <strong>first</strong> viewer to tap it starts a <strong>60-second</strong> battle: the original gifter vs the challenger.</li>
+        ${scope === 'live' || scope === 'room' ? `<li><strong>Winner Takes All</strong> (optional toggle, off by default): the winner receives all of the battle’s gift coins; off, each side keeps its own. TEST MODE demo coins only, no real money.</li>` : ''}
         <li>Both send gifts — whoever sends more total wins. The compact battle bar never blocks the video, chat or reactions.</li>
       </ol>
       <p class="muted small">Gifts are voluntary support — not wagers, no prizes. TEST MODE: demo gifts only, no charges; totals count only taps on this device. Roast Battles are separate (Roast Arena).</p>
