@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { renderGames, bindGames, arcadePreviewAt } from '../src/pages/games.js';
+import { renderGames, bindGames, arcadePreviewAt, arcadeMatchesQuery } from '../src/pages/games.js';
 import { PIKK_GAMES } from '../src/games/arcade-catalog.js';
 
 test('all 15 approved Arcade covers open a full-size concept preview, not fake gameplay', () => {
@@ -72,4 +72,74 @@ test('Arcade route binds preview only on Arcade and keeps global shell/player', 
   assert.ok(main.includes("'/games': { render: renderGames, bind: bindGames }"));
   assert.ok(main.includes('initDbsPlayer'));
   assert.ok(main.includes('buildTabbar'));
+});
+
+test('Arcade search keeps all fifteen approved games and reports accessible filtered results', () => {
+  const html = renderGames();
+  assert.match(html, /id="pikkArcadeSearch"/);
+  assert.match(html, /aria-controls="pikkArcadeGrid"/);
+  assert.match(html, /id="pikkArcadeSearchStatus"[^>]*role="status"[^>]*aria-live="polite"/);
+  assert.match(html, /id="pikkArcadeNoMatches"[^>]*hidden/);
+  assert.equal(arcadeMatchesQuery(PIKK_GAMES[0], 'BLOCK'), true);
+  assert.equal(arcadeMatchesQuery(PIKK_GAMES[0], 'fighters'), true);
+  assert.equal(arcadeMatchesQuery(PIKK_GAMES[0], 'chess'), false);
+  assert.equal(PIKK_GAMES.filter(g => arcadeMatchesQuery(g, '  ')).length, 15);
+  assert.equal(html.split('class="pikk-arcade-card ').length - 1, 15);
+});
+
+test('Arcade search filters in place, shows empty state, clears on Escape and button', () => {
+  const handlers = {};
+  const cards = PIKK_GAMES.map(() => ({ hidden: false }));
+  const gallery = {
+    querySelectorAll(selector) {
+      assert.equal(selector, '.pikk-arcade-card');
+      return cards;
+    },
+  };
+  let focused = false;
+  const search = {
+    value: '',
+    addEventListener(type, handler) { handlers['search:' + type] = handler; },
+    focus() { focused = true; },
+  };
+  const clear = {
+    hidden: true,
+    addEventListener(type, handler) { handlers['clear:' + type] = handler; },
+  };
+  const status = { textContent: '' };
+  const empty = { hidden: true };
+  const root = { querySelector(selector) {
+    return ({
+      '.pikk-arcade-grid': gallery,
+      '#pikkArcadeSearch': search,
+      '#pikkArcadeSearchClear': clear,
+      '#pikkArcadeSearchStatus': status,
+      '#pikkArcadeNoMatches': empty,
+    })[selector] || null;
+  }};
+  bindGames(root);
+  assert.equal(status.textContent, 'Showing all 15 games');
+  search.value = 'chess';
+  handlers['search:input']();
+  assert.equal(cards.filter(c => !c.hidden).length, 1);
+  assert.equal(cards[14].hidden, false);
+  assert.equal(status.textContent, 'Showing 1 of 15 games');
+  assert.equal(clear.hidden, false);
+  search.value = 'not-a-game';
+  handlers['search:input']();
+  assert.equal(cards.filter(c => !c.hidden).length, 0);
+  assert.equal(empty.hidden, false);
+  let prevented = false;
+  handlers['search:keydown']({ key: 'Escape', preventDefault() { prevented = true; } });
+  assert.equal(prevented, true);
+  assert.equal(search.value, '');
+  assert.equal(cards.filter(c => !c.hidden).length, 15);
+  assert.equal(empty.hidden, true);
+  assert.equal(clear.hidden, true);
+  search.value = 'pool';
+  handlers['search:input']();
+  handlers['clear:click']();
+  assert.equal(search.value, '');
+  assert.equal(cards.filter(c => !c.hidden).length, 15);
+  assert.equal(focused, true);
 });
