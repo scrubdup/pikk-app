@@ -231,6 +231,49 @@ async function route(req, env, ctx) {
     await env.DB.batch([stmt, auditStmt(env, { actor: s.user.id, action: m === 'POST' ? 'admin.grant_role' : 'admin.revoke_role', target: target.id, ip, meta: { role, reason } })]);
     return json(200, { ok: true });
   }
+  if (m === 'GET' && p === '/admin/signup-roles') {
+    requirePermission(ctx, 'roles.grant');
+    const status = url.searchParams.get('status');
+    const allowed = ['declared','pending_review','approved','rejected'];
+    if (status && !allowed.includes(status)) throw new ApiError(422, 'validation_failed', 'Invalid role status');
+    const sql = `SELECT sr.user_id,u.handle,u.display_name,c.email,sr.role,sr.status,sr.declared_at
+                   FROM user_signup_roles sr
+                   JOIN users u ON u.id=sr.user_id
+                   JOIN credentials c ON c.user_id=sr.user_id
+                  WHERE sr.role<>'member' ${status ? 'AND sr.status=?' : ''}
+                  ORDER BY CASE sr.status WHEN 'pending_review' THEN 0 WHEN 'declared' THEN 1 WHEN 'approved' THEN 2 ELSE 3 END,
+                           sr.declared_at ASC
+                  LIMIT 300`;
+    const r = status ? await env.DB.prepare(sql).bind(status).all() : await env.DB.prepare(sql).all();
+    return json(200, { roles: r.results });
+  }
+
+  if (m === 'POST' && p === '/admin/signup-roles/review') {
+    const admin = requirePermission(ctx, 'roles.grant');
+    const b = await readJson(req);
+    const handle = requireString(b, 'handle', { max: 30, pattern: HANDLE });
+    const role = requireString(b, 'role', { max: 30 });
+    const status = requireString(b, 'status', { max: 30 });
+    const reason = requireString(b, 'reason', { min: 3, max: 500 });
+    const allowedRoles = ['creator','artist','streamer','publisher','producer','seller','advertiser','clipper'];
+    const allowedStatuses = ['pending_review','approved','rejected'];
+    if (!allowedRoles.includes(role)) throw new ApiError(422, 'validation_failed', 'Invalid creator role');
+    if (!allowedStatuses.includes(status)) throw new ApiError(422, 'validation_failed', 'Invalid review status');
+    const target = await userByHandle(env, handle);
+    const row = await env.DB.prepare(`SELECT status FROM user_signup_roles WHERE user_id=? AND role=?`).bind(target.id, role).first();
+    if (!row) throw new ApiError(404, 'not_found', 'Role declaration not found');
+    const changedAt = new Date().toISOString();
+    await env.DB.prepare(`UPDATE user_signup_roles SET status=? WHERE user_id=? AND role=?`).bind(status, target.id, role).run();
+    await audit(env, {
+      actor: admin.user.id,
+      action: 'admin.signup_role_review',
+      target: target.id,
+      ip,
+      meta: { role, from: row.status, to: status, reason, changed_at: changedAt },
+    });
+    return json(200, { role: { handle, role, status } });
+  }
+
   if (m === 'GET' && p === '/admin/audit') {
     requirePermission(ctx, 'admin.access');
     const r = await env.DB.prepare(`SELECT id, actor_id, action, target, created_at FROM audit_log ORDER BY created_at DESC LIMIT 100`).all();
