@@ -253,3 +253,31 @@ describe('consent IP salt fails closed outside dev', () => {
     await expect(postConsent(e, req, await ctxFor(e, u))).rejects.toMatchObject({ status: 503, code: 'consent_not_configured' });
   });
 });
+
+describe('owner rule: gender chosen at signup, never self-changed', () => {
+  const signupWith = async (gender) => {
+    const h = 'g_' + Math.random().toString(36).slice(2, 10);
+    return call('POST', '/auth/signup', { body: { email: `${h}@example.com`, password: 'correct horse 42', handle: h, display_name: 'G', gender }, ip: `10.9.${Math.floor(Math.random()*250)}.${Math.floor(Math.random()*250)}` });
+  };
+  it('signup stores gender server-side and it is locked immediately', async () => {
+    const r = await signupWith('female');
+    expect(r.status).toBe(201); expect(r.json.gender).toBe('female');
+    const row = await env.DB.prepare(`SELECT gender, gender_set_at FROM users WHERE id=?`).bind(r.json.user.id).first();
+    expect(row.gender).toBe('female'); expect(row.gender_set_at).toBeTruthy();
+    await call('POST', '/auth/verify', { body: { token: r.json.verification.token } });
+    for (const g of ['male', 'female', 'undisclosed']) {
+      const x = await call('POST', '/account/gender', { cookie: r.cookie, body: { gender: g } });
+      expect(x.status).toBe(409); expect(x.json.error.code).toBe('gender_locked');
+    }
+    expect((await call('GET', '/account/gender', { cookie: r.cookie })).json).toEqual({ gender: 'female', locked: true });
+  });
+  it('signup rejects an invalid gender', async () => { expect((await signupWith('robot')).status).toBe(422); });
+  it('legacy null account can set once, then locked (no verification needed)', async () => {
+    const u = await newUser();
+    expect((await call('GET', '/account/gender', { cookie: u.cookie })).json).toEqual({ gender: null, locked: false });
+    expect((await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'male' } })).status).toBe(200);
+    const again = await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'female' } });
+    expect(again.status).toBe(409); expect(again.json.error.code).toBe('gender_locked');
+    expect((await env.DB.prepare(`SELECT gender FROM users WHERE id=?`).bind(u.id).first()).gender).toBe('male');
+  });
+});

@@ -49,5 +49,8 @@ test('policy page version comes from the shared consent-text source; profile sho
   assert.doesNotMatch(read('backend/src/idv/consent.js'), /CONSENT_TEXT = `/);
   assert.ok(shared.CONSENT_VERSION && shared.CONSENT_TEXT.includes('lawyer review required'));
   const prof = read('src/pages/profile.js');
-  assert.match(prof, /id="accountGenderLocked"/); assert.match(prof, /gender_locked/);
+  assert.match(prof, /id="accountGenderValue"/); assert.match(prof, /gender_locked/);
+  assert.match(prof, /id="signupGender" required/); assert.match(prof, /cannot be changed later/);
+  assert.match(prof, /Set once/); assert.match(prof, /accountGenderLegacy" hidden/);
+  assert.match(read('src/api/auth-client.js'), /\.\.\.\(gender \? \{ gender \} : \{\}\)/);
 });

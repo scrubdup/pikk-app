@@ -12,10 +12,11 @@ import { requireString } from './validate.js';
 export const CONTESTS = Object.freeze({ twerk: { adultContestantsOnly: true, contestantGenders: ['female'] } });
 export const GENDERS = ['female', 'male', 'nonbinary', 'undisclosed'];
 
-/** Gender locks once the account is age-verified or has any contest entry. */
+/** Owner rule: once an account has a gender (set at signup, or the one-time legacy set) it is locked forever.
+ *  Only staff can correct genuine data-entry mistakes (POST /admin/account/gender, reason + audit). */
 export async function isGenderLocked(env, userId) {
-  const r = await env.DB.prepare(`SELECT age_verified_18 AS v, EXISTS(SELECT 1 FROM contest_entries WHERE user_id = ?1) AS e FROM users WHERE id = ?1`).bind(userId).first();
-  return !!(r && (r.v === 1 || r.e === 1));
+  const r = await env.DB.prepare(`SELECT gender FROM users WHERE id = ?`).bind(userId).first();
+  return !!(r && r.gender);
 }
 
 export async function contestEligibility(env, userId, contest) {
@@ -40,10 +41,10 @@ export async function contestRoute(env, req, ctx, m, p) {
     await rateLimit(env, `gender:${s.user.id}`, 5, 86400);
     const b = await readJson(req);
     if (!GENDERS.includes(b.gender)) throw new ApiError(422, 'validation_failed', 'Invalid input', { gender: GENDERS.join(', ') });
-    if (await isGenderLocked(env, s.user.id)) throw new ApiError(409, 'gender_locked', 'Account gender is locked after age verification or a contest entry. Contact Support to request a change.');
+    if (await isGenderLocked(env, s.user.id)) throw new ApiError(409, 'gender_locked', 'Account gender is set at signup and cannot be changed. Contact Support if it was entered by mistake.');
     const t = new Date().toISOString();
     await env.DB.batch([
-      env.DB.prepare(`UPDATE users SET gender = ?, gender_set_at = ? WHERE id = ?`).bind(b.gender, t, s.user.id),
+      env.DB.prepare(`UPDATE users SET gender = ?, gender_set_at = ? WHERE id = ? AND gender IS NULL`).bind(b.gender, t, s.user.id),
       auditStmt(env, { actor: s.user.id, action: 'account.gender_set', target: s.user.id, meta: { gender: b.gender } }),
     ]);
     return json(200, { gender: b.gender });
