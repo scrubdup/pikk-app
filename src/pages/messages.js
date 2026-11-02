@@ -18,6 +18,7 @@ import { esc, toast, shellPage, timeAgo } from '../ui.js';
 import { navigate } from '../router.js';
 import { messageSearchText, messageResultSummary } from '../message-search.js';
 import { messagesApi, isMessagesApiConfigured } from '../api/messages-client.js';
+import { safetyApi, isSafetyApiConfigured, safetyErrorMessage, LOCAL_ONLY_BLOCK_NOTE, LOCAL_ONLY_REPORT_NOTE } from '../api/safety-client.js';
 
 function refresh(hash) {
   navigate(hash || '#/messages');
@@ -554,11 +555,25 @@ export function bindMessages(root) {
         refresh('#/messages?t=' + encodeURIComponent(thread.id));
       } else if (flag === 'block') {
         const next = setThreadFlags(thread.id, { blocked: !thread.blocked });
-        toast(next.blocked ? 'Blocked' : 'Unblocked');
+        const handle = thread.peerHandle;
+        if (next.blocked && handle && isSafetyApiConfigured() && getState().user?.authSource === 'backend') {
+          safetyApi.block(handle)
+            .then(() => toast('Blocked across PIKK'))
+            .catch((err) => toast('Hidden here only — server block failed: ' + safetyErrorMessage(err)));
+        } else {
+          toast(next.blocked ? 'Blocked · ' + LOCAL_ONLY_BLOCK_NOTE : 'Unblocked on this device');
+        }
         refresh('#/messages?t=' + encodeURIComponent(thread.id));
       } else if (flag === 'report') {
         setThreadFlags(thread.id, { report: true });
-        toast('Reported · stub (Guidelines §13)');
+        const target = thread.peerHandle;
+        if (target && isSafetyApiConfigured() && getState().user?.authSource === 'backend') {
+          safetyApi.report({ targetType: 'user', targetId: target, category: 'harassment', details: 'Reported from Messages' })
+            .then(() => toast('Report sent to PIKK moderators'))
+            .catch((err) => toast('Report not sent: ' + safetyErrorMessage(err)));
+        } else {
+          toast('Reported · stub (Guidelines §13) · ' + LOCAL_ONLY_REPORT_NOTE);
+        }
         refresh('#/messages?t=' + encodeURIComponent(thread.id));
       }
     });

@@ -9,6 +9,7 @@ import {
   followUser,
   unfollowUser,
   isAdmin,
+  isDemoAdminAllowed,
   setAdminRole,
 } from '../store.js';
 import { esc, toast, shellPage } from '../ui.js';
@@ -227,15 +228,15 @@ export function renderProfile(route) {
       <a class="btn block" href="#/music" style="margin-top:8px">Music &amp; Vault membership</a>
     </div>
 
-    <div class="card">
-      <h3>Demo Admin · TEST MODE</h3>
-      <p class="muted" style="font-size:12px">Sets <code>user.role='admin'</code> in localStorage <code>dbs_v1</code>. Also available via <code>#/admin?admin=1</code>.</p>
+    ${isDemoAdminAllowed() ? `<div class="card">
+      <h3>Demo Admin · DEV ONLY</h3>
+      <p class="muted" style="font-size:12px">Sets <code>user.role='admin'</code> in localStorage <code>dbs_v1</code>. Dev builds without a backend only; real admin is staff-only.</p>
       <div class="row wrap" style="margin-top:8px">
         <span class="chip">${isAdmin() ? 'role=admin' : 'role=fan'}</span>
         <button class="btn ${isAdmin() ? 'ghost' : 'primary'}" id="toggleAdmin">${isAdmin() ? 'Revoke admin' : 'Enable Demo Admin'}</button>
         <a class="btn" href="#/admin">Open Admin</a>
       </div>
-    </div>
+    </div>` : ''}
   `;
   return shellPage('Profile', body);
 }
