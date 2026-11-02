@@ -1,0 +1,23 @@
+name: Offline Command Center Tests
+on:
+  pull_request:
+    paths:
+      - 'offline-command-center/**'
+      - '.github/workflows/offline-command-center.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'offline-command-center/**'
+permissions:
+  contents: read
+jobs:
+  occ-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s offline-command-center/tests -v
+      - run: for f in offline-command-center/scripts/*.sh; do bash -n "$f" || exit 1; done
