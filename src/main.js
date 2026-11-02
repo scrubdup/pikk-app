@@ -176,6 +176,7 @@ const ROUTES = {
   '/shop': { render: renderPikkShop, bind: bindPikkShop },
   '/profile-shop': { render: renderShop, bind: bindShop },
   '/giftbattles': { render: renderGiftBattles, bind: bindGiftBattles },
+  '/battles': { render: renderGiftBattles, bind: bindGiftBattles }, // same PIKK Battles page
   '/notifications': { render: renderNotifications, bind: bindNotifications },
   '/fanclubs': { render: renderFanClubs, bind: bindFanClubs },
   '/wallet': { render: renderWallet, bind: bindWallet },

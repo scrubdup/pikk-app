@@ -57,7 +57,8 @@ test('t402u: wired into Live and Group Rooms; no host battle button; non-blockin
 test('t402u: Gift Battles page = explainer of the flow linking into Live; no sign-in wall; Roast untouched', () => {
   const ex = renderGiftBattleExplainer();
   for (const x of ['for all viewers', '30 seconds', '60-second', 'first', '#/live?tab=channels', '#/live?tab=rooms', 'TEST MODE']) assert.ok(ex.includes(x), x);
-  assert.match(gbPage, /if \(!user\) return shellPage\('Gift Battles', renderGiftBattleExplainer\(\)/);
+  // Signed-out #/giftbattles now shows the streamer-vs-streamer preview (Supervisor request); still no sign-in wall.
+  assert.match(gbPage, /if \(!user\) return shellPage\('PIKK Battles', renderSignedOutPreview\(\)/);
   assert.ok(!/live-gift-battle/.test(roast));
 });
 import { recordResult, hasWinnerBadge, battleRecord, dailyWinners, stripWinners, gridCell, emptyRecords, BADGE_MS, DAY_MS, STRIP_MAX } from '../src/live-gift-battle.js';
