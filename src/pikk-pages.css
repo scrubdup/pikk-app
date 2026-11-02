@@ -180,3 +180,4 @@ html.pikk-reduce-motion *{animation:none!important;transition:none!important}
 
 /* Safety Block/Report/category: 44px tap targets (#369) */
 html body .pikk-safety-tap{min-height:44px;box-sizing:border-box}
+html body .page .btn.pikk-safety-tap{min-height:44px;box-sizing:border-box}

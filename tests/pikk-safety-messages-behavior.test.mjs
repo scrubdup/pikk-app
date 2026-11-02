@@ -229,3 +229,15 @@ test('Block, Report and the category picker are 44px tap targets', async () => {
     for (const b of btns) assert.match(b, /pikk-safety-tap/, f + ': ' + b);
   }
 });
+
+test('.btn.pikk-safety-tap rule out-specifies `.page .btn{min-height:37px}`', async () => {
+  const fs = await import('node:fs');
+  const css = fs.readFileSync(new URL('../src/pikk-pages.css', import.meta.url), 'utf8');
+  assert.match(css, /html body \.page \.btn\.pikk-safety-tap\{[^}]*min-height:44px/);
+  // specificity (ids, classes, types): .page .btn = (0,2,0); html body .page .btn.pikk-safety-tap = (0,3,2)
+  const spec = (sel) => [0, (sel.match(/\.[\w-]+/g) || []).length, (sel.replace(/\.[\w-]+/g, '').match(/\b[a-z]+\b/g) || []).length];
+  const cmp = (a, b) => a.findIndex((v, i) => v !== b[i]);
+  const a = spec('html body .page .btn.pikk-safety-tap'), b = spec('.page .btn');
+  const i = cmp(a, b);
+  assert.ok(i >= 0 && a[i] > b[i], JSON.stringify({ a, b }));
+});

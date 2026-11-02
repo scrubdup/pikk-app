@@ -56,6 +56,8 @@ describe('reports', () => {
       const rr = await call('POST', '/reports', { cookie: u.cookie, body: b2 });
       expect(rr.status).toBe(422);
       expect(rr.json?.report).toBeUndefined();
+      const row = await env.DB.prepare(`SELECT COUNT(*) AS n FROM reports WHERE target_id = ?`).bind(b2.target_id).first();
+      expect(row.n).toBe(0);
     }
     let last;
     for (let i = 0; i < 10; i++) last = await call('POST', '/reports', { cookie: u.cookie, body: { ...body, target_id: `t${i}` } });
