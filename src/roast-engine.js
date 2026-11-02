@@ -41,16 +41,65 @@ export function respondRoastInvite(invite, { accept, consentAccepted }) {
   return { ...invite, status: 'accepted', invitee_consent_at: nowIso() };
 }
 
+/**
+ * OWNER VERIFICATION NEEDED: Tag-Team format was never specified. Smallest test default:
+ * 2v2, teams alternate turns (A1, B1, A2, B2). Rounds/timings reuse the 1v1 test values.
+ */
+export const ROAST_TAG_TEAM_TEST_FORMAT_OWNER_VERIFICATION_NEEDED = Object.freeze({
+  teamSize: 2,
+  turnOrder: 'teams-alternate',
+});
+const TT = ROAST_TAG_TEAM_TEST_FORMAT_OWNER_VERIFICATION_NEEDED;
+
+/** Tag-Team turn order: teams alternate, one member at a time. */
+export function tagTeamTurnOrder(teams) {
+  const order = [];
+  for (let i = 0; i < TT.teamSize; i++) for (const t of [0, 1]) order.push({ team: t, memberId: teams[t][i] });
+  return order;
+}
+
+/** Local TEST invite for Tag-Team. Every member must consent; consents map memberId -> ISO time or null. */
+export function createTagTeamInvite({ teams, inviterId, consentAccepted, blocked = false }) {
+  const all = (teams || []).flat();
+  if (!Array.isArray(teams) || teams.length !== 2 || teams.some((t) => !Array.isArray(t) || t.length !== TT.teamSize) || all.some((m) => !m) || new Set(all).size !== all.length) return { error: 'validation_failed' };
+  if (!all.includes(inviterId)) return { error: 'validation_failed' };
+  if (consentAccepted !== true) return { error: 'consent_required' };
+  if (blocked) return { error: 'blocked' };
+  const t = nowIso();
+  const consents = Object.fromEntries(all.map((m) => [m, m === inviterId ? t : null]));
+  return { id: `test-rvi-${++seq}`, inviter_id: inviterId, mode: 'roast_tag_team', teams: teams.map((x) => [...x]), consents, status: 'pending', created_at: t, testMode: true };
+}
+
+/** One member responds. Any decline cancels the invite; it becomes accepted only when every member consented. */
+export function respondTagTeamInvite(invite, memberId, { accept, consentAccepted }) {
+  if (!invite || invite.status !== 'pending' || !(memberId in invite.consents)) return { error: 'not_found' };
+  if (!accept) return { ...invite, status: 'declined', declined_by: memberId };
+  if (consentAccepted !== true) return { error: 'consent_required' };
+  const consents = { ...invite.consents, [memberId]: invite.consents[memberId] || nowIso() };
+  const allIn = Object.values(consents).every(Boolean);
+  return { ...invite, consents, status: allIn ? 'accepted' : 'pending' };
+}
+
+export function hasAllConsents(invite) {
+  if (!invite || invite.status !== 'accepted') return false;
+  if (invite.mode === 'roast_tag_team') return Object.values(invite.consents).every(Boolean);
+  return hasBothConsents(invite);
+}
+
 export function hasBothConsents(invite) {
   return !!invite && invite.status === 'accepted' && !!invite.inviter_consent_at && !!invite.invitee_consent_at;
 }
 
 /** A match can only start from an accepted invite with consent from both contestants. */
 export function createRoastMatch(invite, { eligibleViewerIds = [] } = {}) {
-  if (!hasBothConsents(invite)) throw new Error('consent_required: both contestants must accept before a match starts');
-  const contestants = [invite.inviter_id, invite.invitee_id];
+  if (invite?.mode === 'roast_tag_team') {
+    if (!hasAllConsents(invite)) throw new Error('consent_required: every team member must accept before a match starts');
+  } else if (!hasBothConsents(invite)) throw new Error('consent_required: both contestants must accept before a match starts');
+  const teams = invite.mode === 'roast_tag_team' ? invite.teams.map((x) => [...x]) : null;
+  const contestants = teams ? teams.flat() : [invite.inviter_id, invite.invitee_id];
+  const extra = teams ? { mode: 'roast_tag_team', teams, turnOrder: tagTeamTurnOrder(teams) } : { mode: 'roast_1v1' };
   return {
-    testMode: true, inviteId: invite.id, contestants,
+    testMode: true, inviteId: invite.id, contestants, ...extra,
     eligibleViewerIds: eligibleViewerIds.filter(v => !contestants.includes(v)),
     phase: 'round', round: 1, seconds: ROUND_SECONDS,
     votes: [0, 0], votersThisRound: [], scores: [0, 0], roundWinners: [],
