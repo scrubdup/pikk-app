@@ -9,11 +9,11 @@ test('splash holds a full 5s (t393u), uses official master logo, chime kept', ()
   const h = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(h, /class="splash-logo" src="%BASE_URL%brand\/pikk-logo-official\.png"/); assert.match(h, /dbs-tuning-fork\.mp3/);
 });
-test('header uses owner-approved Profile, $, Settings gear, Search order and keeps Settings in navigation', () => {
+test('header uses owner-approved Profile, $, Search order (no gear, t219u) and keeps Settings in navigation', () => {
   const h = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const p = h.indexOf('id="headerProfile"'), pay = h.indexOf('id="paymentsBtn"'), search = h.indexOf('id="exploreSearchBtn"');
-  const gear = h.indexOf('id="settingsBtn"');
-  assert.ok(p > 0 && p < pay && pay < gear && gear < search, 'order Profile, $, gear, Search');
+  assert.ok(p > 0 && p < pay && pay < search, 'order Profile, $, Search');
+  assert.equal(h.includes('id="settingsBtn"'), false);
   const nav = readFileSync(new URL('../src/nav-sections.js', import.meta.url), 'utf8');
   assert.match(nav, /href: '#\/settings'/);
 });
