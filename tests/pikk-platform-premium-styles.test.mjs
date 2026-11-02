@@ -34,3 +34,16 @@ test('owner mobile home polish keeps media blue/red with white titles and lower 
   'padding-bottom: 4px'
  ]) assert.ok(css.includes(token), token);
 });
+
+
+test('home official-video cards use strong blue chrome and bright white titles',()=>{
+ const css=readFileSync(new URL('../src/styles.css', import.meta.url),'utf8');
+ for(const token of [
+  'border: 2px solid #2f6bff !important',
+  '0 0 18px rgba(47,107,255,.58)',
+  'background: #ef252c !important',
+  '0 0 12px rgba(47,107,255,.72)',
+  'color: #fff !important',
+  'font-weight: 900'
+ ]) assert.ok(css.includes(token), token);
+});
