@@ -4960,3 +4960,15 @@ html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 > a.tab-primary > span:last
   font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
+
+/* Arcade catalog search: keep the approved gallery order and artwork intact. */
+.pikk-arcade-search{margin:12px 0 16px;padding:14px 16px;border:1px solid #34374b;border-radius:16px;background:linear-gradient(125deg,#171721,#111525)}
+.pikk-arcade-search label{display:block;margin-bottom:8px;font-size:.85rem;font-weight:750;color:#f2f3fa}
+.pikk-arcade-search-row{display:flex;gap:10px;align-items:center}
+.pikk-arcade-search input[type="search"]{min-width:0;flex:1;width:100%;padding:11px 13px;border:1px solid #555c76;border-radius:11px;background:#0e1120;color:#fff;font:inherit}
+.pikk-arcade-search input[type="search"]::placeholder{color:#a5adc4}
+.pikk-arcade-search input[type="search"]:focus-visible,.pikk-arcade-search button:focus-visible{outline:3px solid #8aaaff;outline-offset:2px}
+.pikk-arcade-search p{margin:7px 0 0;font-size:.78rem;color:#b8bfd4}
+.pikk-arcade-card[hidden],#pikkArcadeNoMatches[hidden],#pikkArcadeSearchClear[hidden]{display:none!important}
+.pikk-arcade-no-matches{margin:0 0 16px;padding:20px;text-align:center;border:1px dashed #69718d;border-radius:14px;background:#161927}
+@media(max-width:420px){.pikk-arcade-search{padding:12px}.pikk-arcade-search-row{gap:8px}.pikk-arcade-search-row .btn{padding-inline:10px}}
