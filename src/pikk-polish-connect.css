@@ -16,3 +16,5 @@ html body #app #connectMonkey .btn:disabled, html body #app .connect-multistream
 }
 /* Checker #363: 44px tap targets on Start + secondary controls. */
 html body #app #connectMonkey :is(.connect-btn-start, .connect-btn-next, .connect-btn-end, .connect-controls .btn) { min-height: 44px; }
+/* Checker #368: every remaining Connect button gets a 44px tap target. */
+html body #app :is(.pikk-connect-hero, .pikk-connect-choose, #connectMonkey, .connect-multistream, #connect-random-chat, .card) .btn { min-height: 44px; }
