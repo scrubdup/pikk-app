@@ -12,6 +12,7 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "pikk-db", "database_id": "d545246b-49f7-4a0a-92b4-b18c570baef8", "migrations_dir": "migrations" }
   ],
+  // Vault secret (set via `wrangler secret put`, never committed): VAULT_SIGNING_KEY (>=32 chars). Optional var: VAULT_ACCESS_URL_TTL_SEC (default 300).
   // NO top-level "r2_buckets" on purpose: R2 is not provisioned/approved, and Workers Builds
   // (`wrangler versions upload` / `deploy`) fail when a declared bucket doesn't exist. The MEDIA
   // binding is supplied only to tests via vitest.config.js (Miniflare r2Buckets). Without it, Vault
