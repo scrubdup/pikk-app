@@ -22,3 +22,13 @@ test('PIKK branding, music player, existing header actions and Explore rail rema
   for (const id of ['headerProfile', 'headerMsg', 'notifBtn', 'menuBtn']) assert.ok(html.includes('id="'+id+'"'));
   assert.match(html, /class="pikk-explore-rail"/);
 });
+
+
+test('header begins Profile then Payments then Search and has no Settings shortcut',()=>{
+  const html=readFileSync(new URL('../index.html', import.meta.url),'utf8');
+  const p=html.indexOf('id="headerProfile"');
+  const pay=html.indexOf('id="paymentsBtn"');
+  const search=html.indexOf('id="exploreSearchBtn"');
+  assert.ok(p>=0 && pay>p && search>pay, 'expected Profile → Payments → Search order');
+  assert.equal(html.includes('id="settingsBtn"'), false, 'Settings shortcut should not be in top header');
+});
