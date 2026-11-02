@@ -16,9 +16,9 @@ export function renderServerUserCard(u, { selfHandle = '' } = {}) {
     ${u.bio ? `<p>${esc(u.bio)}</p>` : ''}
     ${self ? '' : `<div class="row wrap" style="gap:6px;margin-top:8px">
       <button type="button" class="btn primary" data-user-message="${esc(handle)}">Message</button>
-      <button type="button" class="btn ghost" data-user-flag="block" data-peer-handle="${esc(handle)}">Block</button>
+      <button type="button" class="btn ghost pikk-safety-tap" data-user-flag="block" data-peer-handle="${esc(handle)}">Block</button>
       ${renderReportCategorySelect('data-report-category')}
-      <button type="button" class="btn ghost danger" data-user-flag="report" data-peer-handle="${esc(handle)}">Report</button>
+      <button type="button" class="btn ghost danger pikk-safety-tap" data-user-flag="report" data-peer-handle="${esc(handle)}">Report</button>
     </div>`}
   </section>`;
 }

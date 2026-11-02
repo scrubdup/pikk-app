@@ -205,6 +205,7 @@ test('Report requires a backend-allowed category: none selected sends nothing', 
   const rep = fakeButton({ flag: 'report' });
   local.bindLocalThreadFlags(fakeRoot([rep], ''), store.getThread(t.id), { go: () => {} });
   rep.click();
+  assert.equal(store.getThread(t.id).reportedAt || null, null, 'thread must not be marked reported without a category');
   assert.equal(await msgs.runPeerSafetyAction('report', 'gus_g', { notify: () => {} }), REPORT_CATEGORY_REQUIRED);
   assert.equal(await msgs.runPeerSafetyAction('report', 'gus_g', { notify: () => {}, category: 'made_up' }), REPORT_CATEGORY_REQUIRED);
   const pBtn = fakeButton({ userFlag: 'report', peerHandle: 'gus_g' });
@@ -212,4 +213,19 @@ test('Report requires a backend-allowed category: none selected sends nothing', 
   pBtn.click();
   for (let i = 0; i < 5; i++) await flush();
   assert.equal(calls.filter((c) => c.url.endsWith('/reports')).length, 0);
+});
+
+test('Block, Report and the category picker are 44px tap targets', async () => {
+  const fs = await import('node:fs');
+  const css = fs.readFileSync(new URL('../src/pikk-pages.css', import.meta.url), 'utf8');
+  assert.match(css, /\.pikk-safety-tap\{[^}]*min-height:44px/);
+  const { renderReportCategorySelect } = await import('../src/safety-actions.js');
+  const { document: doc } = parseHTML('<!doctype html><html><body>' + renderReportCategorySelect('data-report-category') + '</body></html>');
+  assert.ok(doc.querySelector('select').classList.contains('pikk-safety-tap'));
+  for (const f of ['../src/pages/messages.js', '../src/pages/user.js']) {
+    const src = fs.readFileSync(new URL(f, import.meta.url), 'utf8');
+    const btns = src.match(/<button[^>]*data-(?:flag|remote-flag|user-flag)="(?:block|report)"[^>]*>/g) || [];
+    assert.ok(btns.length >= 2, f);
+    for (const b of btns) assert.match(b, /pikk-safety-tap/, f + ': ' + b);
+  }
 });

@@ -17,7 +17,7 @@ const CATEGORY_LABELS = { csam: 'Child sexual abuse material', ncii: 'Non-consen
 export const REPORT_CATEGORY_REQUIRED = 'Choose a report category first.';
 /** <select> of backend-allowed report categories; defaults to none selected. */
 export function renderReportCategorySelect(attrs = 'data-report-category') {
-  return `<select ${attrs} aria-label="Report category" required><option value="" selected>Report reason…</option>${REPORT_CATEGORIES.map((c) => `<option value="${c}">${CATEGORY_LABELS[c] || c}</option>`).join('')}</select>`;
+  return `<select ${attrs} class="pikk-safety-tap" aria-label="Report category" required><option value="" selected>Report reason…</option>${REPORT_CATEGORIES.map((c) => `<option value="${c}">${CATEGORY_LABELS[c] || c}</option>`).join('')}</select>`;
 }
 export function isValidReportCategory(c) { return REPORT_CATEGORIES.includes(c); }
 
