@@ -10,7 +10,8 @@ export default defineConfig(async () => {
       miniflare: {
         // Slice 4: isolated restore target (test-only; never in wrangler.jsonc).
         d1Databases: ['RESTORE_DB'],
-        r2Buckets: ['RESTORE_MEDIA'],
+        // Local-only R2 (Miniflare in-memory). Deliberately NOT in wrangler.jsonc; see comment there.
+        r2Buckets: { MEDIA: 'pikk-media-local-placeholder', MEDIA_BACKUP: 'pikk-media-backup-local-placeholder', RESTORE_MEDIA: 'RESTORE_MEDIA' },
         bindings: {
           // PIKK Vault (test-only key; kept at the top so it never touches lines other PRs append to).
           VAULT_SIGNING_KEY: 'vault_local_test_only_not_a_real_signing_key_0123456789',

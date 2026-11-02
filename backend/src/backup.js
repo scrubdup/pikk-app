@@ -1,6 +1,6 @@
 import { assertVaultKey, assertVaultKeyFor, vaultPutFor, VaultKeyError } from './vault-keys.js';
 // PIKK Vault slice 4: backup export (cron) to a SEPARATE R2 binding MEDIA_BACKUP + isolated restore procedure.
-// MEDIA_BACKUP is a LOCAL PLACEHOLDER (wrangler.jsonc); nothing is provisioned on any account.
+// MEDIA_BACKUP is NOT declared in wrangler.jsonc (R2 not approved); tests supply it via vitest.config.js. Missing => skip/503.
 import { ApiError, json, clientIp } from './http.js';
 import { requirePermission } from './permissions.js';
 import { audit } from './audit.js';
@@ -120,7 +120,7 @@ export async function backupHealth(env) {
   let reachable = false;
   try { if (env.MEDIA_BACKUP) { await env.MEDIA_BACKUP.head('__vault_backup_probe'); reachable = true; } } catch { /* unreachable */ }
   const staleH = lastOk?.finished_at ? (Date.now() - Date.parse(lastOk.finished_at)) / 3600e3 : null;
-  return { binding: 'MEDIA_BACKUP', reachable, cron: BACKUP.cron, rpo_hours_target: BACKUP.rpoHours, retention_days_policy: BACKUP.retentionDays,
+  return { binding: 'MEDIA_BACKUP', configured: !!env.MEDIA_BACKUP, reachable, error: env.MEDIA_BACKUP ? null : 'vault backup storage not configured (binding MEDIA_BACKUP missing)', cron: BACKUP.cron, rpo_hours_target: BACKUP.rpoHours, retention_days_policy: BACKUP.retentionDays,
     last_run: last ? { id: last.id, state: last.state, trigger: last.trigger, objects_copied: last.objects_copied, errors: last.errors,
       manifest_key: last.manifest_key, message: last.message, started_at: last.started_at, finished_at: last.finished_at } : null,
     last_success_at: lastOk?.finished_at || null, stale: staleH === null || staleH > BACKUP.rpoHours, objects_pending_backup: pending.n };

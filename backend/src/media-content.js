@@ -64,7 +64,7 @@ async function content(env, req, ctx, id) {
   const url = new URL(req.url);
   const { uid, via } = await resolveViewer(env, ctx, url, id);
   const r = await loadViewable(env, id, uid);
-  if (!env.MEDIA) throw new ApiError(503, 'storage_unavailable', 'Media storage not configured');
+  if (!env.MEDIA) throw new ApiError(503, 'vault_storage_not_configured', 'Vault storage not configured');
   const size = r.size_bytes;
   const download = url.searchParams.get('download') === '1';
   const ct = r.detected_content_type || 'application/octet-stream';

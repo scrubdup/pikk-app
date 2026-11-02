@@ -12,13 +12,12 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "pikk-db", "database_id": "d545246b-49f7-4a0a-92b4-b18c570baef8", "migrations_dir": "migrations" }
   ],
-  // PIKK Vault media bucket: LOCAL PLACEHOLDER ONLY (Miniflare/wrangler dev --local). Not provisioned on any account.
   // Vault secret (set via `wrangler secret put`, never committed): VAULT_SIGNING_KEY (>=32 chars). Optional var: VAULT_ACCESS_URL_TTL_SEC (default 300).
-  "r2_buckets": [
-    { "binding": "MEDIA", "bucket_name": "pikk-media-local-placeholder" },
-    // Slice 4: SEPARATE backup bucket, LOCAL PLACEHOLDER ONLY. In production it must be a different bucket with separate access.
-    { "binding": "MEDIA_BACKUP", "bucket_name": "pikk-media-backup-local-placeholder" }
-  ],
+  // NO top-level "r2_buckets" on purpose: R2 is not provisioned/approved, and Workers Builds
+  // (`wrangler versions upload` / `deploy`) fail when a declared bucket doesn't exist. The MEDIA and
+  // MEDIA_BACKUP bindings are supplied only to tests via vitest.config.js (Miniflare r2Buckets). Without them, Vault
+  // and music upload routes return 503 "not configured". Add r2_buckets here only after the owner
+  // approves R2 and the bucket exists. (config.test.js enforces this.)
   // PIKK Vault slice 3: Story expiry sweeper + delayed job retries. Cron Triggers are free on the Workers Free plan.
   // Must match PROCESSING.sweeperCron in src/media-config.js. Local test: wrangler dev --test-scheduled, then GET /__scheduled
   // Vault cron work is OFF unless the var VAULT_CRON_ENABLED is "true" (unset by default: the trigger fires, runVaultCron no-ops).
