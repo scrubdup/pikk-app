@@ -36,7 +36,15 @@ export const CREATE_MENU_GROUPS = Object.freeze([
   ]},
   { title: 'Live & Commerce', items: [
     { title: 'Schedule Live', detail: 'Live scheduling · Planned', icon: 'live' },
-    { title: 'Live Battle', href: '#/giftbattles', detail: 'Battle area · preview', icon: 'live' },
+    // Fan Gift Battles are initiated by viewers in an active live chat, not created by a host.
+    // A viewer who has sent a gift may be challenged by another viewer; they must accept.
+    // The highest total gift value sent by a competing viewer during the battle wins.
+    // The winner gets a reward and the exclusive Gift Battle Champ title beside their username in that live chat.
+    // Title expires after 24 hours or immediately when another fan wins; new winner gets a fresh reward/title.
+    // Rewards are not finalized; proposed non-cashout bonus coins require owner approval.
+    // Roast Battle is a distinct mode and must not be conflated with fan Gift Battles.
+    { title: 'Gift Battles', detail: 'Fan challenges in live chat · Planned', icon: 'live' },
+    { title: 'Roast Battle', detail: 'Separate live feature · Planned', icon: 'live' },
     { title: 'List Product', href: '#/marketplace', detail: 'Marketplace · TEST MODE', icon: 'merch' },
     { title: 'Seller Store', detail: 'Store creation · Planned', icon: 'merch' },
     { title: 'Exclusive Content', detail: 'Exclusive publishing · Planned', icon: 'heart' },
