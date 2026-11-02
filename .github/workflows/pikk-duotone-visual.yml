@@ -5,6 +5,8 @@ on:
     paths:
       - 'src/**'
       - 'scripts/visual-review-duotone.mjs'
+      - 'scripts/visual-review-tabbar-gap.mjs'
+      - 'index.html'
       - '.github/workflows/pikk-duotone-visual.yml'
 permissions:
   contents: read
@@ -40,3 +42,5 @@ jobs:
         run: node scripts/visual-review-home-goal.mjs
       - name: Header logo exactly centered at 390/485/768/1440
         run: node scripts/visual-review-logo-center.mjs
+      - name: Tab labels sit within 12px of the tab bar bottom at 390x844
+        run: node scripts/visual-review-tabbar-gap.mjs
