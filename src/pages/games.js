@@ -82,6 +82,11 @@ export function arcadeMatchesQuery(game, query) {
   return !term || [game.name, game.description].join(' ').toLowerCase().includes(term);
 }
 
+/** Keep full-size browsing inside the same search results as the visible gallery. */
+export function arcadePreviewIndexes(query) {
+  return PIKK_GAMES.flatMap((game, index) => arcadeMatchesQuery(game, query) ? [index] : []);
+}
+
 /** Route-scoped events: listeners are attached to replaced nodes, not the persistent #app. */
 export function bindGames(root) {
   const gallery = root.querySelector('.pikk-arcade-grid');
@@ -124,6 +129,9 @@ export function bindGames(root) {
   if (!dialog || typeof dialog.showModal !== 'function') return;
   let active = 0;
   let opener = null;
+  let visiblePreviews = arcadePreviewIndexes('');
+  const previousButton = dialog.querySelector('[data-arcade-prev]');
+  const nextButton = dialog.querySelector('[data-arcade-next]');
   const image = dialog.querySelector('[data-arcade-full-image]');
   const title = dialog.querySelector('[data-arcade-title]');
   const description = dialog.querySelector('[data-arcade-description]');
@@ -138,29 +146,43 @@ export function bindGames(root) {
     title.textContent = preview.title;
     description.textContent = preview.description;
     players.textContent = preview.players + (preview.players === '1' ? ' Player · Preview only' : ' Players · Preview only');
-    counter.textContent = String(active + 1).padStart(2, '0') + ' / ' + preview.total;
+    counter.textContent = String(visiblePreviews.indexOf(active) + 1).padStart(2, '0')
+      + ' / ' + String(visiblePreviews.length).padStart(2, '0');
+  };
+
+  const advance = (direction) => {
+    const position = visiblePreviews.indexOf(active);
+    if (position === -1 || visiblePreviews.length < 2) return;
+    const nextPosition = (position + direction + visiblePreviews.length) % visiblePreviews.length;
+    show(visiblePreviews[nextPosition]);
   };
 
   gallery.addEventListener('click', (event) => {
     const button = event.target.closest('[data-game-preview]');
     if (!button) return;
     opener = button;
-    show(button.dataset.gamePreview);
+    const index = Number(button.dataset.gamePreview);
+    visiblePreviews = arcadePreviewIndexes(search?.value);
+    // A stale programmatic click must never expose other hidden search results.
+    if (!visiblePreviews.includes(index)) visiblePreviews = [index];
+    if (previousButton) previousButton.disabled = visiblePreviews.length < 2;
+    if (nextButton) nextButton.disabled = visiblePreviews.length < 2;
+    show(index);
     dialog.showModal();
   });
   dialog.addEventListener('click', (event) => {
     if (event.target === dialog || event.target.closest('[data-arcade-close]')) {
       dialog.close();
     } else if (event.target.closest('[data-arcade-prev]')) {
-      show(active - 1);
+      advance(-1);
     } else if (event.target.closest('[data-arcade-next]')) {
-      show(active + 1);
+      advance(1);
     }
   });
   dialog.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
-      show(active + (event.key === 'ArrowRight' ? 1 : -1));
+      advance(event.key === 'ArrowRight' ? 1 : -1);
     }
   });
   dialog.addEventListener('close', () => {

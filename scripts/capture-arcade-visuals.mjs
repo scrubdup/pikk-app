@@ -38,6 +38,40 @@ try {
       if (!((await page.locator('#pikkArcadeSearchStatus').textContent()) || '').includes('1 of 15')) {
         throw new Error('Arcade search did not announce its result count');
       }
+      // Filtered preview navigation must not jump to games hidden by the search.
+      const filteredDialog = page.locator('#pikkArcadeLightbox');
+      await page.locator('.pikk-arcade-card:visible [data-game-preview]').click();
+      if (await filteredDialog.locator('[data-arcade-title]').textContent() !== 'PIKK Chess' ||
+          await filteredDialog.locator('[data-arcade-counter]').textContent() !== '01 / 01' ||
+          !await filteredDialog.locator('[data-arcade-next]').isDisabled() ||
+          !await filteredDialog.locator('[data-arcade-prev]').isDisabled()) {
+        throw new Error('One-result Arcade search did not lock the preview to Chess');
+      }
+      await page.keyboard.press('ArrowRight');
+      if (await filteredDialog.locator('[data-arcade-title]').textContent() !== 'PIKK Chess') {
+        throw new Error('Filtered Arcade preview escaped the Chess result');
+      }
+      await page.keyboard.press('Escape');
+      await search.fill('Play Chips');
+      if (await page.locator('.pikk-arcade-card:visible').count() !== 3) {
+        throw new Error('Expected three Play Chips concept previews');
+      }
+      await page.locator('.pikk-arcade-card:visible [data-game-preview]').first().click();
+      for (const [title, counter] of [
+        ['PIKK Poker', '01 / 03'], ['PIKK Blackjack', '02 / 03'],
+        ['PIKK Slots', '03 / 03'], ['PIKK Poker', '01 / 03'],
+      ]) {
+        if (await filteredDialog.locator('[data-arcade-title]').textContent() !== title ||
+            await filteredDialog.locator('[data-arcade-counter]').textContent() !== counter) {
+          throw new Error('Filtered Arcade preview did not follow the matching game order');
+        }
+        await filteredDialog.locator('[data-arcade-next]').click();
+      }
+      await page.screenshot({
+        path: 'visual-evidence/arcade-filtered-preview-' + (width === 390 ? 'mobile' : 'desktop') + '.png',
+        fullPage: false, animations: 'disabled', timeout: 20000,
+      });
+      await page.keyboard.press('Escape');
       await page.screenshot({
         path: 'visual-evidence/arcade-search-' + (width === 390 ? 'mobile' : 'desktop') + '.png',
         fullPage: true, animations: 'disabled', timeout: 20000,
