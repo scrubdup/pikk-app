@@ -34,3 +34,19 @@ test('Inbox binds browser-local preview search to the existing accessible filter
   assert.match(messagesPage, /id="pikkMsgNoResults"[^>]*role="status"/);
   assert.match(messagesPage, /TEST MODE · No server messaging/);
 });
+
+test('Messages search excludes text hidden beyond the 80-character inbox preview', () => {
+  const visible = 'v'.repeat(80);
+  const thread = {
+    peerName: 'Jordan',
+    messages: [{ text: visible + 'PRIVATE_HIDDEN_TAIL' }],
+  };
+  const searchable = messageSearchText(thread);
+  assert.equal(searchable, 'jordan ' + visible);
+  assert.ok(!searchable.includes('private_hidden_tail'));
+});
+
+test('Inbox explains its visible-preview search boundary accessibly', () => {
+  assert.match(messagesPage, /aria-describedby="pikkMsgSearchHelp"/);
+  assert.match(messagesPage, /id="pikkMsgSearchHelp"[^>]*>Search covers names and the visible latest-message preview only\./);
+});
