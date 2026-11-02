@@ -1,6 +1,7 @@
 -- Pluggable ID/age verification sessions. Stores ONLY provider, provider reference and status.
 -- Never ID images, document numbers, names or date of birth.
--- users.age_verification_ref is added in 0008_id_verification.sql (already on production).
+-- KNOWN RISK: production already has users.age_verification_ref; this ALTER fails there until the planned DB rebuild.
+ALTER TABLE users ADD COLUMN age_verification_ref TEXT;
 -- IF NOT EXISTS: production already has id_verification_sessions/events.
 CREATE TABLE IF NOT EXISTS id_verification_sessions (
   id TEXT PRIMARY KEY,
