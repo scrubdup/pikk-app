@@ -22,13 +22,13 @@ export const VAULT_MEDIA_TYPES = Object.freeze(['photo', 'video', 'audio']);
 /**
  * Throws unless key is exactly vault/<media_type>/<owner_id>/<id> for THIS row:
  * owner segment == row.owner_id, type segment == row.media_type (and in the allowlist),
- * id segment == row.id (when the row carries an id). Use wherever a key meets a DB row / manifest entry.
+ * id segment == row.id (row.id is REQUIRED: a non-empty string). Use wherever a key meets a DB row / manifest entry.
  */
 export function assertVaultKeyFor(key, row) {
   assertVaultKey(key);
   const [, type, owner, id] = key.split('/');
   if (!row || !VAULT_MEDIA_TYPES.includes(type) || type !== row.media_type || owner !== row.owner_id
-      || (row.id !== undefined && row.id !== null && id !== row.id)) throw new VaultKeyError(key);
+      || typeof row.id !== 'string' || row.id === '' || id !== row.id) throw new VaultKeyError(key);
   return key;
 }
 
