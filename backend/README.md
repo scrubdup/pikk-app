@@ -86,3 +86,22 @@ Migrations in `migrations/` run in filename order and must be named `NNNN_lower_
 `migrations/RESERVED.json` holds numbers for PRs that haven't merged yet (currently 0009–0010 for Vault), so other PRs can land first without leaving a gap. Reserved numbers count as present for the gap check, which runs from 0001 up to the highest real migration file (so reservations above it are ignored); a file may use a reserved number with any slug (the value is only a hint). Remove the entry in the same PR that adds that `.sql` file; the guard fails if a reserved number also has a real file. **Changes to `RESERVED.json` require owner/reviewer approval** (treat it like a CODEOWNERS-protected file): the guard can't tell whether a number was once used and later deleted, so reviewers must check that a new reservation doesn't reuse a number that has existed on `main` or been applied to any D1 database. Keys starting with `_` are comments. Wrangler only applies `*.sql`, so the JSON file is ignored at deploy.
 
 `test/migration-order.test.js` always fails on bad names or duplicate prefixes. It also fails on skipped numbers, but only when `GITHUB_BASE_REF` is unset (main and local runs); on PR CI gaps are allowed so out-of-order PRs can still go green. Never rename a migration that has already been applied to a real D1 database.
+
+## PIKK Master Mind phase 1 (owner role + read-only ops summary)
+- `owner` role sits above `admin`: every admin permission plus `ops.view`. Admins cannot grant, revoke, or change roles on the owner (403); moderators/admins cannot moderate the owner.
+- Owner is assigned **only** by the one-time bootstrap `POST /bootstrap/owner` (`Authorization: Bearer $OWNER_BOOTSTRAP_TOKEN`, `Origin` = ALLOWED_ORIGIN, body `{"handle":"..."}`). Disabled (404) unless the secret is set; refuses (409) once an owner exists; writes `bootstrap.owner` to `audit_log`. Remove the secret afterwards. Not run against any real environment.
+- `GET /admin/ops/summary` (ops.view): read-only panels `{status, checkedAt, source, freshnessLimitSec, detail}`; counts only, no PII.
+
+## Database migrations (production safety)
+
+Workers Builds must **never** apply migrations from a PR or preview branch. `wrangler.jsonc` has no
+`build.command`, so builds only build/upload code. (Until this fix, the build ran
+`wrangler d1 migrations apply DB --remote`, which applied unreviewed branch migrations to production `pikk-db`.)
+
+Apply migrations to production only after the PR is reviewed and merged to `main`, either:
+- manually: `npm run migrate:remote` from an up-to-date `main` checkout, or
+- from a main-only CI step: `npm run migrate:ci`, which runs `scripts/migrate-if-main.mjs` and is a no-op
+  unless `WORKERS_CI=1` and `WORKERS_CI_BRANCH=main` (tested in `test/migrate-if-main.test.js`).
+
+Never rename or renumber a migration that has already been applied anywhere: D1 tracks migrations by file
+name, so a renamed file is treated as new and re-runs.

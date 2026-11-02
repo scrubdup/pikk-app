@@ -22,6 +22,7 @@ import {
   cancelRestreamCampaign,
   getRestreamDestinationCap,
   isRestreamHouseAccount,
+  isDemoAdminAllowed,
 } from '../store.js';
 import { esc, toast, shellPage, timeAgo } from '../ui.js';
 import { navigate } from '../router.js';
@@ -227,7 +228,7 @@ function renderAdminLite() {
           admin
             ? `<span class="chip">Admin role</span>`
             : `<span class="chip">Demo edit allowed in TEST MODE</span>
-               <button type="button" class="btn ghost" id="rsToggleAdmin">Toggle admin role</button>`
+               ${isDemoAdminAllowed() ? `<button type="button" class="btn ghost" id="rsToggleAdmin">Toggle admin role</button>` : ''}`
         }
       </div>
     </div>`;

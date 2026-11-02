@@ -4,9 +4,11 @@
   "main": "src/index.js",
   "compatibility_date": "2026-10-25",
   "compatibility_flags": ["nodejs_compat"],
-  "build": {
-    "command": "npx wrangler d1 migrations apply DB --remote"
-  },
+  // No "build" block on purpose. A custom build command runs on EVERY Workers Builds run
+  // (including PR/preview branches) and on `wrangler dev`/`deploy`. It used to run
+  // `wrangler d1 migrations apply DB --remote`, which applied unreviewed branch migrations
+  // to production pikk-db. Migrations are applied manually after review, or via
+  // `npm run migrate:ci` which refuses unless WORKERS_CI_BRANCH === "main". See README.
   "d1_databases": [
     { "binding": "DB", "database_name": "pikk-db", "database_id": "d545246b-49f7-4a0a-92b4-b18c570baef8", "migrations_dir": "migrations" }
   ],
@@ -16,7 +18,12 @@
     "SESSION_TTL_HOURS": "720",
     "EXPOSE_VERIFY_TOKEN": "false",
     "PUBLIC_APP_URL": "https://scrubdup.github.io/pikk-app/"
+    // MASTERMIND_JOBS_ENABLED: plain var (not a secret), intentionally UNSET = off pending owner approval.
+    // Set to "true" only when the owner approves the Master Mind heartbeat/job runner.
   }
-  // Secrets (set via `wrangler secret put`, never committed): RESEND_API_KEY, STRIPE_WEBHOOK_SECRET
+  // Secrets (set via `wrangler secret put`, never committed): RESEND_API_KEY, STRIPE_WEBHOOK_SECRET,
+  // OWNER_BOOTSTRAP_TOKEN (optional, >=32 chars, one-time owner bootstrap; delete after use)
+  // Master Mind phase 2 heartbeat cron — INTENTIONALLY DISABLED. Owner enables at deploy time by uncommenting:
+  // "triggers": { "crons": ["*/5 * * * *"] },
   // Set EMAIL_FROM to a verified sender, e.g. "PIKK <verify@your-domain.example>", before enabling production email.
 }

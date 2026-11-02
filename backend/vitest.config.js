@@ -15,6 +15,7 @@ export default defineConfig(async () => {
           GITHUB_BASE_REF: process.env.GITHUB_BASE_REF || '',
           STRIPE_WEBHOOK_SECRET: 'whsec_local_test_only_not_a_real_secret',
           AGE_VERIFY_WEBHOOK_SECRET: 'agev_local_test_only_not_a_real_secret',
+          OWNER_BOOTSTRAP_TOKEN: 'owner_bootstrap_local_test_only_not_a_real_secret_0123456789',
         },
       },
     })],

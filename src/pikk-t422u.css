@@ -1,0 +1,19 @@
+/* t422u / t219u: header = 3 left (profile · $ · search) · centred logo · 3 right (bell · messages · ☰). No Settings gear (owner t219u). */
+html body .top#topBar #headerProfile { display: grid; order: -3; }
+html body .top#topBar #paymentsBtn { order: -2; }
+html body .top#topBar #exploreSearchBtn { order: -1; }
+/* 44px tap target without changing the 34px visual. */
+html body .top#topBar :is(#headerProfile, #paymentsBtn, #exploreSearchBtn, #notifBtn, #headerMsg, #menuBtn) { position: relative; }
+html body .top#topBar :is(#headerProfile, #paymentsBtn, #exploreSearchBtn, #notifBtn, #headerMsg, #menuBtn)::after { content: ""; position: absolute; inset: -5px; }
+/* t219u: tab bar sits directly on Safari's floating bar — only a small slice of the home-indicator inset, no dark band. */
+html body #tabbar.tabbar,
+html body #tabbar.tabbar.tabbar-reshaped.tabbar-fit7 {
+  position: fixed; bottom: 0 !important; margin-bottom: 0 !important; transform: none !important;
+  padding-bottom: max(4px, calc(env(safe-area-inset-bottom, 0px) * 0.25)) !important;
+}
+html body #app { padding-bottom: calc(var(--tab-h) + 8px + max(4px, calc(env(safe-area-inset-bottom, 0px) * 0.25))) !important; }
+@media (max-width: 480px) {
+  html body .top#topBar { gap: 4px; }
+  html body .top#topBar :is(.pill, .icon-btn) { width: 34px !important; height: 34px !important; min-width: 0 !important; min-height: 0 !important; padding: 0 !important; }
+  html body .top#topBar .logo-img { width: min(30vw, 340px); height: calc(min(30vw, 340px) * 0.2366); }
+}

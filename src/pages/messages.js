@@ -13,11 +13,16 @@ import {
   isMutualFollow,
   setThreadFlags,
   updateMessagePrefs,
+  resolveThreadPeerHandle,
 } from '../store.js';
 import { esc, toast, shellPage, timeAgo } from '../ui.js';
 import { navigate } from '../router.js';
 import { messageSearchText, messageResultSummary } from '../message-search.js';
 import { messagesApi, isMessagesApiConfigured } from '../api/messages-client.js';
+
+
+export { normalizePeerHandle, canUseServerSafety, runPeerSafetyAction } from '../safety-actions.js';
+import { runPeerSafetyAction } from '../safety-actions.js';
 
 function refresh(hash) {
   navigate(hash || '#/messages');
@@ -150,9 +155,10 @@ function renderNewChat() {
           <span class="pikk-msg-contact-avatar" aria-hidden="true">${esc(String(c.username || "?").slice(0, 1).toUpperCase())}</span>
           <strong>${esc(c.username)}</strong>
           ${c.team ? '<span class="chip">Creator</span>' : mutual ? '<span class="chip">Mutual</span>' : '<span class="chip">Request</span>'}
+          ${c.handle ? '' : '<span class="chip">Demo · device-only</span>'}
         </div>
         <p class="muted" style="margin:6px 0 10px">${esc(c.bio || '')}</p>
-        <button type="button" class="btn ${c.team ? 'primary' : ''}" data-start-peer="${esc(c.id)}" data-peer-name="${esc(c.username)}">${esc(label)}</button>
+        <button type="button" class="btn ${c.team ? 'primary' : ''}" data-start-peer="${esc(c.id)}" data-peer-name="${esc(c.username)}" data-peer-handle="${esc(c.handle || '')}">${esc(label)}</button>
       </article>`;
     })
     .join('');
@@ -249,6 +255,7 @@ function renderThread(thread, { teamPriorityHint = false } = {}) {
           <button type="button" class="btn ghost" data-flag="block">${thread.blocked ? 'Unblock' : 'Block'}</button>
           <button type="button" class="btn ghost danger" data-flag="report">Report</button>
         </div>
+        ${!isGroup && !resolveThreadPeerHandle(thread) ? '<p class="muted msg-device-only-note" style="font-size:12px;margin:6px 0 0">Demo contact · Report and Block save on this device only — not sent to PIKK moderators.</p>' : ''}
       </div>
     </div>
     ${requestBanner}
@@ -303,7 +310,7 @@ export function renderPersistentThread(detail, currentUserId='') {
     </div>`;
   }).join('');
   return `<section class="pikk-msg-flow-hero pikk-msg-flow-hero-thread"><span class="pikk-msg-flow-kicker">PIKK CONNECT · DIRECT MESSAGES</span><h2>${esc(peer)}</h2><p>Persistent private conversation stored on PIKK.</p><span class="chip">Backend message thread</span></section>
-    <div class="card msg-thread-head pikk-msg-flow-panel"><button type="button" class="btn ghost" data-remote-inbox>← Inbox</button><h3 style="margin:10px 0 0">${esc(peer)}</h3></div>
+    <div class="card msg-thread-head pikk-msg-flow-panel"><button type="button" class="btn ghost" data-remote-inbox>← Inbox</button><h3 style="margin:10px 0 0">${esc(peer)}</h3>${convo.peer?.handle ? `<div class="row wrap" style="margin-top:8px"><button type="button" class="btn ghost" data-remote-flag="block" data-peer-handle="${esc(convo.peer.handle)}">Block</button><button type="button" class="btn ghost danger" data-remote-flag="report" data-peer-handle="${esc(convo.peer.handle)}">Report</button></div>` : ''}</div>
     <div class="card msg-thread-card pikk-msg-flow-panel">
       <div class="msg-thread" id="remoteMsgThread">${bubbles||'<p class="muted">No messages yet — say hi.</p>'}</div>
       <div class="msg-composer"><input id="remoteMsgInput" placeholder="Message…" maxlength="4000" /><button type="button" class="btn primary" id="remoteMsgSend">Send</button></div>
@@ -361,6 +368,8 @@ async function bindPersistentMessages(root) {
       host.innerHTML=renderPersistentThread(data,user.id);
       await messagesApi.markRead(id).catch(()=>{});
       host.querySelector('[data-remote-inbox]')?.addEventListener('click',()=>refresh('#/messages'));
+      const peerHandle=data?.conversation?.peer?.handle||'';
+      host.querySelectorAll('[data-remote-flag]').forEach(btn=>btn.addEventListener('click',()=>runPeerSafetyAction(btn.dataset.remoteFlag==='block'?'block':'report',peerHandle)));
       const send=async()=>{
         const input=host.querySelector('#remoteMsgInput');
         const message=input?.value?.trim();
@@ -415,6 +424,28 @@ export function renderMessages(route) {
 
   return shellPage('Messages', body, {
     lead: 'DMs, group chats, and creator messages · TEST MODE',
+  });
+}
+
+/** Device-only thread Mute/Block/Report buttons. Block/Report reach the server when the thread has a real peer handle. */
+export function bindLocalThreadFlags(root, thread, { go = refresh } = {}) {
+  root.querySelectorAll('[data-flag]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!thread) return;
+      const flag = btn.dataset.flag;
+      if (flag === 'mute') {
+        const next = setThreadFlags(thread.id, { muted: !thread.muted });
+        toast(next.muted ? 'Muted' : 'Unmuted');
+      } else if (flag === 'block') {
+        const next = setThreadFlags(thread.id, { blocked: !thread.blocked });
+        if (next.blocked) runPeerSafetyAction('block', resolveThreadPeerHandle(thread));
+        else toast('Unblocked on this device');
+      } else if (flag === 'report') {
+        setThreadFlags(thread.id, { report: true });
+        runPeerSafetyAction('report', resolveThreadPeerHandle(thread));
+      }
+      go('#/messages?t=' + encodeURIComponent(thread.id));
+    });
   });
 }
 
@@ -516,7 +547,7 @@ export function bindMessages(root) {
         refresh('#/messages?view=team');
         return;
       }
-      const t = getOrCreateThread(peerId, peerName);
+      const t = getOrCreateThread(peerId, peerName, { peerHandle: btn.dataset.peerHandle || '' });
       if (t.error) return toast('Sign in required');
       if (t.request) toast('Request thread created · demo');
       refresh('#/messages?t=' + encodeURIComponent(t.id));
@@ -544,25 +575,7 @@ export function bindMessages(root) {
     markThreadRead(thread.id);
   }
 
-  root.querySelectorAll('[data-flag]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      if (!thread) return;
-      const flag = btn.dataset.flag;
-      if (flag === 'mute') {
-        const next = setThreadFlags(thread.id, { muted: !thread.muted });
-        toast(next.muted ? 'Muted' : 'Unmuted');
-        refresh('#/messages?t=' + encodeURIComponent(thread.id));
-      } else if (flag === 'block') {
-        const next = setThreadFlags(thread.id, { blocked: !thread.blocked });
-        toast(next.blocked ? 'Blocked' : 'Unblocked');
-        refresh('#/messages?t=' + encodeURIComponent(thread.id));
-      } else if (flag === 'report') {
-        setThreadFlags(thread.id, { report: true });
-        toast('Reported · stub (Guidelines §13)');
-        refresh('#/messages?t=' + encodeURIComponent(thread.id));
-      }
-    });
-  });
+  bindLocalThreadFlags(root, thread);
 
   const send = (priority) => {
     if (!thread) return;
