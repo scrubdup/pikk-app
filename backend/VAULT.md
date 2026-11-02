@@ -3,7 +3,8 @@
 ## Object keys & shared bucket (prefix isolation)
 - Vault shares ONE R2 bucket (`env.MEDIA`) with main's music uploads (PIKK Backend decision): music uses `music/<user_id>/...`, Vault uses `vault/<media_type>/<owner_id>/<media_id>` (was `u/<owner>/<id>`).
 - `src/vault-keys.js` is the only way Vault builds, deletes or lists keys: `vaultKey()`, `assertVaultKey()`, `vaultDelete()`, `vaultList()`. Any key not shaped `vault/<type>/<owner>/<id>` (other prefix, traversal, extra segments) throws `VaultKeyError`. Delete, list, backup and restore paths all go through the guard.
-- Tests: `test/vault-prefix.test.js` plants a `music/` object and checks it survives every Vault operation.
+- Backup copies live at `objects/vault/<type>/<owner>/<id>` in `MEDIA_BACKUP` (`vaultBackupKey()`); backup refuses non-vault source rows and restore refuses manifest entries whose `object_key`/`backup_key` fall outside vault/. Multipart cancel/assemble, content reads, processing rejects and the Story sweep are guarded too.
+- Tests: `test/vault-prefix.test.js` and `test/vault-prefix-storage.test.js` plant a `music/` object and checks it survives every Vault operation.
 
 ## Slice 3: processing, Story sweeper, admin controls (migration `0010_vault_processing.sql`)
 - **States:** `pending_upload → uploaded → processing → ready | failed` (`rejected` on spoofed type at complete). `POST /media/:id/complete` sniffs + hashes, then returns **202** with `state: processing` and a queued `probe` job. Nothing is playable until `ready`: `/media/:id/content` and `/access-url` require `ready` for everyone, owner included.

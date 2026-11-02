@@ -1,3 +1,4 @@
+import { vaultDelete, assertVaultKey } from './vault-keys.js';
 // PIKK Vault slice 4: resumable uploads via R2 multipart, bounded per-part retry, cancel.
 import { ApiError, json, clientIp } from './http.js';
 import { requireVerified } from './auth.js';
@@ -34,6 +35,7 @@ async function owned(env, ctx, id) {
   const s = requireVerified(ctx);
   const r = await env.DB.prepare(`SELECT * FROM media WHERE id=? AND owner_id=? AND deleted_at IS NULL`).bind(id, s.user.id).first();
   if (!r) throw notFound();
+  assertVaultKey(r.object_key); // never touch a non-vault/ key (shared bucket with music/)
   return { s, r };
 }
 async function session(env, id) {
@@ -95,7 +97,7 @@ async function completeParts(env, req, ctx, id) {
   const head = obj && obj.size !== undefined ? obj : await bucket(env).head(r.object_key);
   const t = now();
   if (!head || head.size !== r.size_bytes) {
-    await bucket(env).delete(r.object_key);
+    await vaultDelete(bucket(env), r.object_key);
     await env.DB.batch([
       env.DB.prepare(`UPDATE media SET state='failed', last_error='stored size mismatch', updated_at=? WHERE id=?`).bind(t, id),
       env.DB.prepare(`UPDATE media_multipart SET state='aborted', updated_at=? WHERE media_id=?`).bind(t, id),
@@ -119,7 +121,8 @@ async function cancel(env, req, ctx, id) {
   if (ses && ses.state === 'active') {
     try { await bucket(env).resumeMultipartUpload(r.object_key, ses.r2_upload_id).abort(); } catch { /* already gone */ }
   }
-  if (env.MEDIA) await env.MEDIA.delete(r.object_key);
+  assertVaultKey(r.object_key);
+  if (env.MEDIA) await vaultDelete(env.MEDIA, r.object_key);
   const t = now();
   await env.DB.batch([
     env.DB.prepare(`UPDATE media SET state='deleted', deleted_at=?, last_error='cancelled by owner', updated_at=? WHERE id=?`).bind(t, t, id),

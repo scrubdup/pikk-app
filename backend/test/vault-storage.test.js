@@ -80,7 +80,7 @@ describe('slice 4: resumable multipart uploads', () => {
     const fin = await call('POST', `/media/${id}/complete`, { cookie: u.cookie });
     expect(fin.status).toBe(202);
     expect(await settle(id)).toBe('ready');
-    expect((await env.MEDIA.head(`u/${u.id}/${id}`)).size).toBe(bytes.length);
+    expect((await env.MEDIA.head(`vault/photo/${u.id}/${id}`)).size).toBe(bytes.length);
   });
   it('rejects wrong part sizes and bounds per-part retries', async () => {
     const u = await newUser();

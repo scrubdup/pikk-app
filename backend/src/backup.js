@@ -1,3 +1,4 @@
+import { assertVaultKey, VaultKeyError } from './vault-keys.js';
 // PIKK Vault slice 4: backup export (cron) to a SEPARATE R2 binding MEDIA_BACKUP + isolated restore procedure.
 // MEDIA_BACKUP is a LOCAL PLACEHOLDER (wrangler.jsonc); nothing is provisioned on any account.
 import { ApiError, json, clientIp } from './http.js';
@@ -33,9 +34,10 @@ export async function runBackup(env, trigger = 'cron') {
   let copied = 0, bytes = 0, errors = 0;
   for (const m of todo) {
     try {
+      assertVaultKey(m.object_key); // never copy a non-vault/ object (shared bucket with music/)
       const src = await env.MEDIA.get(m.object_key);
       if (!src) throw new Error('source object missing');
-      const key = BACKUP.objectPrefix + m.object_key;
+      const key = vaultBackupKey(m.object_key); // objects/vault/<type>/<owner>/<id>
       // R2 verifies the sha256 on write; a corrupted source fails here instead of producing a bad backup.
       await env.MEDIA_BACKUP.put(key, src.body, { sha256: m.checksum_sha256, customMetadata: { media_id: m.id, sha256: m.checksum_sha256 } });
       await env.DB.prepare(`INSERT INTO media_backups(media_id,backup_key,checksum_sha256,size_bytes,run_id,backed_up_at) VALUES (?,?,?,?,?,?)
@@ -67,6 +69,9 @@ export async function runBackup(env, trigger = 'cron') {
  * Owners must already exist in targetDb (users are restored from D1 Time Travel/export, not from media manifests:
  * manifests deliberately carry no account data). Entries whose owner is missing are reported, not faked.
  */
+/** Backup copy key for a Vault object: objects/vault/<type>/<owner>/<id>. Refuses non-vault keys. */
+export function vaultBackupKey(objectKey) { return BACKUP.objectPrefix + assertVaultKey(objectKey); }
+
 export async function restoreBackup({ sourceBucket, targetDb, targetBucket, manifestKey }) {
   if (!sourceBucket || !targetDb || !targetBucket) throw new Error('restore requires explicit sourceBucket, targetDb and targetBucket');
   let key = manifestKey;
@@ -80,6 +85,8 @@ export async function restoreBackup({ sourceBucket, targetDb, targetBucket, mani
     try {
       const owner = await targetDb.prepare(`SELECT id FROM users WHERE id=?`).bind(e.owner_id).first();
       if (!owner) { report.skipped_missing_owner.push(e.id); continue; }
+      assertVaultKey(e.object_key);
+      if (e.backup_key !== vaultBackupKey(e.object_key)) throw new VaultKeyError(e.backup_key);
       const src = await sourceBucket.get(e.backup_key);
       if (!src) throw new Error('backup object missing');
       await targetBucket.put(e.object_key, src.body, { sha256: e.checksum_sha256, httpMetadata: { contentType: 'application/octet-stream' } });
