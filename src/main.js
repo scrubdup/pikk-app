@@ -47,6 +47,7 @@ import { updateRouteIdentity } from './page-announcement.js';
 import { applyDrawerState } from './drawer-state.js';
 import { toggleMusicMenu, closeMusicMenu } from './music-menu.js';
 import { authApi, isPikkApiConfigured } from './api/auth-client.js';
+import { messagesApi, isMessagesApiConfigured } from './api/messages-client.js';
 
 import { renderHome, bindHome } from './pages/home.js';
 import { renderUpdates, bindUpdates } from './pages/updates.js';
@@ -386,7 +387,7 @@ function updateChrome(route) {
    * Sign in lives on Profile (#/profile) only. Signed-out Messages → #/messages. */
   const headerMsg = document.getElementById('headerMsg');
   if (headerMsg) headerMsg.hidden = false;
-  if (getState().user) {
+  if (getState().user && !isMessagesApiConfigured()) {
     try {
       ensureDemoUnreadMessages();
     } catch (_) {
@@ -397,16 +398,10 @@ function updateChrome(route) {
 }
 
 /** t290u/t291u · header Messages unread badge (Messages always visible) */
-function refreshHeaderMsgBadge() {
+function paintHeaderMsgBadge(unread) {
   const badge = document.getElementById('headerMsgBadge');
   const link = document.getElementById('headerMsg');
   if (!badge || !link) return;
-  let unread = 0;
-  try {
-    unread = getUnreadMessageCount();
-  } catch (_) {
-    unread = 0;
-  }
   if (unread > 0) {
     const n = unread > 99 ? '99+' : String(unread);
     badge.textContent = n;
@@ -417,6 +412,22 @@ function refreshHeaderMsgBadge() {
     badge.hidden = true;
     link.setAttribute('aria-label', 'Messages');
   }
+}
+
+function refreshHeaderMsgBadge() {
+  if (isMessagesApiConfigured() && getState().user?.authSource === 'backend') {
+    messagesApi.unreadCount()
+      .then((data) => paintHeaderMsgBadge(Number(data?.unread || 0)))
+      .catch(() => paintHeaderMsgBadge(0));
+    return;
+  }
+  let unread = 0;
+  try {
+    unread = getUnreadMessageCount();
+  } catch (_) {
+    unread = 0;
+  }
+  paintHeaderMsgBadge(unread);
 }
 
 function render(route) {
