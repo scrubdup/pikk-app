@@ -18,6 +18,10 @@
   // binding is supplied only to tests via vitest.config.js (Miniflare r2Buckets). Without it, Vault
   // and music upload routes return 503 "not configured". Add r2_buckets here only after the owner
   // approves R2 and the bucket exists. (config.test.js enforces this.)
+  // PIKK Vault slice 3: Story expiry sweeper + delayed job retries. Cron Triggers are free on the Workers Free plan.
+  // Must match PROCESSING.sweeperCron in src/media-config.js. Local test: wrangler dev --test-scheduled, then GET /__scheduled
+  // Vault cron work is OFF unless the var VAULT_CRON_ENABLED is "true" (unset by default: the trigger fires, runVaultCron no-ops).
+  "triggers": { "crons": ["*/15 * * * *"] },
   "vars": {
     "ALLOWED_ORIGIN": "https://scrubdup.github.io",
     "COOKIE_SAMESITE": "None",

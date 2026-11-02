@@ -77,3 +77,21 @@ describe('Vault key prefix guard (shared MEDIA bucket with music/)', () => {
     await musicSurvives(mk);
   });
 });
+
+describe('Vault story sweep vs music/ keys (slice 3)', () => {
+  it('sweeping expired stories deletes vault objects only; a music key survives; a tampered row is refused', async () => {
+    const { sweepExpiredStories } = await import('../src/processing.js');
+    const u = await newUser(); const mk = await plantMusic(u);
+    const c = await call('POST', '/media/uploads', { cookie: u.cookie, body: { type: 'photo', content_type: 'image/jpeg', filename: 's.jpg', size: JPEG.length, story: true } });
+    expect(await put(u, c.json.upload.upload_url, JPEG)).toBe(200);
+    const vk = (await env.DB.prepare('SELECT object_key FROM media WHERE id=?').bind(c.json.upload.id).first()).object_key;
+    const bad = await call('POST', '/media/uploads', { cookie: u.cookie, body: { type: 'photo', content_type: 'image/jpeg', filename: 't.jpg', size: 10, story: true } });
+    await env.DB.prepare('UPDATE media SET object_key=? WHERE id=?').bind(mk, bad.json.upload.id).run();
+    const past = new Date(Date.now() - 1000).toISOString();
+    await env.DB.prepare('UPDATE media SET expires_at=? WHERE id IN (?,?)').bind(past, c.json.upload.id, bad.json.upload.id).run();
+    const r = await sweepExpiredStories(env);
+    expect(r.errors).toBeGreaterThanOrEqual(1);
+    expect(await env.MEDIA.head(vk)).toBeNull();
+    await musicSurvives(mk);
+  });
+});

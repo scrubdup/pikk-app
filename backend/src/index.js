@@ -13,6 +13,7 @@ import { stripeWebhook } from './webhook.js';
 import { newId } from './crypto.js';
 import { audit, auditStmt } from './audit.js';
 import { mediaRoute } from './media.js';
+import { withVaultCron } from './vault-cron.js';
 import { musicUploadRoute } from './music-upload.js';
 import { messagesRoute } from './messages.js';
 import { supportRoute } from './tickets.js';
@@ -346,15 +347,15 @@ async function route(req, env, ctx) {
   throw new ApiError(404, 'not_found', 'Route not found');
 }
 
-export default {
-  async fetch(req, env) {
+const worker = {
+  async fetch(req, env, ectx) {
     const requestId = crypto.randomUUID();
     const cors = corsHeaders(env, req);
     if (req.method === 'OPTIONS') {
       return new Response(null, { status: cors['Access-Control-Allow-Origin'] ? 204 : 403, headers: cors });
     }
     let res;
-    try { res = await route(req, env, {}); } catch (e) { res = errorResponse(e, requestId); }
+    try { res = await route(req, env, { waitUntil: ectx && typeof ectx.waitUntil === 'function' ? (p) => ectx.waitUntil(p) : undefined }); } catch (e) { res = errorResponse(e, requestId); }
     for (const [k, v] of Object.entries(cors)) res.headers.set(k, v);
     res.headers.set('X-Request-Id', requestId);
     return res;
@@ -368,3 +369,7 @@ export default {
     ]).then(rs => rs.forEach(r => r.status === 'rejected' && console.error('scheduled task failed', r.reason && r.reason.message))));
   },
 };
+
+// PIKK Vault cron is composed onto the worker's own cron handler (e.g. #336's dispatcher) by withVaultCron
+// in vault-cron.js, so index.js never needs a Vault line in its dispatcher.
+export default withVaultCron(worker);
