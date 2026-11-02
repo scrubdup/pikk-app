@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { CREATE_MENU_ITEMS } from '../src/create-menu.js';
+import { MUSIC_MENU_ITEMS } from '../src/music-menu.js';
+import { SECTION_MENU_ITEMS } from '../src/section-menus.js';
 
 // The app uses local/system fonts; avoid a flaky Chromium screenshot wait on
 // unrelated pending web fonts (e.g. third-party embedded media).
@@ -12,12 +14,12 @@ process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = '1';
 // These are real browser interactions, not static string checks.
 const sections = [
   ['create', 'pikkCreateMenu', CREATE_MENU_ITEMS.length],
-  ['music', 'pikkMusicMenu', 10],
-  ['videos', 'pikkVideosMenu', 9],
-  ['connect', 'pikkConnectMenu', 13],
-  ['dating', 'pikkDatingMenu', 8],
-  ['games', 'pikkGamesMenu', 20],
-  ['shop', 'pikkShopMenu', 9],
+  ['music', 'pikkMusicMenu', MUSIC_MENU_ITEMS.length],
+  ['videos', 'pikkVideosMenu', SECTION_MENU_ITEMS.videos.length],
+  ['connect', 'pikkConnectMenu', SECTION_MENU_ITEMS.connect.length],
+  ['dating', 'pikkDatingMenu', SECTION_MENU_ITEMS.dating.length],
+  ['games', 'pikkGamesMenu', SECTION_MENU_ITEMS.games.length],
+  ['shop', 'pikkShopMenu', SECTION_MENU_ITEMS.shop.length],
 ];
 const expectedTabs = ['Music', 'Videos', 'Connect', 'Create', 'Dating', 'Games', 'Shop'];
 await mkdir('visual-review', { recursive: true });
