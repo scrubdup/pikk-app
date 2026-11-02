@@ -32,9 +32,8 @@ test('official PIKK logo and compact header precede and preserve sticky music pl
   assert.match(html, /id="spQueueBtn"/);
 });
 
-test('header has Settings gear right after $ (owner t-gear), linking to #/settings', () => {
-  assert.ok(html.indexOf('id="settingsBtn" href="#/settings"') > html.indexOf('id="paymentsBtn"'));
-  assert.ok(html.indexOf('id="settingsBtn"') < html.indexOf('id="exploreSearchBtn"'));
+test('header omits Settings gear (owner t219u); Settings stays in navigation', () => {
+  assert.equal(html.includes('id="settingsBtn"'), false);
 });
 
 test('approved seven bottom tabs remain unchanged', () => {

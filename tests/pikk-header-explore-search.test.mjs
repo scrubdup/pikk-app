@@ -25,12 +25,11 @@ test('PIKK branding, music player, existing header actions and Explore rail rema
 });
 
 
-test('header begins Profile then Payments then Settings gear then Search',()=>{
+test('header begins Profile then Payments then Search with no Settings gear (t219u)',()=>{
   const html=readFileSync(new URL('../index.html', import.meta.url),'utf8');
   const p=html.indexOf('id="headerProfile"');
   const pay=html.indexOf('id="paymentsBtn"');
   const search=html.indexOf('id="exploreSearchBtn"');
   assert.ok(p>=0 && pay>p && search>pay, 'expected Profile → Payments → Search order');
-  const gear=html.indexOf('id="settingsBtn" href="#/settings"');
-  assert.ok(gear>pay && search>gear, 'expected Settings gear right after $ and before Search');
+  assert.equal(html.includes('id="settingsBtn"'), false, 'no Settings gear in header');
 });

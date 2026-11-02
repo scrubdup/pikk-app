@@ -21,6 +21,7 @@ import {
   pinClubPost,
   removeClubPost,
   isAdmin,
+  isDemoAdminAllowed,
 } from '../store.js';
 import { esc, toast, shellPage, timeAgo } from '../ui.js';
 import { navigate } from '../router.js';
@@ -208,7 +209,7 @@ export function renderFanClubs(route) {
         <button class="btn primary" type="submit">Create club</button>
         <button class="btn ghost" type="button" id="fcSeedBtn">Reseed demos</button>
         ${!user ? `<button class="btn" type="button" id="fcSignIn">Sign in demo</button>` : ''}
-        <button class="btn ghost" type="button" id="fcAdmin">Toggle demo admin</button>
+        ${isDemoAdminAllowed() ? `<button class="btn ghost" type="button" id="fcAdmin">Toggle demo admin</button>` : ''}
         <p class="chip" style="margin-top:10px">TEST MODE · no real payments · DBS branding stays prominent</p>
       </form>
     </div>`;

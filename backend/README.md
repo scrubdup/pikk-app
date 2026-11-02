@@ -70,6 +70,28 @@ To avoid duplicating parallel work on scrubdup/pikk-app:
   The milestone ledger stays on #111. This branch doesn't change the meter.
 - **#28** (signup copy + supervisor audit doc): **not folded.** It's frontend copy that overlaps `shells.js` with #110 and needs to be resolved there.
 
+## Migration numbering
+
+Migrations in `migrations/` run in filename order and must be named `NNNN_lower_snake.sql`. Agreed order for the work in flight (Nov 2, 2026):
+
+| Numbers | Owner / PR | Files |
+|---|---|---|
+| 0001–0007 | `main` | core, auth/social/ledger, safety, signup roles, music uploads, post engagement, profile fields |
+| 0008 | #234 Master Mind phase 1 | `0008_owner_role.sql` |
+| 0009–0010 | Vault #236 / #338 | `0009_media.sql`, `0010_vault_processing.sql` (0010 rebuilds `media`, so it needs 0009) |
+| 0011–0012 | #336 Master Mind phase 2 | `0011_worker_heartbeats.sql`, `0012_jobs.sql` |
+| 0013 | #339 Safety ID verification | `0013_id_verification.sql` |
+| 0014+ | next free number at merge time | |
+
+`migrations/RESERVED.json` holds numbers for PRs that haven't merged yet (currently 0009–0010 for Vault), so other PRs can land first without leaving a gap. Reserved numbers count as present for the gap check, which runs from 0001 up to the highest real migration file (so reservations above it are ignored); a file may use a reserved number with any slug (the value is only a hint). Remove the entry in the same PR that adds that `.sql` file; the guard fails if a reserved number also has a real file. **Changes to `RESERVED.json` require owner/reviewer approval** (treat it like a CODEOWNERS-protected file): the guard can't tell whether a number was once used and later deleted, so reviewers must check that a new reservation doesn't reuse a number that has existed on `main` or been applied to any D1 database. Keys starting with `_` are comments. Wrangler only applies `*.sql`, so the JSON file is ignored at deploy.
+
+`test/migration-order.test.js` always fails on bad names or duplicate prefixes. It also fails on skipped numbers, but only when `GITHUB_BASE_REF` is unset (main and local runs); on PR CI gaps are allowed so out-of-order PRs can still go green. Never rename a migration that has already been applied to a real D1 database.
+
+## PIKK Master Mind phase 1 (owner role + read-only ops summary)
+- `owner` role sits above `admin`: every admin permission plus `ops.view`. Admins cannot grant, revoke, or change roles on the owner (403); moderators/admins cannot moderate the owner.
+- Owner is assigned **only** by the one-time bootstrap `POST /bootstrap/owner` (`Authorization: Bearer $OWNER_BOOTSTRAP_TOKEN`, `Origin` = ALLOWED_ORIGIN, body `{"handle":"..."}`). Disabled (404) unless the secret is set; refuses (409) once an owner exists; writes `bootstrap.owner` to `audit_log`. Remove the secret afterwards. Not run against any real environment.
+- `GET /admin/ops/summary` (ops.view): read-only panels `{status, checkedAt, source, freshnessLimitSec, detail}`; counts only, no PII.
+
 ## Database migrations (production safety)
 
 Workers Builds must **never** apply migrations from a PR or preview branch. `wrangler.jsonc` has no
