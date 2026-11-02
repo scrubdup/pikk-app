@@ -17,7 +17,9 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('http://127.0.0.1:5173/#/shop', { waitUntil: 'domcontentloaded' });
     await page.locator('.pikk-shop-real-hero').waitFor({ state: 'visible', timeout: 20000 });
-    await page.waitForTimeout(3500); // approved splash completes before capture
+    // The approved splash holds for 5 seconds plus fade; capture the actual Shop,
+    // not the splash overlay covering the top of full-page screenshots.
+    await page.locator('#splash').waitFor({ state: 'detached', timeout: 12000 });
 
     assert.equal(await page.locator('.pikk-shop-featured-product img').count(), 3);
     assert.equal(await page.locator('#pikkShopProducts .pikk-shop-product').count(), MERCH.length);
@@ -80,6 +82,12 @@ try {
     await page.screenshot({ path: 'visual-review/shop-' + name + '-hats.png', fullPage: false });
     await page.locator('#pikkShopSearch').fill('not-a-real-hat-98765');
     assert.equal(await page.locator('#pikkShopProducts .pikk-shop-product:visible').count(), 0);
+    // IME composition Escape must not clear an unfinished international-language search.
+    await page.locator('#pikkShopSearch').evaluate(el => el.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true, cancelable: true })
+    ));
+    assert.equal(await page.locator('#pikkShopSearch').inputValue(), 'not-a-real-hat-98765',
+      name + ' composing Escape must preserve search text');
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#pikkShopSearch').inputValue(), '', name + ' Escape clears search');
     assert.equal(await page.locator('.pikk-shop-category[data-category="Hats"]').getAttribute('aria-pressed'), 'true', name + ' Escape keeps category');

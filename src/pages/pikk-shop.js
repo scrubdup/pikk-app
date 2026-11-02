@@ -87,7 +87,7 @@ export function renderPikkShop() {
     <section class="card pikk-shop-catalog" id="pikkShopCatalog" aria-label="Browse merchandise" style="scroll-margin-top:190px">
       <div class="pikk-shop-catalog-heading"><div><p class="kicker">THE COLLECTION</p><h3>Popular items</h3></div><span class="chip">Authentic Foreign X-Change</span></div>
       <label for="pikkShopSearch">Search merchandise</label>
-      <input id="pikkShopSearch" type="search" placeholder="Search hats, shirts, jackets…" autocomplete="off" />
+      <input id="pikkShopSearch" type="search" placeholder="Search hats, shirts, jackets…" autocomplete="off" aria-controls="pikkShopProducts" aria-describedby="pikkShopCount" />
       <div class="row wrap" role="group" aria-label="Product category" style="gap:8px;margin-top:12px">
         ${chips}
         <button type="button" class="btn ghost" id="pikkShopReset" style="display:none" hidden>Reset view</button>
@@ -168,7 +168,7 @@ export function bindPikkShop(root) {
   // Escape clears only the search query; keep the selected category and sort order.
   // The catalog and live result count update without taking keyboard focus away.
   search?.addEventListener('keydown', event => {
-    if (event.key !== 'Escape' || !search.value) return;
+    if (event.key !== 'Escape' || !search.value || event.isComposing) return;
     event.preventDefault();
     event.stopPropagation();
     search.value = '';
