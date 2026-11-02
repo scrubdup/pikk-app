@@ -1,4 +1,4 @@
-import { vaultDelete, assertVaultKey } from './vault-keys.js';
+import { vaultDeleteFor, assertVaultKeyFor } from './vault-keys.js';
 // PIKK Vault slice 3: processing pipeline, Story expiry sweeper, admin controls.
 // Processor runs in-Worker via ctx.waitUntil behind a pluggable interface so Cloudflare Queues can replace it later
 // (owner approval + paid plan required for Queues; not used here).
@@ -55,7 +55,7 @@ class PermanentError extends Error {}
 
 async function runProbe(env, media) {
   if (!env.MEDIA) throw new Error('storage binding MEDIA missing');
-  assertVaultKey(media.object_key);
+  assertVaultKeyFor(media.object_key, media); // key must belong to this row
   const head = await env.MEDIA.get(media.object_key, { range: { offset: 0, length: 64 } });
   if (!head) throw new Error('object missing');
   const found = sniff(new Uint8Array(await head.arrayBuffer()));
@@ -97,7 +97,7 @@ export async function runJob(env, jobId) {
       ];
       if (media && !media.deleted_at && media.state === 'processing') {
         stmts.push(env.DB.prepare(`UPDATE media SET state='failed', last_error=?, updated_at=? WHERE id=? AND state='processing'`).bind(msg, done, media.id));
-        if (e instanceof PermanentError && media.object_key && env.MEDIA && msg.startsWith('content')) await vaultDelete(env.MEDIA, media.object_key);
+        if (e instanceof PermanentError && media.object_key && env.MEDIA && msg.startsWith('content')) await vaultDeleteFor(env.MEDIA, media.object_key, media);
       }
       await env.DB.batch(stmts);
       return 'failed';
@@ -136,11 +136,11 @@ async function reclaimStuck(env) {
 // ---- Story expiry sweeper (cron) ----
 export async function sweepExpiredStories(env, { limit = PROCESSING.sweepLimit } = {}) {
   const t = now();
-  const rows = (await env.DB.prepare(`SELECT id, object_key, owner_id FROM media WHERE is_story=1 AND deleted_at IS NULL AND expires_at IS NOT NULL AND expires_at <= ? LIMIT ?`).bind(t, limit).all()).results;
+  const rows = (await env.DB.prepare(`SELECT id, object_key, owner_id, media_type FROM media WHERE is_story=1 AND deleted_at IS NULL AND expires_at IS NOT NULL AND expires_at <= ? LIMIT ?`).bind(t, limit).all()).results;
   let deleted = 0; let errors = 0;
   for (const r of rows) {
     try {
-      if (env.MEDIA) await vaultDelete(env.MEDIA, r.object_key);
+      if (env.MEDIA) await vaultDeleteFor(env.MEDIA, r.object_key, r);
       await env.DB.batch([
         env.DB.prepare(`UPDATE media SET state='deleted', deleted_at=?, updated_at=? WHERE id=? AND deleted_at IS NULL`).bind(t, t, r.id),
         env.DB.prepare(`UPDATE processing_jobs SET state='failed', last_error='story expired', finished_at=?, updated_at=? WHERE media_id=? AND state IN ('queued','running')`).bind(t, t, r.id),

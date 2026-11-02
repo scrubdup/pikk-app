@@ -9,7 +9,7 @@ import { NOT_BLOCKED_SQL } from './blocks.js';
 import { MEDIA_LIMITS, STORY_TTL_HOURS, ACCESS_POLICIES, UPLOAD_RATE, VAULT_VERSION } from './media-config.js';
 import { sniff } from './magic.js';
 import { enqueueStmts, getProcessor, processingRoute, processingHealth } from './processing.js';
-import { vaultKey, vaultDelete, assertVaultKey } from './vault-keys.js';
+import { vaultKey, vaultDeleteFor, assertVaultKeyFor } from './vault-keys.js';
 
 const ID = '(med_[A-Za-z0-9_-]{8,64})';
 const now = () => new Date().toISOString();
@@ -70,7 +70,7 @@ async function ownedMedia(env, ctx, id) {
   const s = requireVerified(ctx);
   const r = await env.DB.prepare(`SELECT * FROM media WHERE id=? AND owner_id=? AND deleted_at IS NULL`).bind(id, s.user.id).first();
   if (!r) throw notFound(); // never reveal other users' uploads
-  assertVaultKey(r.object_key); // never touch a non-vault/ key (shared bucket with music/)
+  assertVaultKeyFor(r.object_key, r); // key must be vault/<media_type>/<owner_id>/<id> of THIS row
   return { s, r };
 }
 
@@ -82,7 +82,7 @@ async function putUpload(env, req, ctx, id) {
   if (len !== r.size_bytes) throw new ApiError(len > r.size_bytes ? 413 : 422, len > r.size_bytes ? 'payload_too_large' : 'size_mismatch', 'Body size must equal declared size', { expected: r.size_bytes });
   const obj = await storage(env).put(r.object_key, req.body, { httpMetadata: { contentType: 'application/octet-stream' } });
   if (!obj || obj.size !== r.size_bytes) {
-    await vaultDelete(storage(env), r.object_key);
+    await vaultDeleteFor(storage(env), r.object_key, r);
     await setState(env, id, 'failed', 'stored size mismatch');
     throw new ApiError(422, 'size_mismatch', 'Stored size mismatch');
   }
@@ -103,7 +103,7 @@ async function complete(env, req, ctx, id) {
   const found = sniff(bytes);
   const lim = MEDIA_LIMITS[r.media_type];
   if (!found || found.type !== r.media_type || !lim.contentTypes.includes(found.contentType)) {
-    await vaultDelete(bucket, r.object_key);
+    await vaultDeleteFor(bucket, r.object_key, r);
     await setState(env, id, 'rejected', 'content does not match declared type');
     await audit(env, { actor: s.user.id, action: 'media.rejected', target: id, ip: clientIp(req), meta: { declared: r.declared_content_type, detected: found && found.contentType } });
     throw new ApiError(422, 'content_mismatch', 'File content does not match its declared type');

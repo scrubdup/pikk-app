@@ -265,3 +265,32 @@ describe('slice 3: /vault/health', () => {
     expect(Date.parse(h.json.heartbeat_at)).toBeGreaterThan(Date.now() - 60_000);
   });
 });
+
+describe('slice 3: processing keys are bound to their row', () => {
+  it("probe refuses a row repointed at another owner's vault object (never marks it ready)", async () => {
+    const a = await newUser(); const b = await newUser();
+    await pause();
+    const m = await uploadAndComplete(a, { type: 'photo', content_type: 'image/png', bytes: PNG });
+    expect((await mediaRow(m.id)).state).toBe('processing');
+    const victim = `vault/photo/${b.id}/med_victimprobe01`;
+    await env.MEDIA.put(victim, PNG);
+    await env.DB.prepare('UPDATE media SET object_key=? WHERE id=?').bind(victim, m.id).run();
+    await unpause();
+    await drainJobs(env);
+    expect((await jobFor(m.id)).state).not.toBe('succeeded');
+    expect((await mediaRow(m.id)).state).not.toBe('ready');
+    expect(await env.MEDIA.head(victim)).not.toBeNull();
+  });
+
+  it("sweeper never deletes another owner's object from a tampered expired story row", async () => {
+    const a = await newUser(); const b = await newUser();
+    const s = await uploadAndComplete(a, { type: 'photo', content_type: 'image/png', bytes: PNG, story: true });
+    expect(await settle(s.id)).toBe('ready');
+    const victim = `vault/photo/${b.id}/med_victimsweep01`;
+    await env.MEDIA.put(victim, PNG);
+    await env.DB.prepare('UPDATE media SET object_key=?, expires_at=? WHERE id=?').bind(victim, new Date(Date.now() - 60_000).toISOString(), s.id).run();
+    const res = await sweepExpiredStories(env);
+    expect(res.errors).toBeGreaterThanOrEqual(1);
+    expect(await env.MEDIA.head(victim)).not.toBeNull();
+  });
+});
