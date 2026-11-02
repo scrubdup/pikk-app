@@ -19,33 +19,10 @@ import { esc, toast, shellPage, timeAgo } from '../ui.js';
 import { navigate } from '../router.js';
 import { messageSearchText, messageResultSummary } from '../message-search.js';
 import { messagesApi, isMessagesApiConfigured } from '../api/messages-client.js';
-import { safetyApi, isSafetyApiConfigured, safetyErrorMessage, LOCAL_ONLY_BLOCK_NOTE, LOCAL_ONLY_REPORT_NOTE } from '../api/safety-client.js';
 
 
-const PEER_HANDLE_RE = /^[A-Za-z0-9_]{3,30}$/;
-/** Normalize a backend user handle (what POST /blocks `handle` and report target_id expect). */
-export function normalizePeerHandle(h) {
-  const v = String(h || '').trim().replace(/^@/, '');
-  return PEER_HANDLE_RE.test(v) ? v : '';
-}
-/** Can this Report/Block reach the server? Needs API + backend session + a real peer handle. */
-export function canUseServerSafety(peerHandle) {
-  return !!normalizePeerHandle(peerHandle) && isSafetyApiConfigured() && getState().user?.authSource === 'backend';
-}
-/** Shared Messages Report/Block handler. Returns a promise of the toast text shown. */
-export function runPeerSafetyAction(action, peerHandle, { notify = toast } = {}) {
-  const handle = normalizePeerHandle(peerHandle);
-  if (!canUseServerSafety(handle)) {
-    const msg = action === 'block' ? 'Blocked · ' + LOCAL_ONLY_BLOCK_NOTE : 'Reported · stub (Guidelines §13) · ' + LOCAL_ONLY_REPORT_NOTE;
-    notify(msg);
-    return Promise.resolve(msg);
-  }
-  const p = action === 'block'
-    ? safetyApi.block(handle).then(() => 'Blocked across PIKK', (err) => 'Hidden here only — server block failed: ' + safetyErrorMessage(err))
-    : safetyApi.report({ targetType: 'user', targetId: handle, category: 'harassment', details: 'Reported from Messages' })
-        .then(() => 'Report sent to PIKK moderators', (err) => 'Report not sent: ' + safetyErrorMessage(err));
-  return p.then((msg) => { notify(msg); return msg; });
-}
+export { normalizePeerHandle, canUseServerSafety, runPeerSafetyAction } from '../safety-actions.js';
+import { runPeerSafetyAction } from '../safety-actions.js';
 
 function refresh(hash) {
   navigate(hash || '#/messages');
@@ -178,9 +155,10 @@ function renderNewChat() {
           <span class="pikk-msg-contact-avatar" aria-hidden="true">${esc(String(c.username || "?").slice(0, 1).toUpperCase())}</span>
           <strong>${esc(c.username)}</strong>
           ${c.team ? '<span class="chip">Creator</span>' : mutual ? '<span class="chip">Mutual</span>' : '<span class="chip">Request</span>'}
+          ${c.handle ? '' : '<span class="chip">Demo · device-only</span>'}
         </div>
         <p class="muted" style="margin:6px 0 10px">${esc(c.bio || '')}</p>
-        <button type="button" class="btn ${c.team ? 'primary' : ''}" data-start-peer="${esc(c.id)}" data-peer-name="${esc(c.username)}">${esc(label)}</button>
+        <button type="button" class="btn ${c.team ? 'primary' : ''}" data-start-peer="${esc(c.id)}" data-peer-name="${esc(c.username)}" data-peer-handle="${esc(c.handle || '')}">${esc(label)}</button>
       </article>`;
     })
     .join('');
@@ -277,6 +255,7 @@ function renderThread(thread, { teamPriorityHint = false } = {}) {
           <button type="button" class="btn ghost" data-flag="block">${thread.blocked ? 'Unblock' : 'Block'}</button>
           <button type="button" class="btn ghost danger" data-flag="report">Report</button>
         </div>
+        ${!isGroup && !resolveThreadPeerHandle(thread) ? '<p class="muted msg-device-only-note" style="font-size:12px;margin:6px 0 0">Demo contact · Report and Block save on this device only — not sent to PIKK moderators.</p>' : ''}
       </div>
     </div>
     ${requestBanner}
@@ -448,6 +427,28 @@ export function renderMessages(route) {
   });
 }
 
+/** Device-only thread Mute/Block/Report buttons. Block/Report reach the server when the thread has a real peer handle. */
+export function bindLocalThreadFlags(root, thread, { go = refresh } = {}) {
+  root.querySelectorAll('[data-flag]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!thread) return;
+      const flag = btn.dataset.flag;
+      if (flag === 'mute') {
+        const next = setThreadFlags(thread.id, { muted: !thread.muted });
+        toast(next.muted ? 'Muted' : 'Unmuted');
+      } else if (flag === 'block') {
+        const next = setThreadFlags(thread.id, { blocked: !thread.blocked });
+        if (next.blocked) runPeerSafetyAction('block', resolveThreadPeerHandle(thread));
+        else toast('Unblocked on this device');
+      } else if (flag === 'report') {
+        setThreadFlags(thread.id, { report: true });
+        runPeerSafetyAction('report', resolveThreadPeerHandle(thread));
+      }
+      go('#/messages?t=' + encodeURIComponent(thread.id));
+    });
+  });
+}
+
 export function bindMessages(root) {
   const user = getState().user;
   if (isMessagesApiConfigured()) {
@@ -546,7 +547,7 @@ export function bindMessages(root) {
         refresh('#/messages?view=team');
         return;
       }
-      const t = getOrCreateThread(peerId, peerName);
+      const t = getOrCreateThread(peerId, peerName, { peerHandle: btn.dataset.peerHandle || '' });
       if (t.error) return toast('Sign in required');
       if (t.request) toast('Request thread created · demo');
       refresh('#/messages?t=' + encodeURIComponent(t.id));
@@ -574,26 +575,7 @@ export function bindMessages(root) {
     markThreadRead(thread.id);
   }
 
-  root.querySelectorAll('[data-flag]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      if (!thread) return;
-      const flag = btn.dataset.flag;
-      if (flag === 'mute') {
-        const next = setThreadFlags(thread.id, { muted: !thread.muted });
-        toast(next.muted ? 'Muted' : 'Unmuted');
-        refresh('#/messages?t=' + encodeURIComponent(thread.id));
-      } else if (flag === 'block') {
-        const next = setThreadFlags(thread.id, { blocked: !thread.blocked });
-        if (next.blocked) runPeerSafetyAction('block', resolveThreadPeerHandle(thread));
-        else toast('Unblocked on this device');
-        refresh('#/messages?t=' + encodeURIComponent(thread.id));
-      } else if (flag === 'report') {
-        setThreadFlags(thread.id, { report: true });
-        runPeerSafetyAction('report', resolveThreadPeerHandle(thread));
-        refresh('#/messages?t=' + encodeURIComponent(thread.id));
-      }
-    });
-  });
+  bindLocalThreadFlags(root, thread);
 
   const send = (priority) => {
     if (!thread) return;

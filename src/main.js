@@ -73,6 +73,7 @@ import { renderSupportStaff, bindSupportStaff } from './pages/support-staff.js';
 import { renderCreatorReview, bindCreatorReview } from './pages/creator-review.js';
 import { renderMerch, bindMerch } from './pages/merch.js';
 import { renderProfile, bindProfile } from './pages/profile.js';
+import { renderUser, bindUser } from './pages/user.js';
 import { renderVerifyEmail, bindVerifyEmail } from './pages/verify-email.js';
 import { renderClippers, bindClippers } from './pages/clippers.js';
 import { renderLive, bindLive } from './pages/live.js';
@@ -146,6 +147,7 @@ const ROUTES = {
   '/vault': { render: renderMusic, bind: bindMusic },
   '/merch': { render: renderMerch, bind: bindMerch },
   '/profile': { render: renderProfile, bind: bindProfile },
+  '/user': { render: renderUser, bind: bindUser },
   '/verify-email': { render: renderVerifyEmail, bind: bindVerifyEmail },
   '/clippers': { render: renderClippers, bind: bindClippers },
   '/videos': { render: renderVideos, bind: bindVideos },
