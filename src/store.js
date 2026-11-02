@@ -2716,10 +2716,30 @@ export function exploreSuggestedAccounts() {
   return out.sort((a, b) => b.followers - a.followers || a.username.localeCompare(b.username));
 }
 
-/** §23 Live Gift Battles — voluntary gifts, not wagers (TEST MODE) */
-const GB_DURATION_MS = 60_000;
-/** t198u · winner recognition lasts until end of local calendar day (not 3h). */
+/**
+ * PIKK Battles — STREAMER vs STREAMER (MASTER_HANDOFF "ROAST ARENA AND BATTLES"). TEST MODE only:
+ * invite/accept between live streamers, split screen, one-minute countdown, TEST gifts to a streamer's
+ * side, winner announcement, 24-HOUR champion badge (overrides the older 3-hour banner and the
+ * end-of-day window). No server, payment, wallet or live-support events are created here.
+ */
+export const GB_DURATION_MS = 60_000;
+/** Spec: 24-HOUR champion badge. expiresAt = winAt + 24h (not midnight). */
+export const GB_CHAMPION_MS = 24 * 60 * 60 * 1000;
+/** OWNER-APPROVED (t463u): audience VOTES decide the winner, NOT gifts. Gifts still flow (TEST only) but don't score. */
+export const GB_WINNER_RULE = Object.freeze({ decidedBy: 'audience_votes', giftsScore: false });
+/** OWNER VERIFICATION NEEDED: Battles vote window is not defined. 10s placeholder (Roast's ruling does NOT apply). */
+export const GB_VOTE_TIMING_OWNER_VERIFICATION_NEEDED = Object.freeze({ voteSeconds: 10 });
+export const GB_VOTE_MS = GB_VOTE_TIMING_OWNER_VERIFICATION_NEEDED.voteSeconds * 1000;
+/** OWNER VERIFICATION NEEDED: tie handling is not in the spec. Placeholder: equal votes = tie, no badge. */
+export const GB_TIE_OWNER_VERIFICATION_NEEDED = Object.freeze({ onTie: 'tie_no_badge' });
+/** OWNER VERIFICATION NEEDED: badge on repeat win / newer champion. Placeholder: each win gets its own 24h badge; newest shown. */
+export const GB_BADGE_RESET_OWNER_VERIFICATION_NEEDED = Object.freeze({ onNewWin: 'newest_badge_shown' });
+/** OWNER VERIFICATION NEEDED: who counts as a streamer. Placeholder: host of the active live stream (or a TEST streamer). */
+export const GB_STREAMER_DEFINITION_OWNER_VERIFICATION_NEEDED = Object.freeze({ streamer: 'hosts_active_live' });
+/** TEST viewer ids in the room who may vote (streamers are always excluded). */
+export const GB_TEST_VIEWERS = Object.freeze(['test-viewer-1', 'test-viewer-2', 'test-viewer-3']);
 const GB_DAILY_WINNERS_CAP = 10;
+export function gbChampionExpiresAt(winAt) { return Number(winAt) + GB_CHAMPION_MS; }
 function gbEndOfLocalDay(now = Date.now()) {
   const d = new Date(now);
   d.setHours(23, 59, 59, 999);
@@ -2730,10 +2750,17 @@ function gbStartOfLocalDay(now = Date.now()) {
   d.setHours(0, 0, 0, 0);
   return d.getTime();
 }
-const GB_DEMO_FANS = [
-  { id: 'fan_maya', name: 'MayaBeats', bio: 'Demo fan · mutual' },
-  { id: 'fan_jay', name: 'FanJay', bio: 'Demo fan · sandbox opponent' },
+/** TEST streamers who are "live" in this local prototype. Viewers are never listed here. */
+const GB_DEMO_STREAMERS = [
+  { id: 'streamer_maya', name: 'MayaBeats', bio: 'Test streamer · live now', live: true },
+  { id: 'streamer_jay', name: 'JayOnAir', bio: 'Test streamer · live now', live: true },
 ];
+/** A user is a streamer when they host the active live stream. Viewers (not hosting) are not. */
+export function isBattleStreamer(userId, st = state) {
+  if (!userId) return false;
+  if (GB_DEMO_STREAMERS.some((x) => x.id === userId && x.live)) return true;
+  return !!(st.live && !st.live.endedAt && st.live.hostId === userId);
+}
 
 function gbBucket() {
   return state.giftBattles || {
@@ -2751,38 +2778,60 @@ function saveGiftBattles(gb) {
 }
 
 function finalizeBattleIfNeeded(battle, now = Date.now()) {
-  if (!battle || battle.status !== 'active') return battle;
-  if (now < (battle.endsAt || 0)) return battle;
-  const a = Number(battle.scoreA || 0);
-  const b = Number(battle.scoreB || 0);
+  if (!battle) return battle;
+  if (battle.status === 'active') {
+    if (now < (battle.endsAt || 0)) return battle;
+    // 60s countdown over: open the audience vote. Gifts stop counting toward anything.
+    const voteStart = battle.endsAt || now;
+    battle = { ...battle, status: 'voting', voteStartedAt: voteStart, voteEndsAt: voteStart + GB_VOTE_MS, votesA: 0, votesB: 0, voters: [] };
+  }
+  if (battle.status !== 'voting' || now < (battle.voteEndsAt || 0)) return battle;
+  // Winner = most audience votes (t463u). Gifts are ignored.
+  const a = Number(battle.votesA || 0);
+  const b = Number(battle.votesB || 0);
   let result = 'tie';
   let winnerId = null;
   let winnerName = null;
-  if (a > b) {
-    result = 'win';
-    winnerId = battle.challenger.id;
-    winnerName = battle.challenger.name;
-  } else if (b > a) {
-    result = 'win';
-    winnerId = battle.opponent.id;
-    winnerName = battle.opponent.name;
-  }
-  const ended = {
+  if (a > b) { result = 'win'; winnerId = battle.challenger.id; winnerName = battle.challenger.name; }
+  else if (b > a) { result = 'win'; winnerId = battle.opponent.id; winnerName = battle.opponent.name; }
+  return {
     ...battle,
     status: 'ended',
-    endedAt: now,
+    endedAt: battle.voteEndsAt,
     result,
     winnerId,
     winnerName,
-    scoreA: a,
+    scoreA: a, // scores are VOTES
     scoreB: b,
-    championUntil: winnerId ? gbEndOfLocalDay(now) : null,
+    championUntil: winnerId ? gbChampionExpiresAt(battle.voteEndsAt) : null,
   };
-  return ended;
 }
 
-export function listDemoBattleFans() {
-  return GB_DEMO_FANS.map((f) => ({ ...f }));
+/** Viewers in the room who may vote: the TEST viewer list plus the signed-in user, never a contestant streamer. */
+export function battleEligibleVoters(battle, st = state) {
+  const ids = [...GB_TEST_VIEWERS, st.user?.id].filter(Boolean);
+  return [...new Set(ids)].filter((id) => id !== battle.challenger.id && id !== battle.opponent.id && !isBattleStreamer(id, st));
+}
+
+export function battleVoteTurnout(battle) {
+  return { voted: (battle.voters || []).length, eligible: battleEligibleVoters(battle).length };
+}
+
+/** One vote per eligible viewer during the vote window. Streamers cannot vote. side: 'challenger' | 'opponent'. */
+export function castBattleVote({ viewerId, side } = {}) {
+  let battle = getActiveGiftBattle();
+  if (!battle || battle.status !== 'voting') return { error: 'not_voting' };
+  if (!['challenger', 'opponent'].includes(side)) return { error: 'bad_side' };
+  if (viewerId === battle.challenger.id || viewerId === battle.opponent.id || isBattleStreamer(viewerId)) return { error: 'streamer_cannot_vote' };
+  if (!battleEligibleVoters(battle).includes(viewerId)) return { error: 'not_eligible' };
+  if ((battle.voters || []).includes(viewerId)) return { error: 'already_voted' };
+  const next = { ...battle, votesA: battle.votesA + (side === 'challenger' ? 1 : 0), votesB: battle.votesB + (side === 'opponent' ? 1 : 0), voters: [...battle.voters, viewerId] };
+  saveGiftBattles({ ...gbBucket(), active: next });
+  return { battle: next };
+}
+
+export function listDemoBattleStreamers() {
+  return GB_DEMO_STREAMERS.filter((f) => f.live).map((f) => ({ ...f }));
 }
 
 export function getGiftBattlePrefs() {
@@ -2799,11 +2848,12 @@ export function getActiveGiftBattle() {
   const gb = gbBucket();
   let active = gb.active;
   if (!active) return null;
-  if (active.status === 'active') {
+  if (active.status === 'active' || active.status === 'voting') {
     const finalized = finalizeBattleIfNeeded(active);
     if (finalized !== active && finalized.status === 'ended') {
       return commitEndedBattle(finalized);
     }
+    if (finalized.status === 'voting' && active.status === 'active') saveGiftBattles({ ...gb, active: finalized });
     active = finalized;
   }
   return active;
@@ -2830,44 +2880,42 @@ function commitEndedBattle(ended) {
   return ended;
 }
 
-/** Challenge another fan. mode: 'live' | 'sandbox' */
-export function startGiftBattle({ opponentId, opponentName, mode } = {}) {
+/** A live streamer invites another live streamer. Viewers cannot invite or be invited. */
+export function startGiftBattle({ opponentId } = {}) {
   const user = state.user;
   if (!user) return { error: 'signin' };
   const prefs = getGiftBattlePrefs();
   if (!prefs.invitationsEnabled) return { error: 'invites_disabled' };
-
-  const liveActive = state.live && !state.live.endedAt;
-  const resolvedMode = mode || (liveActive ? 'live' : 'sandbox');
-  if (resolvedMode === 'live' && !liveActive) return { error: 'not_live' };
+  if (!isBattleStreamer(user.id)) return { error: 'not_streamer' };
+  if (opponentId === user.id) return { error: 'self' };
+  const opp = GB_DEMO_STREAMERS.find((f) => f.id === opponentId && f.live);
+  if (!opp || !isBattleStreamer(opp.id)) return { error: 'opponent_not_streamer' };
 
   const gb = gbBucket();
   const cur = gb.active;
-  if (cur && (cur.status === 'pending' || cur.status === 'active')) {
+  if (cur && ['pending', 'active', 'voting'].includes(cur.status)) {
     return { error: 'battle_in_progress', battle: cur };
   }
-
-  const fan = GB_DEMO_FANS.find((f) => f.id === opponentId);
-  const opp = {
-    id: opponentId || fan?.id || 'fan_maya',
-    name: opponentName || fan?.name || 'MayaBeats',
-  };
-  if (opp.id === user.id) return { error: 'self' };
-
   const battle = {
     id: 'gb_' + Date.now().toString(36),
     status: 'pending',
-    mode: resolvedMode,
-    liveId: liveActive ? state.live.id : null,
-    liveTitle: liveActive ? state.live.title : null,
+    mode: 'streamer_vs_streamer',
+    testMode: true,
+    liveId: state.live.id,
+    liveTitle: state.live.title,
     challenger: { id: user.id, name: user.username },
-    opponent: opp,
+    opponent: { id: opp.id, name: opp.name },
     createdAt: Date.now(),
     startedAt: null,
     endsAt: null,
     durationMs: GB_DURATION_MS,
-    scoreA: 0, // challenger
-    scoreB: 0, // opponent
+    scoreA: 0, // challenger streamer: audience VOTES (t463u)
+    scoreB: 0, // opponent streamer: audience VOTES
+    giftA: 0, // TEST gift tally, does not score
+    giftB: 0,
+    votesA: 0,
+    votesB: 0,
+    voters: [],
     giftLog: [],
     result: null,
     winnerId: null,
@@ -2879,11 +2927,15 @@ export function startGiftBattle({ opponentId, opponentName, mode } = {}) {
   return { battle };
 }
 
-export function acceptGiftBattle() {
+/** Only the invited streamer can accept. actorId defaults to the signed-in user. */
+export function acceptGiftBattle({ actorId } = {}) {
   const gb = gbBucket();
   const b = gb.active;
   if (!b || b.status !== 'pending') return { error: 'no_pending' };
   if (!getGiftBattlePrefs().invitationsEnabled) return { error: 'invites_disabled' };
+  const actor = actorId || state.user?.id;
+  if (actor !== b.opponent.id) return { error: 'not_invitee' };
+  if (!isBattleStreamer(actor)) return { error: 'not_streamer' };
   const now = Date.now();
   const battle = {
     ...b,
@@ -2897,10 +2949,11 @@ export function acceptGiftBattle() {
   return { battle };
 }
 
-export function declineGiftBattle() {
+export function declineGiftBattle({ actorId } = {}) {
   const gb = gbBucket();
   const b = gb.active;
   if (!b || b.status !== 'pending') return { error: 'no_pending' };
+  if ((actorId || state.user?.id) !== b.opponent.id) return { error: 'not_invitee' };
   const declined = {
     ...b,
     status: 'declined',
@@ -2916,7 +2969,7 @@ export function declineGiftBattle() {
 export function clearActiveGiftBattle() {
   const gb = gbBucket();
   const b = gb.active;
-  if (b && (b.status === 'pending' || b.status === 'active')) {
+  if (b && ['pending', 'active', 'voting'].includes(b.status)) {
     return { error: 'still_running', battle: b };
   }
   saveGiftBattles({ ...gb, active: null });
@@ -2948,93 +3001,58 @@ export function dismissLiveGbChallengePop(id) {
   return { ok: true };
 }
 
-/** Start a pending Gift Battle challenging the paid gifter from the pop. */
+/** PIKK Battles are streamer vs streamer: a viewer (the gifter) can never be a contestant. */
 export function challengeGifterFromPop() {
-  const pop = getLiveGbChallengePop();
-  if (!pop) return { error: 'no_pop' };
-  const res = startGiftBattle({
-    opponentId: pop.fromUserId,
-    opponentName: pop.fromUser,
-    mode: 'live',
-  });
-  if (res?.battle) {
-    state = { ...state, liveGbChallengePop: null };
-    save(state);
-  }
-  return res;
+  return { error: 'viewer_not_contestant' };
 }
 
 
 /**
- * Record a voluntary gift/tip toward one side of the battle.
- * side: 'challenger' | 'opponent'
- * When mode=live and side=challenger, also calls sendLiveSupport.
+ * A viewer sends a TEST gift to one streamer's side. side: 'challenger' | 'opponent'.
+ * TEST points only: no wallet debit, no live-support or payment event.
  */
-export function recordBattleGift({
-  side = 'challenger',
-  kind = 'gift',
-  amount = 2,
-  label = '',
-} = {}) {
+export function recordBattleGift({ side = 'challenger', kind = 'gift', amount = 2, label = '' } = {}) {
   const user = state.user;
   if (!user) return { error: 'signin' };
   let battle = getActiveGiftBattle();
   if (!battle || battle.status !== 'active') return { error: 'no_active' };
-  // Re-check after possible finalize
   battle = gbBucket().active;
   if (!battle || battle.status !== 'active') return { error: 'ended' };
-
-  const amt = Math.max(0.5, Number(amount) || 1);
-  const k = kind === 'tip' ? 'tip' : 'gift';
+  if (!['challenger', 'opponent'].includes(side)) return { error: 'bad_side' };
+  const amt = Number(amount);
+  if (!(amt > 0)) return { error: 'bad_amount' };
   const forOpponent = side === 'opponent';
-  const who = forOpponent ? battle.opponent : battle.challenger;
-
-  // Live mode + challenger: go through real live support path
-  let liveResult = null;
-  if (battle.mode === 'live' && !forOpponent) {
-    liveResult = sendLiveSupport({ kind: k, amount: amt, label: label || (k === 'gift' ? '🔥 Fire' : 'Tip') });
-    if (liveResult?.error) return liveResult;
-  } else {
-    // Sandbox or simulated opponent gift — optional wallet debit when possible
-    const bal = state.wallet?.balance || 0;
-    if (bal >= amt) {
-      spendWallet(amt, `Gift battle ${k} · ${who.name} · TEST MODE`);
-    }
-  }
-
+  const streamer = forOpponent ? battle.opponent : battle.challenger;
+  const k = kind === 'tip' ? 'tip' : 'gift';
   const entry = {
-    id: 'gbg_' + Date.now().toString(36),
-    side: forOpponent ? 'opponent' : 'challenger',
-    userId: who.id,
-    username: who.name,
+    id: 'gbg_' + Date.now().toString(36) + '_' + (battle.giftLog || []).length,
+    side,
+    toStreamerId: streamer.id,
+    fromUserId: user.id,
+    fromUsername: user.username,
     kind: k,
     amount: amt,
-    label: (label || (k === 'gift' ? '🔥 Fire' : 'Tip')).slice(0, 40),
+    label: (label || (k === 'gift' ? 'TEST gift' : 'TEST tip')).slice(0, 40),
+    testMode: true,
     at: Date.now(),
   };
-  const scoreA = Number(battle.scoreA || 0) + (forOpponent ? 0 : amt);
-  const scoreB = Number(battle.scoreB || 0) + (forOpponent ? amt : 0);
-  let next = {
-    ...battle,
-    scoreA: +scoreA.toFixed(2),
-    scoreB: +scoreB.toFixed(2),
-    giftLog: [...(battle.giftLog || []), entry],
-  };
+  // Gift tally only: does NOT score (t463u).
+  const giftA = Number(battle.giftA || 0) + (forOpponent ? 0 : amt);
+  const giftB = Number(battle.giftB || 0) + (forOpponent ? amt : 0);
+  let next = { ...battle, giftA: +giftA.toFixed(2), giftB: +giftB.toFixed(2), giftLog: [...(battle.giftLog || []), entry] };
   next = finalizeBattleIfNeeded(next);
-  if (next.status === 'ended') {
-    commitEndedBattle(next);
-  } else {
-    saveGiftBattles({ ...gbBucket(), active: next });
-  }
-  return { battle: next, entry, live: liveResult?.live || null, wallet: state.wallet };
+  if (next.status === 'ended') commitEndedBattle(next);
+  else saveGiftBattles({ ...gbBucket(), active: next });
+  return { battle: next, entry };
 }
 
 /** Force end / tick finalize based on wall clock. */
 export function tickGiftBattle() {
   const gb = gbBucket();
   const b = gb.active;
-  if (!b || b.status !== 'active') return b;
+  if (!b || !['active', 'voting'].includes(b.status)) return b;
   const finalized = finalizeBattleIfNeeded(b);
+  if (finalized.status === 'voting' && b.status === 'active') saveGiftBattles({ ...gb, active: finalized });
   if (finalized.status === 'ended' && b.status !== 'ended') {
     return commitEndedBattle(finalized);
   }
@@ -3045,7 +3063,7 @@ export function listBattleHistory(limit = 20) {
   return (gbBucket().history || []).slice(0, limit);
 }
 
-/** Current day champion spotlight (most recent winner still within calendar-day window). */
+/** Champion badge holder: most recent winner whose 24-hour badge has not expired. */
 export function getChampion(now = Date.now()) {
   const gb = gbBucket();
   const active = gb.active;
@@ -3107,7 +3125,7 @@ export function listDailyBattleWinners(limit = GB_DAILY_WINNERS_CAP, now = Date.
     if (seen.has(row.userId)) return;
     const at = Number(row.endedAt || 0);
     if (at < start || at > end) return;
-    // Still recognized today (championUntil may be end-of-day)
+    // Badge still active (24h from the win)
     if (row.championUntil && now > row.championUntil) return;
     seen.add(row.userId);
     out.push({

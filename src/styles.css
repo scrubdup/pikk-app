@@ -5061,3 +5061,6 @@ html body .pikk-home-media-title {
 
 /* Roast Arena tap targets (Checker #370): vote-name and rematch Yes/No buttons must render >=44px; beats `.page .btn{min-height:37px}`. */
 html body .page .btn.roast-tap { min-height: 44px; }
+
+/* PIKK Battles vote buttons: 44px rendered tap targets (beats `.page .btn{min-height:37px}`). */
+html body .page .btn.gb-vote-tap { min-height: 44px; }
