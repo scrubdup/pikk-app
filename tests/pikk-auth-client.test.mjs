@@ -1,0 +1,24 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const src = readFileSync(new URL('../src/api/auth-client.js', import.meta.url), 'utf8');
+
+test('real auth client uses credentialed Cloudflare session requests', () => {
+  assert.match(src, /credentials: 'include'/);
+  assert.match(src, /'\/auth\/signup'/);
+  assert.match(src, /'\/auth\/login'/);
+  assert.match(src, /'\/auth\/logout'/);
+  assert.match(src, /'\/auth\/me'/);
+  assert.match(src, /'\/auth\/verify'/);
+});
+
+test('real auth client does not hardcode an unverified Worker hostname', () => {
+  assert.match(src, /VITE_PIKK_API_BASE/);
+  assert.match(src, /__PIKK_API_BASE__/);
+  assert.doesNotMatch(src, /workers\.dev/);
+});
+
+test('signup payload matches backend field names', () => {
+  for (const field of ['email', 'handle', 'display_name', 'password', 'signup_roles']) assert.ok(src.includes(field), field);
+});
