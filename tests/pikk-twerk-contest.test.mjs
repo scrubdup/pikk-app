@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+const read = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const mem = new Map(); globalThis.localStorage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
 const c = await import('../src/pages/contest.js');
 const { renderHomeShowcase } = await import('../src/home-showcase.js');
@@ -12,7 +13,7 @@ test('t356u: gate blocks rules until 18+ confirmed, stored locally, honest wordi
   c.confirmTwerkGate(); assert.equal(mem.get(c.TWERK_GATE_KEY), 'yes');
   const r = c.renderTwerkContest();
   assert.doesNotMatch(r, /twerkGateYes/);
-  for (const re of [/18\+ only/, /No nudity or sexual content/, /community guidelines/, /Report/, /href="#\/guidelines"/, /Entries &amp; voting coming soon/]) assert.match(r, re);
+  for (const re of [/18\+ only/, /No nudity or sexual content/, /community guidelines/, /Report/, /href="#\/guidelines"/, /Entries &amp; voting coming soon/, /women/, /No ID check is needed to watch or vote/, /id="twerkEntry"/]) assert.match(r, re);
 });
 test('t356u: Home tile is text only with 18+ badge and Enter to #/contest/twerk; route registered', () => {
   const h = renderHomeShowcase(); const s = h.slice(h.indexOf('data-hs="contest"')); const tile = s.slice(0, s.indexOf('</section>'));
@@ -23,4 +24,19 @@ test('t356u: Home tile is text only with 18+ badge and Enter to #/contest/twerk;
 test('Twerk Contest section sits directly under Dating on Home', () => {
   const order = [...renderHomeShowcase().matchAll(/data-hs="([\w-]+)"/g)].map((m) => m[1]);
   assert.equal(order[order.indexOf('dating') + 1], 'contest');
+});
+
+test('entry UI only for server-eligible accounts; others watch/vote', () => {
+  const ok = c.renderEntryPanel({ can_enter: true, gender_ok: true, age_verified: true });
+  assert.match(ok, /twerkEntryForm/); assert.match(ok, /Live, solo entries only/); assert.match(ok, /Go live \(solo\)/);
+  assert.doesNotMatch(ok, /Submit entry|upload/i);
+  assert.match(c.renderTwerkRules(), /Live, solo entries only/);
+  assert.doesNotMatch(read('src/pages/contest.js'), /submit\(false\)/);
+  const male = c.renderEntryPanel({ can_enter: false, gender_ok: false, gender_set: true, age_verified: true });
+  assert.doesNotMatch(male, /twerkEntryForm|twerkGoLive/); assert.match(male, /watch and vote/);
+  const unverified = c.renderEntryPanel({ can_enter: false, gender_ok: true, age_verified: false });
+  assert.doesNotMatch(unverified, /twerkEntryForm/); assert.match(unverified, /href="#\/verify-age"/);
+  assert.doesNotMatch(c.renderEntryPanel(null), /twerkEntryForm/);
+  // viewing gate still self-confirmation only; no ID required to view
+  assert.match(c.renderTwerkGate(), /id="twerkGateYes"/);
 });

@@ -3,6 +3,8 @@
 Status: **Draft for owner + legal review. Nothing in this doc is built yet unless marked otherwise.** Labels: **[PLANNED]** = not built; **[PROPOSED]** = number/policy awaiting owner sign-off.
 Related: `docs/safety.md` (PIKK Shield safety plan — roles, reporting, blocking, age verification). This doc must stay consistent with it; where they differ, `docs/safety.md` and PIKK Backend's roles/permissions win.
 
+**Owner rulings:** entries are **live and solo only**: no recorded uploads, co-hosts, guests, duos or groups. Contestants are women who are server-verified 18+. Viewers confirm 18+ themselves, and voting needs no ID check.
+
 Flow: text-only Home tile → age gate → contest page. The Home tile shows no thumbnails or previews of entries.
 
 ---
@@ -24,28 +26,29 @@ Not allowed (removal, see §8):
 
 ## 2. Protecting minors (zero tolerance)
 
-- **Every entrant and every person visible in frame must be 18+ and server-verified** via the `age_verified_18` flag defined in PIKK Backend roles/permissions. The client-side age gate is only a UX screen, not verification. **[PLANNED — depends on Backend auth/roles + age-verification vendor per `docs/safety.md`]**
-- Viewing the contest page also requires `age_verified_18` (server-checked). **[PLANNED]**
-- Additional people in frame: entrant must declare them; each must have their own verified PIKK account linked to the entry, or the entry is rejected. **[PROPOSED / PLANNED]**
+- **The contestant must be server-verified 18+** (`age_verified_18`, enforced on `POST /contests/twerk/live` in PR #339). Entries are solo, so **nobody else may be in frame**. Anyone else appearing means the stream is cut and the entry is disqualified.
+- Viewing uses the 18+ self-confirmation gate (owner ruling). Voting requires a signed-in account but no ID check.
 - Any doubt about age → reject and escalate. Moderators do not "give the benefit of the doubt."
 - **Suspected CSAM:** do not download, share, or re-view beyond what's needed; immediately remove from public view, lock the account, **preserve evidence** (content, hashes, metadata, account/IP/logs) in restricted storage, and report to the **NCMEC CyberTipline** (US provider obligation under 18 U.S.C. 2258A). Do not notify the user before law-enforcement handling. Only designated trust & safety staff handle these cases. **[PLANNED — process + restricted evidence store not built]**
 - Permanent ban; no appeal for confirmed CSAM.
 
 ## 3. Consent
 
-- Everyone in frame must consent to being filmed and to the entry being published and voted on (consent checkbox per participant at submission). **[PLANNED]**
-- No filming non-participants, bystanders, or people in public who did not opt in; no hidden-camera or "creep" content.
-- Any participant can **revoke consent** at any time → entry hidden immediately, then removed; votes from that entry are frozen. **[PLANNED]**
+- Entries are **solo**: the only person on camera is the contestant, who consents to the live broadcast, any replay and voting when she goes live. There are no other participants to collect consent from. **[PLANNED: consent checkbox at go-live]**
+- No one else may appear on camera: no co-hosts, guests, partners, bystanders or people in public, and no hidden-camera or "creep" content. If anyone else appears, the stream is cut (§6).
+- The contestant can **revoke consent** at any time: the stream or replay is hidden immediately, then removed, and that entry's votes are frozen. **[PLANNED]**
 - Non-consensual intimate imagery is treated as severe (§8) and evidence is preserved.
 
-## 4. Entry review (pre-moderation)
+## 4. Entry review
 
-- **No entry goes public before human review.** Entries sit in a `pending` queue visible only to the entrant and moderators. **[PLANNED]**
+Entries are live, so review happens **during the broadcast** (§6) plus a review of any replay before it's shown again. The checks below apply to replays and to the automated scanning of live frames.
+
+- **No replay goes public before human review.** Live entries are recorded as `pending_review` (built in PR #339); replays stay hidden until approved. **[PLANNED: review tools]**
 - Automated checks before human review **[PLANNED]**:
   - Hash matching against known CSAM/NCII databases (e.g., PhotoDNA / industry hash lists, StopNCII) and PIKK's own banned-content hashes.
   - Nudity/minor-age classifiers as a *flag*, never as a substitute for human review.
   - Duplicate/stolen-video detection (re-uploads of others' content; ties to copyright flow in `docs/safety.md`).
-- Moderator checklist: all faces/bodies in frame accounted for and verified 18+; clothing standard; no sexual acts/solicitation; consent records present; captions/audio clean.
+- Moderator checklist: only the verified contestant in frame; clothing standard; no sexual acts/solicitation; consent records present; captions/audio clean.
 - Outcomes: approve / reject with reason (entrant may fix and re-submit) / escalate (age, CSAM, NCII → T&S lead).
 - Every decision logged with moderator ID, time, reason (moderation audit log per Backend roles). **[PLANNED]**
 
@@ -66,19 +69,19 @@ Report button on every entry, profile, comment and live stream. Server-side, cro
 
 All SLA numbers are **proposals**, not commitments, until staffing is confirmed. Reporter gets a status update; repeated bad-faith reporting is itself actionable.
 
-## 6. Live moderation (if any part of the contest is live)
+## 6. Live moderation (the contest is live-only)
 
 All **[PLANNED]**:
 - **Broadcast delay** [PROPOSED 10–30 s] so moderators can cut before viewers see a violation.
 - **Moderators on shift** for every live window; [PROPOSED] at least 2, one with T&S-lead authority. No live contest without staffed moderation.
 - **Kill switch:** moderators can instantly end a stream, hide an entry, or pause the whole contest page; staff-only, server-enforced (admin is staff-only per owner rule—no `?admin=1`).
 - **Chat filters:** block-lists for sexual solicitation, minors-related terms, external adult links, phone numbers/handles; slow mode; mod-only mode; per-user mute/timeout.
-- Live participants must be the verified entrant(s); a new unverified person appearing → stream cut.
+- Solo only: the server refuses co-host, guest and multi-guest invites and duo/group fields (422 `solo_only`, PR #339). If anyone other than the contestant appears on camera, the stream is cut immediately.
 
 ## 7. Voting integrity (PIKK Shield tie-in)
 
 All **[PLANNED]**:
-- Voting only by logged-in, `age_verified_18` accounts; one vote per account per round [PROPOSED].
+- Voting by logged-in accounts that have passed the 18+ self-confirmation gate, with no ID check (owner ruling). One vote per account per entry (built), and only on approved entries (built in PR #339).
 - PIKK Shield anti-fraud: device/IP velocity limits, new-account cooldowns, bot/sybil detection, paid-vote-ring detection.
 - Votes are server-side only; suspicious votes quarantined, not silently counted; results audited before winners announced.
 - Entrants caught manipulating votes → disqualification (see §8).
@@ -98,7 +101,7 @@ Strikes expire [PROPOSED 12 months] except Critical/Severe. All actions logged. 
 ### Appeals [PLANNED]
 - Entrant can appeal once per decision within [PROPOSED 14 days]; reviewed by a different moderator than the original.
 - Target response [PROPOSED] 7 days. Outcome logged; overturned entries restored with vote state explained.
-- No appeal for confirmed CSAM; age-related rejections can be appealed only by completing verification of everyone in frame.
+- No appeal for confirmed CSAM. Age-related rejections can only be appealed by the contestant completing ID verification.
 
 ## 9. Legal notes (needs lawyer review — not legal advice)
 
@@ -112,17 +115,19 @@ Strikes expire [PROPOSED 12 months] except Critical/Severe. All actions logged. 
 
 ## 10. Open questions for owner
 
-1. Is any part of the contest live, or recorded entries only?
-2. Approve the clothing standard wording in §1?
-3. Who staffs moderation (in-house vs. vendor) and what hours — determines whether the SLAs in §5 are realistic?
-4. Launch countries/states?
-5. Prizes (cash?) — affects contest-law and fraud requirements.
-6. Can people other than the entrant appear in entries at all, or solo only (simplest and safest)?
+Resolved by the owner: entries are **live only** and **solo only**.
+
+1. Approve the clothing standard wording in §1?
+2. Who staffs moderation (in-house or vendor), and for what hours? This decides whether the SLAs in §5 and the live staffing in §6 are realistic.
+3. Launch countries and states?
+4. Prizes (cash?): these affect contest-law and fraud requirements.
 
 ## 11. Launch gate (must all be true before entries go public)
 
-- [ ] Server-side `age_verified_18` enforced for entrants, people in frame, viewers, voters
-- [ ] Pre-moderation queue + moderator tools + audit log
+- [ ] Server-side `age_verified_18` + female account enforced for contestants (built in PR #339; ID provider not connected yet)
+- [ ] Live-only and solo-only enforced server-side (built in PR #339)
+- [ ] Broadcast delay, kill switch and moderators on shift for every live window
+- [ ] Live moderation tools, replay review queue + audit log
 - [ ] Hash matching + NCMEC reporting process + evidence preservation
 - [ ] Server-side reports and blocks (per `docs/safety.md`)
 - [ ] Staff-only admin/moderator roles (no `?admin=1`)

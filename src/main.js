@@ -52,6 +52,7 @@ import { messagesApi, isMessagesApiConfigured } from './api/messages-client.js';
 import { renderHome, bindHome } from './pages/home.js';
 import { renderUpdates, bindUpdates } from './pages/updates.js';
 import { renderAdmin, bindAdmin } from './pages/admin.js';
+import { renderMastermind, bindMastermind } from './pages/mastermind.js';
 import { renderPosts, bindPosts } from './pages/posts.js';
 import { renderPromote, bindPromote } from './pages/promote.js';
 import { renderDonate, bindDonate } from './pages/donate.js';
@@ -59,12 +60,15 @@ import { renderPayments, bindPayments } from './pages/payments.js';
 import { decoratePlayCounts, recordPlay } from './play-counter.js';
 import { renderStory, bindStory, renderCrew, bindCrew, renderFavorites, bindFavorites } from './pages/circle.js';
 import './circle.css';
+import './pikk-t422u.css';
 import './pikk-chips.css';
 import './pikk-splash.css';
 import { renderMusic, bindMusic } from './pages/music.js';
 import { renderAIArtists, bindAIArtists } from './pages/ai-artists.js';
 import { renderShield, bindShield } from './pages/shield.js';
 import { renderSupport, bindSupport } from './pages/support.js';
+import { renderVerifyAge, bindVerifyAge } from './pages/verify-age.js';
+import { renderBiometricPolicy, bindBiometricPolicy } from './pages/biometric-policy.js';
 import { renderSupportStaff, bindSupportStaff } from './pages/support-staff.js';
 import { renderCreatorReview, bindCreatorReview } from './pages/creator-review.js';
 import { renderMerch, bindMerch } from './pages/merch.js';
@@ -136,6 +140,8 @@ const ROUTES = {
   '/ai-artists': { render: renderAIArtists, bind: bindAIArtists },
   '/shield': { render: renderShield, bind: bindShield },
   '/support': { render: renderSupport, bind: bindSupport },
+  '/verify-age': { render: renderVerifyAge, bind: bindVerifyAge },
+  '/biometric-policy': { render: renderBiometricPolicy, bind: bindBiometricPolicy },
   '/support-staff': { render: renderSupportStaff, bind: bindSupportStaff },
   '/creator-review': { render: renderCreatorReview, bind: bindCreatorReview },
   '/vault': { render: renderMusic, bind: bindMusic },
@@ -153,6 +159,7 @@ const ROUTES = {
   '/missions': { render: renderMissions, bind: bindMissions },
   '/pricing': { render: renderPricing, bind: bindPricing },
   '/admin': { render: renderAdmin, bind: bindAdmin },
+  '/mastermind': { render: renderMastermind, bind: bindMastermind },
   '/guidelines': { render: renderGuidelines },
   '/settings': { render: renderSettings, bind: bindSettings },
   '/contest': { render: renderTwerkContest, bind: bindTwerkContest }, // only contest today: #/contest/twerk

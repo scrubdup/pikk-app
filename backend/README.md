@@ -69,3 +69,22 @@ To avoid duplicating parallel work on scrubdup/pikk-app:
   - Not covered: storage, queues, media, realtime, payouts, KYC and tax.
   The milestone ledger stays on #111. This branch doesn't change the meter.
 - **#28** (signup copy + supervisor audit doc): **not folded.** It's frontend copy that overlaps `shells.js` with #110 and needs to be resolved there.
+
+## PIKK Master Mind phase 1 (owner role + read-only ops summary)
+- `owner` role sits above `admin`: every admin permission plus `ops.view`. Admins cannot grant, revoke, or change roles on the owner (403); moderators/admins cannot moderate the owner.
+- Owner is assigned **only** by the one-time bootstrap `POST /bootstrap/owner` (`Authorization: Bearer $OWNER_BOOTSTRAP_TOKEN`, `Origin` = ALLOWED_ORIGIN, body `{"handle":"..."}`). Disabled (404) unless the secret is set; refuses (409) once an owner exists; writes `bootstrap.owner` to `audit_log`. Remove the secret afterwards. Not run against any real environment.
+- `GET /admin/ops/summary` (ops.view): read-only panels `{status, checkedAt, source, freshnessLimitSec, detail}`; counts only, no PII.
+
+## Database migrations (production safety)
+
+Workers Builds must **never** apply migrations from a PR or preview branch. `wrangler.jsonc` has no
+`build.command`, so builds only build/upload code. (Until this fix, the build ran
+`wrangler d1 migrations apply DB --remote`, which applied unreviewed branch migrations to production `pikk-db`.)
+
+Apply migrations to production only after the PR is reviewed and merged to `main`, either:
+- manually: `npm run migrate:remote` from an up-to-date `main` checkout, or
+- from a main-only CI step: `npm run migrate:ci`, which runs `scripts/migrate-if-main.mjs` and is a no-op
+  unless `WORKERS_CI=1` and `WORKERS_CI_BRANCH=main` (tested in `test/migrate-if-main.test.js`).
+
+Never rename or renumber a migration that has already been applied anywhere: D1 tracks migrations by file
+name, so a renamed file is treated as new and re-runs.
