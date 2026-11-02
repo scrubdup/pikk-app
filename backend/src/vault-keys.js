@@ -17,6 +17,21 @@ export function assertVaultKey(key) {
   return key;
 }
 
+export const VAULT_MEDIA_TYPES = Object.freeze(['photo', 'video', 'audio']);
+
+/**
+ * Throws unless key is exactly vault/<media_type>/<owner_id>/<id> for THIS row:
+ * owner segment == row.owner_id, type segment == row.media_type (and in the allowlist),
+ * id segment == row.id (when the row carries an id). Use wherever a key meets a DB row / manifest entry.
+ */
+export function assertVaultKeyFor(key, row) {
+  assertVaultKey(key);
+  const [, type, owner, id] = key.split('/');
+  if (!row || !VAULT_MEDIA_TYPES.includes(type) || type !== row.media_type || owner !== row.owner_id
+      || (row.id !== undefined && row.id !== null && id !== row.id)) throw new VaultKeyError(key);
+  return key;
+}
+
 export function isVaultKey(key) { try { assertVaultKey(key); return true; } catch { return false; } }
 
 export function vaultKey(mediaType, ownerId, mediaId) {
@@ -27,6 +42,18 @@ export function vaultKey(mediaType, ownerId, mediaId) {
 export async function vaultDelete(bucket, key) {
   assertVaultKey(key);
   return bucket.delete(key);
+}
+
+/** Delete the object of THIS row only (key bound to owner/type/id). */
+export async function vaultDeleteFor(bucket, key, row) {
+  assertVaultKeyFor(key, row);
+  return bucket.delete(key);
+}
+
+/** Write the object of THIS row only (key bound to owner/type/id). */
+export async function vaultPutFor(bucket, key, row, body, opts) {
+  assertVaultKeyFor(key, row);
+  return bucket.put(key, body, opts);
 }
 
 /** List Vault objects only. Caller prefix (if any) must itself be under vault/; results are re-filtered. */

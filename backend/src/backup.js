@@ -1,4 +1,4 @@
-import { assertVaultKey, VaultKeyError } from './vault-keys.js';
+import { assertVaultKey, assertVaultKeyFor, vaultPutFor, VaultKeyError } from './vault-keys.js';
 // PIKK Vault slice 4: backup export (cron) to a SEPARATE R2 binding MEDIA_BACKUP + isolated restore procedure.
 // MEDIA_BACKUP is a LOCAL PLACEHOLDER (wrangler.jsonc); nothing is provisioned on any account.
 import { ApiError, json, clientIp } from './http.js';
@@ -27,14 +27,14 @@ export async function runBackup(env, trigger = 'cron') {
   }
   await env.DB.prepare(`INSERT INTO vault_backup_runs(id,trigger,state,started_at) VALUES (?,?,'running',?)`).bind(id, trigger, started).run();
   const todo = (await env.DB.prepare(
-    `SELECT m.id, m.object_key, m.checksum_sha256, m.size_bytes FROM media m LEFT JOIN media_backups b ON b.media_id = m.id
+    `SELECT m.id, m.owner_id, m.media_type, m.object_key, m.checksum_sha256, m.size_bytes FROM media m LEFT JOIN media_backups b ON b.media_id = m.id
       WHERE m.state='ready' AND m.deleted_at IS NULL AND m.checksum_sha256 IS NOT NULL
         AND (b.media_id IS NULL OR b.checksum_sha256 <> m.checksum_sha256)
       ORDER BY m.ready_at LIMIT ?`).bind(BACKUP.batchLimit).all()).results;
   let copied = 0, bytes = 0, errors = 0;
   for (const m of todo) {
     try {
-      assertVaultKey(m.object_key); // never copy a non-vault/ object (shared bucket with music/)
+      assertVaultKeyFor(m.object_key, m); // only this row's own vault/<type>/<owner>/<id> object
       const src = await env.MEDIA.get(m.object_key);
       if (!src) throw new Error('source object missing');
       const key = vaultBackupKey(m.object_key); // objects/vault/<type>/<owner>/<id>
@@ -85,11 +85,15 @@ export async function restoreBackup({ sourceBucket, targetDb, targetBucket, mani
     try {
       const owner = await targetDb.prepare(`SELECT id FROM users WHERE id=?`).bind(e.owner_id).first();
       if (!owner) { report.skipped_missing_owner.push(e.id); continue; }
-      assertVaultKey(e.object_key);
+      assertVaultKeyFor(e.object_key, e); // manifest entry's key must match its own owner_id/media_type/id
       if (e.backup_key !== vaultBackupKey(e.object_key)) throw new VaultKeyError(e.backup_key);
+      // Never overwrite another owner's row/object: any existing row with this id or key must be the same owner+key.
+      const clash = (await targetDb.prepare(`SELECT id, owner_id, object_key FROM media WHERE id=? OR object_key=?`).bind(e.id, e.object_key).all()).results
+        .find(x => x.owner_id !== e.owner_id || x.id !== e.id || x.object_key !== e.object_key);
+      if (clash) throw new VaultKeyError(e.object_key);
       const src = await sourceBucket.get(e.backup_key);
       if (!src) throw new Error('backup object missing');
-      await targetBucket.put(e.object_key, src.body, { sha256: e.checksum_sha256, httpMetadata: { contentType: 'application/octet-stream' } });
+      await vaultPutFor(targetBucket, e.object_key, e, src.body, { sha256: e.checksum_sha256, httpMetadata: { contentType: 'application/octet-stream' } });
       const cols = MEDIA_COLS;
       await targetDb.prepare(`INSERT OR REPLACE INTO media(${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).bind(...cols.map(c => e[c] ?? null)).run();
       report.restored++;
