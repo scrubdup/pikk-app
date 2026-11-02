@@ -181,6 +181,16 @@ export function bindGiftForAll(root, { me = 'You', toast = () => {} } = {}) {
       s.b = null; s.w = openChallengeWindow({ gifter: b.dataset.gbGiftall === 'me' ? me : DEMO_PLACEHOLDER });
       draw(); tick();
     });
+    // A paid-gift "Challenge @gifter" pop on the Live stage enters the same 30s first-tap flow: open the window for that
+    // gifter, and this tap is the first tap, so it accepts and starts the 60s battle.
+    slot.addEventListener('pikk-gb-challenge', (ev) => {
+      const gifter = String(ev.detail?.gifter || DEMO_PLACEHOLDER);
+      if (s.b && !isOver(s.b)) return toast('A Gift Battle is already running');
+      s.b = null; s.w = openChallengeWindow({ gifter });
+      const r = tryAccept(s.w, gifter === me ? DEMO_PLACEHOLDER : me); s.w = r.window || s.w;
+      if (r.ok) s.b = r.battle;
+      draw(); tick();
+    });
     slot.addEventListener('click', (ev) => {
       if (ev.target.closest('[data-gb-accept]')) {
         const challenger = s.w?.gifter === me ? DEMO_PLACEHOLDER : me;
@@ -195,7 +205,36 @@ export function bindGiftForAll(root, { me = 'You', toast = () => {} } = {}) {
   });
 }
 
+/** Dispatch a paid-gift challenge into the first Gift Battle slot on this page. Returns false if there is no slot. */
+export function challengeGifter(root, gifter) {
+  const slot = root.querySelector('[data-gb-slot]');
+  if (!slot) return false;
+  slot.dispatchEvent(new CustomEvent('pikk-gb-challenge', { detail: { gifter } }));
+  return true;
+}
+
+/** Viewer-vs-viewer explainer: only for Live and Group Rooms (scope 'live' | 'room'); never on the streamer Battles page. */
+const signedIn = () => { try { return !!JSON.parse(localStorage.getItem('dbs_v1') || '{}').user; } catch { return false; } };
+
+/** Streamer-vs-streamer Battles explainer (no scope or 'battles'): audience votes decide; nothing about viewer battles. */
+export function renderStreamerBattlesExplainer() {
+  return `
+    <div class="card pikk-sb-explainer" id="sbExplainer">
+      <h3 style="margin:0 0 6px">Streamer Battles</h3>
+      <ol class="gb-rules-list">
+        <li>Two streamers go head to head on stage.</li>
+        <li>The <strong>audience votes</strong>: one vote per viewer, and votes alone decide the winner.</li>
+        <li>Support sent during a battle never changes the score.</li>
+        <li>The winner wears the winner badge for 24 hours.</li>
+      </ol>
+      <p class="muted small">TEST MODE: demo only, no charges, votes count only on this device.</p>
+      ${signedIn() ? '' : '<div class="row wrap" style="gap:8px;margin-top:10px"><a class="btn primary" href="#/profile" data-sb-signin>Sign in to vote</a></div>'}
+    </div>`;
+}
+
+/** Viewer-vs-viewer explainer for Live / Group Rooms; any other caller (the Battles page) gets the Streamer Battles explainer. */
 export function renderGiftBattleExplainer(scope) {
+  if (scope !== 'live' && scope !== 'room') return renderStreamerBattlesExplainer();
   return `
     <div class="card pikk-gb-explainer" id="gbExplainer">
       <h3 style="margin:0 0 6px">Gift Battles happen inside Live &amp; Group Rooms</h3>

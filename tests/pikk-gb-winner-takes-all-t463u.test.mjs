@@ -37,3 +37,12 @@ test('t463u: giftbattles page untouched; palette + 44px taps', () => {
   assert.match(css, /\.pikk-gb-how>summary\{min-height:44px/);
   assert.doesNotMatch(readFileSync(new URL('../src/pages/giftbattles.js', import.meta.url), 'utf8'), /Winner Takes All|computePayout/);
 });
+
+test('t463u: Battles explainer keeps the exact "Sign in to vote" button when signed out; no WTA there', () => {
+  mem.delete('dbs_v1');
+  const x = gb.renderGiftBattleExplainer();
+  assert.match(x, /<a class="btn primary" href="#\/profile" data-sb-signin>Sign in to vote<\/a>/);
+  assert.equal(gb.renderGiftBattleExplainer('battles'), x);
+  assert.doesNotMatch(x, /Winner Takes All|Gift Battle/);
+  assert.match(gb.renderGiftBattleExplainer('live'), /Winner Takes All<\/strong>/);
+});
