@@ -4,7 +4,7 @@ import { esc, toast, shellPage } from '../ui.js';
 import { navigate } from '../router.js';
 import { postsApi, isPostsApiConfigured } from '../api/posts-client.js';
 import { messagesApi } from '../api/messages-client.js';
-import { runPeerSafetyAction, normalizePeerHandle } from '../safety-actions.js';
+import { runPeerSafetyAction, normalizePeerHandle, renderReportCategorySelect } from '../safety-actions.js';
 
 export function renderServerUserCard(u, { selfHandle = '' } = {}) {
   const handle = normalizePeerHandle(u?.handle);
@@ -17,6 +17,7 @@ export function renderServerUserCard(u, { selfHandle = '' } = {}) {
     ${self ? '' : `<div class="row wrap" style="gap:6px;margin-top:8px">
       <button type="button" class="btn primary" data-user-message="${esc(handle)}">Message</button>
       <button type="button" class="btn ghost" data-user-flag="block" data-peer-handle="${esc(handle)}">Block</button>
+      ${renderReportCategorySelect('data-report-category')}
       <button type="button" class="btn ghost danger" data-user-flag="report" data-peer-handle="${esc(handle)}">Report</button>
     </div>`}
   </section>`;
@@ -33,7 +34,7 @@ export function renderUser(route) {
 /** Bind Message / Report / Block on a rendered server user card. */
 export function bindServerUserActions(host) {
   host.querySelectorAll('[data-user-flag]').forEach((btn) => btn.addEventListener('click', () =>
-    runPeerSafetyAction(btn.dataset.userFlag === 'block' ? 'block' : 'report', btn.dataset.peerHandle, { details: 'Reported from profile' })));
+    runPeerSafetyAction(btn.dataset.userFlag === 'block' ? 'block' : 'report', btn.dataset.peerHandle, { details: 'Reported from profile', category: host.querySelector('[data-report-category]')?.value || '' })));
   host.querySelectorAll('[data-user-message]').forEach((btn) => btn.addEventListener('click', async () => {
     try {
       const data = await messagesApi.start(btn.dataset.userMessage);

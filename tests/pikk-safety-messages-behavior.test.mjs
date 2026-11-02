@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { parseHTML } from 'linkedom';
 
 // Browser-ish globals before importing app modules.
 const mem = new Map();
@@ -34,7 +35,7 @@ test('persistent Messages thread: clicking Report and Block sends POST /reports 
   const host = {
     dataset: { threadId: 'cnv_1' },
     innerHTML: '',
-    querySelector: () => null,
+    querySelector: (sel) => (sel === '[data-report-category]' ? { value: 'harassment' } : null),
     querySelectorAll: (sel) => (sel === '[data-remote-flag]' ? [blockBtn, reportBtn] : []),
   };
   const root = {
@@ -63,7 +64,7 @@ test('runPeerSafetyAction reports success text only after server confirms', asyn
   const seen = [];
   calls.length = 0;
   assert.equal(await msgs.runPeerSafetyAction('block', '@bob_99', { notify: (m) => seen.push(m) }), 'Blocked across PIKK');
-  assert.equal(await msgs.runPeerSafetyAction('report', 'bob_99', { notify: (m) => seen.push(m) }), 'Report sent to PIKK moderators');
+  assert.equal(await msgs.runPeerSafetyAction('report', 'bob_99', { notify: (m) => seen.push(m), category: 'spam' }), 'Report sent to PIKK moderators');
   assert.equal(calls.length, 2);
 });
 
@@ -74,7 +75,7 @@ test('device-only fallback: no handle or no API means no request and honest labe
   assert.match(b, /does not block them across PIKK/);
   const saved = globalThis.window.__PIKK_API_BASE__;
   globalThis.window.__PIKK_API_BASE__ = '';
-  const r = await msgs.runPeerSafetyAction('report', 'bob_99', { notify: (m) => seen.push(m) });
+  const r = await msgs.runPeerSafetyAction('report', 'bob_99', { notify: (m) => seen.push(m), category: 'spam' });
   globalThis.window.__PIKK_API_BASE__ = saved;
   assert.match(r, /Not sent to PIKK moderators/);
   assert.equal(calls.length, 0);
@@ -92,8 +93,8 @@ test('local DM threads carry a real peer handle from profile/backend data', () =
 const local = await import('../src/pages/messages.js');
 const userPage = await import('../src/pages/user.js');
 
-function fakeRoot(buttons) {
-  return { querySelectorAll: (sel) => (sel === '[data-flag]' ? buttons : []), querySelector: () => null };
+function fakeRoot(buttons, category = 'harassment') {
+  return { querySelectorAll: (sel) => (sel === '[data-flag]' ? buttons : []), querySelector: (sel) => (sel === '[data-report-category]' ? { value: category } : null) };
 }
 
 test('device-only view: Report/Block on a thread WITH a server handle send the requests', async () => {
@@ -119,9 +120,26 @@ test('device-only view: seeded demo contact WITHOUT a handle sends nothing and i
   block.click(); report.click();
   for (let i = 0; i < 5; i++) await flush();
   assert.equal(calls.length, 0);
-  const src = (await import('node:fs')).readFileSync(new URL('../src/pages/messages.js', import.meta.url), 'utf8');
-  assert.match(src, /Demo contact · Report and Block save on this device only/);
-  assert.match(src, /Demo · device-only/);
+  // Rendered page (DOM) shows the honest device-only label and no server claim.
+  const saved = globalThis.window.__PIKK_API_BASE__;
+  globalThis.window.__PIKK_API_BASE__ = '';
+  try {
+    const html = local.renderMessages({ query: { t: t.id } });
+    const { document: doc } = parseHTML('<!doctype html><html><body>' + html + '</body></html>');
+    const note = doc.querySelector('.msg-device-only-note');
+    assert.ok(note, 'device-only note rendered');
+    assert.match(note.textContent, /save on this device only/);
+    const sel = doc.querySelector('select[data-report-category]');
+    assert.ok(sel, 'category picker rendered');
+    assert.equal(sel.value, '');
+    const newChat = parseHTML('<!doctype html><html><body>' + local.renderMessages({ query: { view: 'new' } }) + '</body></html>').document;
+    const demoBtn = [...newChat.querySelectorAll('[data-start-peer]')].find((b) => b.getAttribute('data-start-peer') !== 'dbs');
+    assert.ok(demoBtn);
+    assert.equal(demoBtn.getAttribute('data-peer-handle'), '');
+    assert.match(demoBtn.closest('article').textContent, /Demo · device-only/);
+  } finally {
+    globalThis.window.__PIKK_API_BASE__ = saved;
+  }
 });
 
 test('server user profile: clicking Report and Block sends the requests with that handle', async () => {
@@ -134,6 +152,7 @@ test('server user profile: clicking Report and Block sends the requests with tha
   const host = {
     dataset: { handle: 'erin_e' },
     innerHTML: '',
+    querySelector: (sel) => (sel === '[data-report-category]' ? { value: 'impersonation' } : null),
     querySelectorAll: (sel) => {
       if (sel === '[data-user-flag]') return [btns.block, btns.report];
       return [];
@@ -150,6 +169,47 @@ test('server user profile: clicking Report and Block sends the requests with tha
   btns.block.click(); btns.report.click();
   for (let i = 0; i < 5; i++) await flush();
   assert.deepEqual(calls.find((c) => c.url.endsWith('/blocks'))?.body, { handle: 'erin_e' });
-  assert.deepEqual(calls.find((c) => c.url.endsWith('/reports'))?.body, { target_type: 'user', target_id: 'erin_e', category: 'harassment', details: 'Reported from profile' });
+  assert.deepEqual(calls.find((c) => c.url.endsWith('/reports'))?.body, { target_type: 'user', target_id: 'erin_e', category: 'impersonation', details: 'Reported from profile' });
+  assert.match(host.innerHTML, /<select data-report-category[^>]*><option value="" selected>/);
   assert.doesNotMatch(userPage.renderServerUserCard({ handle: 'me_user' }, { selfHandle: 'me_user' }), /data-user-flag/);
+});
+
+test('new chat from a contact button carries data-peer-handle into the thread', async () => {
+  const saved = globalThis.window.__PIKK_API_BASE__;
+  globalThis.window.__PIKK_API_BASE__ = '';
+  try {
+    globalThis.location = { hash: '#/messages?view=new' };
+    const btn = fakeButton({ startPeer: 'u_frank', peerName: 'Frank', peerHandle: 'frank_f' });
+    const root = { querySelectorAll: (sel) => (sel === '[data-start-peer]' ? [btn] : []), querySelector: () => null, addEventListener: () => {} };
+    local.bindMessages(root);
+    btn.click();
+    const t = store.listThreads().find((x) => x.peerId === 'u_frank') || Object.values(store.getState().threads).find((x) => x.peerId === 'u_frank');
+    assert.ok(t, 'thread created');
+    assert.equal(t.peerHandle, 'frank_f');
+  } finally {
+    globalThis.window.__PIKK_API_BASE__ = saved;
+    globalThis.location = { hash: '#/messages' };
+  }
+});
+
+test('Report requires a backend-allowed category: none selected sends nothing', async () => {
+  const { REPORT_CATEGORIES } = await import('../src/api/safety-client.js');
+  const { renderReportCategorySelect, REPORT_CATEGORY_REQUIRED } = await import('../src/safety-actions.js');
+  const { document: doc } = parseHTML('<!doctype html><html><body>' + renderReportCategorySelect('data-report-category') + '</body></html>');
+  const opts = [...doc.querySelectorAll('option')].map((o) => o.getAttribute('value'));
+  assert.deepEqual(opts, ['', ...REPORT_CATEGORIES]);
+  assert.equal(doc.querySelector('select').value, '');
+  // profile, Messages local, Messages persistent: empty category => no request
+  calls.length = 0;
+  const t = store.getOrCreateThread('u_gus', 'Gus', { peerHandle: 'gus_g' });
+  const rep = fakeButton({ flag: 'report' });
+  local.bindLocalThreadFlags(fakeRoot([rep], ''), store.getThread(t.id), { go: () => {} });
+  rep.click();
+  assert.equal(await msgs.runPeerSafetyAction('report', 'gus_g', { notify: () => {} }), REPORT_CATEGORY_REQUIRED);
+  assert.equal(await msgs.runPeerSafetyAction('report', 'gus_g', { notify: () => {}, category: 'made_up' }), REPORT_CATEGORY_REQUIRED);
+  const pBtn = fakeButton({ userFlag: 'report', peerHandle: 'gus_g' });
+  userPage.bindServerUserActions({ querySelector: () => ({ value: '' }), querySelectorAll: (s) => (s === '[data-user-flag]' ? [pBtn] : []) });
+  pBtn.click();
+  for (let i = 0; i < 5; i++) await flush();
+  assert.equal(calls.filter((c) => c.url.endsWith('/reports')).length, 0);
 });
