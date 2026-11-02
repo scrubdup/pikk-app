@@ -1,7 +1,8 @@
 -- Pluggable ID/age verification sessions. Stores ONLY provider, provider reference and status.
 -- Never ID images, document numbers, names or date of birth.
-ALTER TABLE users ADD COLUMN age_verification_ref TEXT;
-CREATE TABLE id_verification_sessions (
+-- users.age_verification_ref is added in 0008_id_verification.sql (already on production).
+-- IF NOT EXISTS: production already has id_verification_sessions/events.
+CREATE TABLE IF NOT EXISTS id_verification_sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id),
   provider TEXT NOT NULL,
@@ -11,8 +12,8 @@ CREATE TABLE id_verification_sessions (
   updated_at TEXT NOT NULL,
   UNIQUE(provider, provider_ref)
 );
-CREATE INDEX id_verification_sessions_user ON id_verification_sessions(user_id, created_at);
-CREATE TABLE id_verification_events (
+CREATE INDEX IF NOT EXISTS id_verification_sessions_user ON id_verification_sessions(user_id, created_at);
+CREATE TABLE IF NOT EXISTS id_verification_events (
   provider TEXT NOT NULL,
   event_id TEXT NOT NULL,
   received_at TEXT NOT NULL,
@@ -20,7 +21,7 @@ CREATE TABLE id_verification_events (
 );
 
 -- Written biometric consent (BIPA 740 ILCS 14/15, Texas Bus. & Com. Code 503.001, Washington RCW 19.375).
-CREATE TABLE biometric_consents (
+CREATE TABLE IF NOT EXISTS biometric_consents (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id),
   consent_version TEXT NOT NULL,
@@ -32,7 +33,7 @@ CREATE TABLE biometric_consents (
 );
 
 -- Twerk Contest: contestants need server age_verified_18; viewers/voters do not.
-CREATE TABLE contest_entries (
+CREATE TABLE IF NOT EXISTS contest_entries (
   id TEXT PRIMARY KEY,
   contest TEXT NOT NULL,
   user_id TEXT NOT NULL REFERENCES users(id),
@@ -41,8 +42,8 @@ CREATE TABLE contest_entries (
   status TEXT NOT NULL DEFAULT 'pending_review',
   created_at TEXT NOT NULL
 );
-CREATE INDEX contest_entries_contest ON contest_entries(contest, created_at);
-CREATE TABLE contest_votes (
+CREATE INDEX IF NOT EXISTS contest_entries_contest ON contest_entries(contest, created_at);
+CREATE TABLE IF NOT EXISTS contest_votes (
   entry_id TEXT NOT NULL REFERENCES contest_entries(id),
   voter_id TEXT NOT NULL REFERENCES users(id),
   created_at TEXT NOT NULL,
