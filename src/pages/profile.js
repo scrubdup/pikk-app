@@ -15,6 +15,7 @@ import { esc, toast, shellPage } from '../ui.js';
 import { navigate } from '../router.js';
 import { profileRouteHref } from '../profile-links.js';
 import { authApi, isPikkApiConfigured } from '../api/auth-client.js';
+import { accountApi } from '../api/account-client.js';
 
 function refresh(path) {
   navigate(path || '#/profile');
@@ -310,13 +311,28 @@ export function bindProfile(root) {
     toast('Signed out');
     refresh('#/profile');
   });
-  root.querySelector('#saveProfile')?.addEventListener('click', () => {
-    const r = updateProfile({
-      bio: root.querySelector('#editBio')?.value,
-      avatar: root.querySelector('#editAvatar')?.value,
-    });
+  root.querySelector('#saveProfile')?.addEventListener('click', async () => {
+    const current = getState().user;
+    const bio = root.querySelector('#editBio')?.value || '';
+    const avatar = root.querySelector('#editAvatar')?.value || '';
+    if (current?.authSource === 'backend' && isPikkApiConfigured()) {
+      try {
+        const result = await accountApi.updateProfile({
+          displayName: current.username || current.handle,
+          bio,
+          avatarUrl: avatar,
+        });
+        syncRemoteAuthUser(result.user);
+        toast('Profile saved to PIKK');
+        refresh('#/profile');
+      } catch (err) {
+        toast(err?.message || 'Could not save profile');
+      }
+      return;
+    }
+    const r = updateProfile({ bio, avatar });
     if (r.error) return toast('Sign in required');
-    toast('Profile saved');
+    toast('Profile saved locally');
     refresh('#/profile');
   });
   root.querySelector('#pubFollow')?.addEventListener('click', (e) => {
