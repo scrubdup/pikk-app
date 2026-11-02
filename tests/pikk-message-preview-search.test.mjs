@@ -45,3 +45,8 @@ test('Messages search excludes text hidden beyond the 80-character inbox preview
   assert.equal(searchable, 'jordan ' + visible);
   assert.ok(!searchable.includes('private_hidden_tail'));
 });
+
+test('Inbox explains its visible-preview search boundary accessibly', () => {
+  assert.match(messagesPage, /aria-describedby="pikkMsgSearchHelp"/);
+  assert.match(messagesPage, /id="pikkMsgSearchHelp"[^>]*>Search covers names and the visible latest-message preview only\./);
+});
