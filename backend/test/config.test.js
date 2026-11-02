@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { env } from 'cloudflare:test';
 import { call, newUser, makeAdmin } from './helpers.js';
 import cfg from '../wrangler.jsonc?raw';
+import pkg from '../package.json';
 
 const strip = (s) => s.replace(/("(?:[^"\\]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g, (m, str) => str ?? '');
 
@@ -10,6 +11,19 @@ describe('deploy config', () => {
     const c = JSON.parse(strip(cfg).replace(/,(\s*[}\]])/g, '$1'));
     expect(c.r2_buckets).toBeUndefined();
     expect(c.d1_databases?.[0]?.binding).toBe('DB');
+  });
+  it('has no build block and no script that auto-applies remote migrations', () => {
+    const c = JSON.parse(strip(cfg).replace(/,(\s*[}\]])/g, '$1'));
+    // A wrangler.jsonc build.command runs on EVERY Workers Builds run, including PR branches.
+    expect(c.build).toBeUndefined();
+    // Only the explicit manual script may touch --remote; lifecycle hooks must never migrate.
+    for (const [name, cmd] of Object.entries(pkg.scripts || {})) {
+      if (name === 'migrate:remote') continue;
+      expect(/migrations\s+apply[^&|;]*--remote/.test(cmd), name).toBe(false);
+    }
+    for (const hook of ['preinstall', 'install', 'postinstall', 'prepare', 'prebuild', 'build', 'postbuild', 'predeploy', 'postdeploy']) {
+      expect(pkg.scripts?.[hook] ?? '', hook).not.toMatch(/migrat/);
+    }
   });
 });
 
