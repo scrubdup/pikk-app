@@ -1,8 +1,9 @@
-import { ApiError, clientIp } from './http.js';
+import { ApiError, clientIp, readJson } from './http.js';
 import { requirePermission, can } from './permissions.js';
 import { requireString } from './validate.js';
 import { newId } from './crypto.js';
 import { audit } from './audit.js';
+import { rateLimit } from './ratelimit.js';
 
 const CATEGORIES = new Set(['account','payments','safety','technical','other']);
 
@@ -18,7 +19,8 @@ export async function supportRoute(env, req, ctx, method, path) {
 
   if (method === 'POST' && path === '/support/tickets') {
     const s = requirePermission(ctx, 'tickets.create');
-    const body = await req.json();
+    await rateLimit(env, `support-create:${s.user.id}`, 10, 3600);
+    const body = await readJson(req);
     const category = categoryOf(body);
     const subject = requireString(body, 'subject', { min: 4, max: 200 });
     const message = requireString(body, 'message', { min: 10, max: 5000 });
@@ -82,7 +84,8 @@ export async function supportRoute(env, req, ctx, method, path) {
     const staff = can(session, 'tickets.reply');
     if (ticket.user_id !== session.user.id && !staff) throw new ApiError(403, 'forbidden', 'Ticket access denied');
     if (ticket.status === 'closed' && !staff) throw new ApiError(409, 'ticket_closed', 'Ticket is closed');
-    const body = await req.json();
+    await rateLimit(env, `support-reply:${session.user.id}`, 30, 3600);
+    const body = await readJson(req);
     const message = requireString(body, 'message', { min: 1, max: 5000 });
     const now = new Date().toISOString();
     const id = newId('tmsg');
