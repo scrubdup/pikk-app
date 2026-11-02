@@ -11,8 +11,8 @@ export function corsHeaders(env, req) {
   if (origin && origin === env.ALLOWED_ORIGIN) {
     h['Access-Control-Allow-Origin'] = origin;
     h['Access-Control-Allow-Credentials'] = 'true';
-    h['Access-Control-Allow-Methods'] = 'GET,POST,DELETE,OPTIONS';
-    h['Access-Control-Allow-Headers'] = 'Content-Type';
+    h['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS';
+    h['Access-Control-Allow-Headers'] = 'Content-Type, Content-Length';
     h['Access-Control-Max-Age'] = '600';
   }
   return h;

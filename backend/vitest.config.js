@@ -8,6 +8,8 @@ export default defineConfig(async () => {
     plugins: [cloudflareTest({
       wrangler: { configPath: './wrangler.jsonc' },
       miniflare: {
+        // Local-only R2 (Miniflare in-memory). Deliberately NOT in wrangler.jsonc; see comment there.
+        r2Buckets: { MEDIA: 'pikk-media-local-placeholder' },
         bindings: {
           TEST_MIGRATIONS: migrations,
           EXPOSE_VERIFY_TOKEN: 'true',

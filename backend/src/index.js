@@ -12,6 +12,7 @@ import { balance, transfer } from './ledger.js';
 import { stripeWebhook } from './webhook.js';
 import { newId } from './crypto.js';
 import { audit, auditStmt } from './audit.js';
+import { mediaRoute } from './media.js';
 import { musicUploadRoute } from './music-upload.js';
 import { messagesRoute } from './messages.js';
 import { supportRoute } from './tickets.js';
@@ -327,6 +328,8 @@ async function route(req, env, ctx) {
     return json(200, { entries: r.results });
   }
 
+  const media = await mediaRoute(env, req, ctx, m, p);
+  if (media) return media;
   const support = await supportRoute(env, req, ctx, m, p);
   if (support) return json(support.status, support.body);
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { env } from 'cloudflare:test';
 import { call, newUser, freshIp, ORIGIN } from './helpers.js';
 
@@ -67,7 +67,12 @@ describe('auth', () => {
 
   it('per-IP auth rate limit returns 429', async () => {
     const ip = '203.0.113.77'; let last;
-    for (let i = 0; i < 11; i++) last = await call('POST', '/auth/login', { body: { email: 'x@example.com', password: 'nope nope 1' }, ip });
+    // Fixed 60s windows: pin the clock mid-window so the 11 calls can't straddle a boundary (CI flake).
+    const t0 = Date.now(); const pinned = t0 - (t0 % 60000) + 30000;
+    const spy = vi.spyOn(Date, 'now').mockReturnValue(pinned);
+    try {
+      for (let i = 0; i < 11; i++) last = await call('POST', '/auth/login', { body: { email: 'x@example.com', password: 'nope nope 1' }, ip });
+    } finally { spy.mockRestore(); }
     expect(last.status).toBe(429); expect(last.json.error.code).toBe('rate_limited');
   });
 

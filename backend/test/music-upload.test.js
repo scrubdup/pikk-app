@@ -36,7 +36,10 @@ describe('music uploads', () => {
     await env.DB.prepare(
       "INSERT OR IGNORE INTO user_signup_roles(user_id,role,status,declared_at) VALUES (?, 'artist', 'declared', ?)"
     ).bind(u.id, new Date().toISOString()).run();
-    const res = await postMultipart(u.cookie);
+    // MEDIA exists only in the test Miniflare config (vitest.config.js); simulate an unprovisioned bucket.
+    const saved = env.MEDIA;
+    let res;
+    try { env.MEDIA = undefined; res = await postMultipart(u.cookie); } finally { env.MEDIA = saved; }
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(body.error.code).toBe('media_storage_not_configured');
