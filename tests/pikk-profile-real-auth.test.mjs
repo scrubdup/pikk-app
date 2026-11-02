@@ -26,3 +26,10 @@ test('remote auth session user is bridged without storing password', () => {
   assert.match(store, /emailVerified: !!remoteUser\.email_verified/);
   assert.doesNotMatch(store, /password:/);
 });
+
+
+test('Profile restores an existing backend cookie session through /auth/me', () => {
+  assert.match(profile, /if \(!getState\(\)\.user && isPikkApiConfigured\(\)\)/);
+  assert.match(profile, /authApi\.me\(\)\.then/);
+  assert.match(profile, /syncRemoteAuthUser\(session\.user\)/);
+});
