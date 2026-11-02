@@ -78,3 +78,20 @@ test('rematch needs BOTH contestants within the 5s window; one yes then timeout 
   assert.equal(castRematchVote(m, true, 'b').rematch, 'agreed');
   assert.equal(advance(m, 1).rematch, 'expired');
 });
+
+import { readFileSync } from 'node:fs';
+test('Roast tap targets: vote and rematch buttons carry roast-tap, CSS beats .page .btn, rendered check wired into CI', () => {
+  const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /html body \.page \.btn\.roast-tap\s*\{\s*min-height:\s*44px;/);
+  let m = advance(createRoastMatch(oneVOne(), { eligibleViewerIds: V }), ROUND_SECONDS);
+  assert.equal((matchView('1v1', { match: m, viewer: V[0] }).match(/class="btn primary roast-tap" data-roast-vote=/g) || []).length, 2);
+  assert.equal((matchView('1v1', { match: decided(), viewer: V[0] }).match(/class="btn roast-tap" data-roast-rematch=/g) || []).length, 4);
+  const wf = readFileSync(new URL('../.github/workflows/pikk-roast-visual.yml', import.meta.url), 'utf8');
+  assert.match(wf, /visual-review-roast-taps\.mjs/);
+  const script = readFileSync(new URL('../scripts/visual-review-roast-taps.mjs', import.meta.url), 'utf8');
+  assert.match(script, /getBoundingClientRect/); assert.match(script, /\[360, 390, 430\]/); assert.match(script, /\['1v1', 'tag'\]/);
+});
+test('no stale test-value label on the vote window in the Roast page', () => {
+  const src = readFileSync(new URL('../src/pages/roast-arena.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /seconds · test value/); assert.doesNotMatch(src, /10 seconds/);
+});
