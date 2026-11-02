@@ -108,7 +108,7 @@ export function bindGames(root) {
     };
     search.addEventListener('input', update);
     search.addEventListener('keydown', (event) => {
-      if (event.key !== 'Escape' || !search.value) return;
+      if (event.key !== 'Escape' || !search.value || event.isComposing) return;
       event.preventDefault();
       search.value = '';
       update();
