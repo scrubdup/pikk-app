@@ -14,7 +14,15 @@ const auditIfChanged = (env, { actor, action, target, meta }) => env.DB.prepare(
 import { auditStmt } from './audit.js';
 import { requireString } from './validate.js';
 
-export const CONTESTS = Object.freeze({ twerk: { adultContestantsOnly: true, contestantGenders: ['female'] } });
+// Owner ruling: Twerk Contest entries are LIVE and SOLO only.
+export const CONTESTS = Object.freeze({ twerk: { adultContestantsOnly: true, contestantGenders: ['female'], liveOnly: true, soloOnly: true } });
+// Any field that would add another person to a solo live entry.
+const MULTI_PERSON_FIELDS = ['cohost', 'cohosts', 'co_host', 'co_hosts', 'guest', 'guests', 'guest_ids', 'guest_handles', 'invitees', 'participants', 'partner', 'partners', 'duo', 'group', 'team', 'members'];
+function assertSolo(b) {
+  const extra = MULTI_PERSON_FIELDS.filter((f) => b[f] !== undefined && b[f] !== null && b[f] !== false && !(Array.isArray(b[f]) && b[f].length === 0));
+  if (extra.length || (b.mode !== undefined && b.mode !== 'solo') || (b.participant_count !== undefined && b.participant_count !== 1))
+    throw new ApiError(422, 'solo_only', 'Twerk Contest entries are live and solo only: one verified contestant, no co-hosts or guests.', { fields: extra });
+}
 import { GENDERS } from './genders.js';
 export { GENDERS };
 
@@ -96,6 +104,13 @@ export async function contestRoute(env, req, ctx, m, p) {
     const s = requireVerified(ctx);
     return json(200, await contestEligibility(env, s.user.id, em[1]));
   }
+  const gm = p.match(/^\/contests\/([a-z]{2,20})\/live\/[\w-]{1,64}\/(guests|cohosts|invites)$/);
+  if (gm && m === 'POST') {
+    if (!CONTESTS[gm[1]]) throw new ApiError(404, 'not_found', 'Unknown contest');
+    requireVerified(ctx);
+    if (CONTESTS[gm[1]].soloOnly) throw new ApiError(422, 'solo_only', 'Twerk Contest lives are solo only. Guests and co-hosts cannot be invited.');
+    throw new ApiError(404, 'not_found', 'Not found');
+  }
   const mm = p.match(/^\/contests\/([a-z]{2,20})\/(entries|live|votes)$/);
   if (!mm || m !== 'POST') return null;
   const [, contest, action] = mm;
@@ -110,9 +125,12 @@ export async function contestRoute(env, req, ctx, m, p) {
     await env.DB.prepare(`INSERT INTO contest_votes(entry_id,voter_id,created_at) VALUES (?,?,?) ON CONFLICT DO NOTHING`).bind(e.id, s.user.id, new Date().toISOString()).run();
     return json(200, { voted: true });
   }
+  if (action === 'entries' && CONTESTS[contest].liveOnly)
+    throw new ApiError(410, 'recorded_entries_disabled', 'Recorded entries are disabled. Twerk Contest entries are live and solo only: use Go live.');
   const s = await requireContestant(env, ctx, contest);
   await rateLimit(env, `contest:entry:${s.user.id}`, 10, 86400);
   const b = await readJson(req);
+  if (CONTESTS[contest].soloOnly) assertSolo(b);
   const title = requireString(b, 'title', { min: 1, max: 120 });
   const kind = action === 'live' ? 'live' : 'upload';
   const id = newId('ce'); const t = new Date().toISOString();

@@ -163,15 +163,14 @@ describe('webhook secret rotation (PIKK side)', () => {
 
 describe('Twerk Contest: women-only contestants, open viewing/voting', () => {
   const verify = (id) => env.DB.prepare(`UPDATE users SET age_verified_18=1, age_verification_method='test', age_verified_at='2026-11-02T00:00:00Z' WHERE id=?`).bind(id).run();
-  const enter = (u, path = 'entries') => call('POST', `/contests/twerk/${path}`, { cookie: u.cookie, body: { title: 'My entry' } });
+  const enter = (u, path = 'live') => call('POST', `/contests/twerk/${path}`, { cookie: u.cookie, body: { title: 'My entry' } });
 
   it('verified female can submit and go live', async () => {
     const u = await newUser();
     expect((await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'female' } })).status).toBe(200);
     await verify(u.id);
     expect((await call('GET', '/contests/twerk/eligibility', { cookie: u.cookie })).json.can_enter).toBe(true);
-    expect((await enter(u)).status).toBe(201);
-    expect((await enter(u, 'live')).json.entry.kind).toBe('live');
+    const r = await enter(u); expect(r.status).toBe(201); expect(r.json.entry.kind).toBe('live');
   });
   it('break: female without ID verification gets 403 age_verification_required', async () => {
     const u = await newUser(); await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'female' } });
@@ -188,11 +187,11 @@ describe('Twerk Contest: women-only contestants, open viewing/voting', () => {
   });
   it('break: client cannot smuggle gender/age into entry body or set invalid gender', async () => {
     const u = await newUser();
-    const r = await call('POST', '/contests/twerk/entries', { cookie: u.cookie, body: { title: 't', gender: 'female', age_verified_18: true } });
+    const r = await call('POST', '/contests/twerk/live', { cookie: u.cookie, body: { title: 't', gender: 'female', age_verified_18: true } });
     expect(r.status).toBe(403);
     expect((await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'woman!' } })).status).toBe(422);
-    expect((await call('POST', '/contests/twerk/entries', { body: { title: 't' } })).status).toBe(401);
-    expect((await call('POST', '/contests/nope/entries', { cookie: u.cookie, body: { title: 't' } })).status).toBe(404);
+    expect((await call('POST', '/contests/twerk/live', { body: { title: 't' } })).status).toBe(401);
+    expect((await call('POST', '/contests/nope/live', { cookie: u.cookie, body: { title: 't' } })).status).toBe(404);
   });
   it('voting needs no ID verification or gender; any signed-in male voter can vote once, not for self', async () => {
     const c = await newUser(); await call('POST', '/account/gender', { cookie: c.cookie, body: { gender: 'female' } }); await verify(c.id);
@@ -220,7 +219,7 @@ describe('gender lock (audit must-fix)', () => {
       if (r.status === 409) expect(r.json.error.code).toBe('gender_locked');
     }
     expect((await env.DB.prepare(`SELECT gender FROM users WHERE id=?`).bind(u.id).first()).gender).toBe('male');
-    const e = await call('POST', '/contests/twerk/entries', { cookie: u.cookie, body: { title: 'x' } });
+    const e = await call('POST', '/contests/twerk/live', { cookie: u.cookie, body: { title: 'x' } });
     expect(e.status).toBe(403); expect(e.json.error.code).toBe('contestant_not_eligible');
     expect((await call('GET', '/account/gender', { cookie: u.cookie })).json.locked).toBe(true);
   });
@@ -228,7 +227,7 @@ describe('gender lock (audit must-fix)', () => {
     const u = await newUser();
     expect((await call('GET', '/account/gender', { cookie: u.cookie })).json.locked).toBe(false);
     await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'female' } }); await verify(u.id);
-    await call('POST', '/contests/twerk/entries', { cookie: u.cookie, body: { title: 'x' } });
+    await call('POST', '/contests/twerk/live', { cookie: u.cookie, body: { title: 'x' } });
     await env.DB.prepare(`UPDATE users SET age_verified_18=0 WHERE id=?`).bind(u.id).run();
     expect((await call('POST', '/account/gender', { cookie: u.cookie, body: { gender: 'male' } })).status).toBe(409);
   });
@@ -367,5 +366,36 @@ describe('gender change + audit are one atomic batch', () => {
     } finally { await env.DB.prepare(`DROP TRIGGER fail_audit`).run(); }
     await staffCorrectGenderOnce(env, admin.id, row, 'male', 'after recovery');
     expect(await n(v.id, 'admin.gender_changed')).toBe(1);
+  });
+});
+
+describe('Twerk Contest: live and solo only (owner ruling)', () => {
+  const verifiedFemale = async () => { const u = await newUser({ gender: 'female' }); await env.DB.prepare(`UPDATE users SET age_verified_18=1, age_verification_method='test', age_verified_at='x' WHERE id=?`).bind(u.id).run(); return u; };
+  it('recorded entries are disabled (410), even for a verified woman', async () => {
+    const u = await verifiedFemale();
+    const r = await call('POST', '/contests/twerk/entries', { cookie: u.cookie, body: { title: 'clip' } });
+    expect(r.status).toBe(410); expect(r.json.error.code).toBe('recorded_entries_disabled');
+    expect((await env.DB.prepare(`SELECT COUNT(*) n FROM contest_entries WHERE user_id=?`).bind(u.id).first()).n).toBe(0);
+  });
+  it('solo verified-female live start is allowed', async () => {
+    const u = await verifiedFemale();
+    const r = await call('POST', '/contests/twerk/live', { cookie: u.cookie, body: { title: 'solo', mode: 'solo', participant_count: 1, guests: [] } });
+    expect(r.status).toBe(201); expect(r.json.entry.kind).toBe('live');
+  });
+  it('co-host / guest / duo / group fields are refused with 422 solo_only and nothing is created', async () => {
+    const u = await verifiedFemale();
+    for (const extra of [{ cohost: 'bob' }, { guests: ['amy'] }, { guest_ids: ['usr_x'] }, { participants: ['a', 'b'] }, { mode: 'duo' }, { mode: 'group' }, { duo: true }, { participant_count: 2 }, { co_hosts: ['x'] }]) {
+      const r = await call('POST', '/contests/twerk/live', { cookie: u.cookie, body: { title: 't', ...extra } });
+      expect(r.status).toBe(422); expect(r.json.error.code).toBe('solo_only');
+    }
+    expect((await env.DB.prepare(`SELECT COUNT(*) n FROM contest_entries WHERE user_id=?`).bind(u.id).first()).n).toBe(0);
+  });
+  it('guest/co-host invites to a twerk contest live are refused', async () => {
+    const u = await verifiedFemale();
+    const live = (await call('POST', '/contests/twerk/live', { cookie: u.cookie, body: { title: 'solo' } })).json.entry.id;
+    for (const k of ['guests', 'cohosts', 'invites']) {
+      const r = await call('POST', `/contests/twerk/live/${live}/${k}`, { cookie: u.cookie, body: { handle: 'someone' } });
+      expect(r.status).toBe(422); expect(r.json.error.code).toBe('solo_only');
+    }
   });
 });

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+const read = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const mem = new Map(); globalThis.localStorage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
 const c = await import('../src/pages/contest.js');
 const { renderHomeShowcase } = await import('../src/home-showcase.js');
@@ -26,7 +27,11 @@ test('Twerk Contest section sits directly under Dating on Home', () => {
 });
 
 test('entry UI only for server-eligible accounts; others watch/vote', () => {
-  assert.match(c.renderEntryPanel({ can_enter: true, gender_ok: true, age_verified: true }), /twerkEntryForm/);
+  const ok = c.renderEntryPanel({ can_enter: true, gender_ok: true, age_verified: true });
+  assert.match(ok, /twerkEntryForm/); assert.match(ok, /Live, solo entries only/); assert.match(ok, /Go live \(solo\)/);
+  assert.doesNotMatch(ok, /Submit entry|upload/i);
+  assert.match(c.renderTwerkRules(), /Live, solo entries only/);
+  assert.doesNotMatch(read('src/pages/contest.js'), /submit\(false\)/);
   const male = c.renderEntryPanel({ can_enter: false, gender_ok: false, gender_set: true, age_verified: true });
   assert.doesNotMatch(male, /twerkEntryForm|twerkGoLive/); assert.match(male, /watch and vote/);
   const unverified = c.renderEntryPanel({ can_enter: false, gender_ok: true, age_verified: false });
