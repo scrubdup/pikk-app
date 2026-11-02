@@ -9,7 +9,7 @@ const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 test('premium Messages covers signed-out, new contact, team and thread states without false delivery claims', () => {
-  for (const marker of ['PIKK messages sign-in','Start a PIKK conversation','DatBoiSkeet team inbox','Current PIKK conversation','pikk-msg-contact-grid','pikk-msg-flow-panel']) {
+  for (const marker of ['PIKK messages sign-in','Start a PIKK conversation','Creator messages','Current PIKK conversation','pikk-msg-contact-grid','pikk-msg-flow-panel']) {
     assert.ok(page.includes(marker), marker);
   }
   assert.match(page, /Browser-local conversation preview/);
