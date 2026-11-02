@@ -13,6 +13,7 @@
     { "binding": "DB", "database_name": "pikk-db", "database_id": "d545246b-49f7-4a0a-92b4-b18c570baef8", "migrations_dir": "migrations" }
   ],
   // PIKK Vault media bucket: LOCAL PLACEHOLDER ONLY (Miniflare/wrangler dev --local). Not provisioned on any account.
+  // Vault secret (set via `wrangler secret put`, never committed): VAULT_SIGNING_KEY (>=32 chars). Optional var: VAULT_ACCESS_URL_TTL_SEC (default 300).
   "r2_buckets": [
     { "binding": "MEDIA", "bucket_name": "pikk-media-local-placeholder" },
     // Slice 4: SEPARATE backup bucket, LOCAL PLACEHOLDER ONLY. In production it must be a different bucket with separate access.
@@ -20,6 +21,7 @@
   ],
   // PIKK Vault slice 3: Story expiry sweeper + delayed job retries. Cron Triggers are free on the Workers Free plan.
   // Must match PROCESSING.sweeperCron in src/media-config.js. Local test: wrangler dev --test-scheduled, then GET /__scheduled
+  // Vault cron work is OFF unless the var VAULT_CRON_ENABLED is "true" (unset by default: the trigger fires, runVaultCron no-ops).
   // Slice 4: daily backup export at 03:30 UTC (must match BACKUP.cron).
   "triggers": { "crons": ["*/15 * * * *", "30 3 * * *"] },
   "vars": {
@@ -29,7 +31,6 @@
     "EXPOSE_VERIFY_TOKEN": "false",
     "PUBLIC_APP_URL": "https://scrubdup.github.io/pikk-app/"
   }
-  // Secrets (set via `wrangler secret put`, never committed): RESEND_API_KEY, STRIPE_WEBHOOK_SECRET, VAULT_SIGNING_KEY (>=32 chars)
+  // Secrets (set via `wrangler secret put`, never committed): RESEND_API_KEY, STRIPE_WEBHOOK_SECRET
   // Set EMAIL_FROM to a verified sender, e.g. "PIKK <verify@your-domain.example>", before enabling production email.
-  // Optional var: VAULT_ACCESS_URL_TTL_SEC (default 300)
 }

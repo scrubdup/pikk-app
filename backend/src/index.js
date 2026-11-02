@@ -339,11 +339,12 @@ export default {
     res.headers.set('X-Request-Id', requestId);
     return res;
   },
-  // Single cron dispatcher. Each module adds ONE line to the list below; allSettled keeps one failure from stopping the others.
+  // PIKK Vault slice 3: free cron trigger (wrangler.jsonc triggers.crons). Story expiry sweep + job retries.
+  // Single cron dispatcher (same shape as #336). Each module adds ONE line to the list; allSettled keeps one failure from stopping the others.
   async scheduled(event, env, ctx) {
     const now = Date.now();
     ctx.waitUntil(Promise.allSettled([
       runVaultCron(env, event, now),
-    ]).then((rs) => rs.forEach((r) => r.status === 'rejected' && console.error('scheduled task failed', r.reason && (r.reason.stack || r.reason)))));
+    ]).then(rs => rs.forEach(r => r.status === 'rejected' && console.error('scheduled task failed', r.reason && r.reason.message))));
   },
 };

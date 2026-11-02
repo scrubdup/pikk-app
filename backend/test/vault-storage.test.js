@@ -122,7 +122,7 @@ describe('slice 4: backup and isolated restore', () => {
     const id = await readyPhoto(u, PNG(4096));
     const ctrl = createScheduledController({ scheduledTime: Date.now(), cron: BACKUP.cron });
     const ectx = createExecutionContext();
-    await worker.scheduled(ctrl, env, ectx); await waitOnExecutionContext(ectx);
+    await worker.scheduled(ctrl, { ...env, VAULT_CRON_ENABLED: 'true' }, ectx); await waitOnExecutionContext(ectx);
     const run = await env.DB.prepare(`SELECT * FROM vault_backup_runs WHERE trigger='cron' ORDER BY started_at DESC LIMIT 1`).first();
     expect(run.state).toBe('succeeded');
     const b = await env.DB.prepare('SELECT * FROM media_backups WHERE media_id=?').bind(id).first();

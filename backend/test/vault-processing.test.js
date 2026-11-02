@@ -220,7 +220,7 @@ describe('slice 3: Story expiry sweeper (cron scheduled())', () => {
 
     const ctrl = createScheduledController({ scheduledTime: Date.now(), cron: PROCESSING.sweeperCron });
     const ectx = createExecutionContext();
-    await worker.scheduled(ctrl, env, ectx);
+    await worker.scheduled(ctrl, { ...env, VAULT_CRON_ENABLED: 'true' }, ectx);
     await waitOnExecutionContext(ectx);
 
     const r = await mediaRow(expired.id);
