@@ -83,4 +83,6 @@ Migrations in `migrations/` run in filename order and must be named `NNNN_lower_
 | 0013 | #339 Safety ID verification | `0013_id_verification.sql` |
 | 0014+ | next free number at merge time | |
 
+`migrations/RESERVED.json` holds numbers for PRs that haven't merged yet (currently 0009–0010 for Vault), so other PRs can land first without leaving a gap. Reserved numbers count as present for the gap check, which runs from 0001 up to the highest real migration file (so reservations above it are ignored); a file may use a reserved number with any slug (the value is only a hint). Remove the entry when that migration merges. Wrangler only applies `*.sql`, so the JSON file is ignored at deploy.
+
 `test/migration-order.test.js` always fails on bad names or duplicate prefixes. It also fails on skipped numbers, but only when `GITHUB_BASE_REF` is unset (main and local runs); on PR CI gaps are allowed so out-of-order PRs can still go green. Never rename a migration that has already been applied to a real D1 database.
