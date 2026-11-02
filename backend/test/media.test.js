@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { SELF, env } from 'cloudflare:test';
-import { call, newUser, makeAdmin, ORIGIN } from './helpers.js';
+import { call, newUser, makeAdmin, ORIGIN, settle } from './helpers.js';
 import { MEDIA_LIMITS } from '../src/media-config.js';
 import { sanitizeFilename } from '../src/media.js';
 
@@ -22,6 +22,7 @@ async function upload(u, { type, content_type, bytes, filename = 'f.bin', access
   const id = c.json.upload.id;
   expect((await put(u, c.json.upload.upload_url, bytes)).status).toBe(200);
   const done = await call('POST', `/media/${id}/complete`, { cookie: u.cookie });
+  if (done.status === 202) await settle(id);
   return { id, done };
 }
 async function sha(b) { return [...new Uint8Array(await crypto.subtle.digest('SHA-256', b))].map(x => x.toString(16).padStart(2, '0')).join(''); }
@@ -34,8 +35,8 @@ describe('PIKK Vault media', () => {
   ])('%s: upload -> PUT to R2 -> complete sets ready with sha256', async (type, content_type, bytes) => {
     const u = await newUser();
     const { id, done } = await upload(u, { type, content_type, bytes, filename: `../../etc/${type}<x>.bin` });
-    expect(done.status).toBe(200);
-    expect(done.json.media.state).toBe('ready');
+    expect(done.status).toBe(202);
+    expect(done.json.media.state).toBe('processing');
     expect(done.json.media.content_type).toBe(content_type);
     expect(done.json.media.checksum_sha256).toBe(await sha(bytes));
     expect(done.json.media.filename).not.toMatch(/[\/<>]/);
@@ -88,7 +89,8 @@ describe('PIKK Vault media', () => {
     expect((await put(b, c.json.upload.upload_url, JPEG)).status).toBe(404);
     expect((await put(a, c.json.upload.upload_url, JPEG)).status).toBe(200);
     expect((await call('POST', `/media/${c.json.upload.id}/complete`, { cookie: b.cookie })).status).toBe(404);
-    expect((await call('POST', `/media/${c.json.upload.id}/complete`, { cookie: a.cookie })).status).toBe(200);
+    expect((await call('POST', `/media/${c.json.upload.id}/complete`, { cookie: a.cookie })).status).toBe(202);
+    await settle(c.json.upload.id);
     expect((await call('GET', `/media/${c.json.upload.id}`, { cookie: b.cookie })).status).toBe(404);
     expect((await call('GET', `/media/med_doesnotexist123`, { cookie: b.cookie })).status).toBe(404);
 
@@ -119,7 +121,7 @@ describe('PIKK Vault media', () => {
     const h = await call('GET', '/vault/health', { cookie: adm.cookie });
     expect(h.status).toBe(200);
     expect(h.json).toMatchObject({ status: 'ok', version: expect.any(String), storage: { binding: 'MEDIA', reachable: true, error: null } });
-    expect(Object.keys(h.json.counts_by_state).sort()).toEqual(['deleted', 'failed', 'pending_upload', 'ready', 'rejected', 'uploaded']);
+    expect(Object.keys(h.json.counts_by_state).sort()).toEqual(['deleted', 'failed', 'pending_upload', 'processing', 'ready', 'rejected', 'uploaded']);
     expect(h.json.counts_by_state.rejected).toBeGreaterThanOrEqual(1);
     expect(h.json.last_error).toMatchObject({ state: 'rejected', message: expect.any(String) });
     expect((await call('POST', '/vault/health', { cookie: adm.cookie })).status).toBe(404);

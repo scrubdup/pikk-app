@@ -12,6 +12,9 @@
   "r2_buckets": [
     { "binding": "MEDIA", "bucket_name": "pikk-media-local-placeholder" }
   ],
+  // PIKK Vault slice 3: Story expiry sweeper + delayed job retries. Cron Triggers are free on the Workers Free plan.
+  // Must match PROCESSING.sweeperCron in src/media-config.js. Local test: wrangler dev --test-scheduled, then GET /__scheduled
+  "triggers": { "crons": ["*/15 * * * *"] },
   "vars": {
     "ALLOWED_ORIGIN": "https://scrubdup.github.io",
     "COOKIE_SAMESITE": "None",

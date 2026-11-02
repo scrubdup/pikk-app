@@ -8,6 +8,7 @@ import { contentRoute } from './media-content.js';
 import { NOT_BLOCKED_SQL } from './blocks.js';
 import { MEDIA_LIMITS, STORY_TTL_HOURS, ACCESS_POLICIES, UPLOAD_RATE, VAULT_VERSION } from './media-config.js';
 import { sniff } from './magic.js';
+import { enqueueStmts, getProcessor, processingRoute, processingHealth } from './processing.js';
 
 const ID = '(med_[A-Za-z0-9_-]{8,64})';
 const now = () => new Date().toISOString();
@@ -31,7 +32,10 @@ async function setState(env, id, state, err = null) {
 function view(r) {
   return { id: r.id, type: r.media_type, story: r.is_story === 1, filename: r.filename, content_type: r.detected_content_type || r.declared_content_type,
     size: r.size_bytes, checksum_sha256: r.checksum_sha256, access: r.access_policy, state: r.state, expires_at: r.expires_at,
-    created_at: r.created_at, ready_at: r.ready_at };
+    created_at: r.created_at, ready_at: r.ready_at,
+    width: r.width ?? null, height: r.height ?? null, duration_ms: r.duration_ms ?? null,
+    thumbnail: r.thumbnail_state || 'unavailable_pending_provider', variants: r.variants_state || 'unavailable_pending_provider',
+    error: r.state === 'failed' ? r.last_error : undefined };
 }
 
 async function createUpload(env, req, ctx) {
@@ -88,6 +92,7 @@ async function putUpload(env, req, ctx, id) {
 async function complete(env, req, ctx, id) {
   const { s, r } = await ownedMedia(env, ctx, id);
   if (r.state === 'ready') return json(200, { media: view(r) });
+  if (r.state === 'processing') return json(202, { media: view(r) });
   if (r.state !== 'uploaded') throw new ApiError(409, 'invalid_state', 'Upload not received');
   const bucket = storage(env);
   const head = await bucket.get(r.object_key, { range: { offset: 0, length: 64 } });
@@ -106,11 +111,15 @@ async function complete(env, req, ctx, id) {
   await full.body.pipeTo(digest);
   const checksum = hex(await digest.digest);
   const t = now();
+  const job = enqueueStmts(env, id);
   await env.DB.batch([
-    env.DB.prepare(`UPDATE media SET state='ready', checksum_sha256=?, detected_content_type=?, ready_at=?, updated_at=?, last_error=NULL WHERE id=?`).bind(checksum, found.contentType, t, t, id),
-    auditStmt(env, { actor: s.user.id, action: 'media.ready', target: id, ip: clientIp(req), meta: { sha256: checksum } }),
+    env.DB.prepare(`UPDATE media SET checksum_sha256=?, detected_content_type=?, updated_at=? WHERE id=?`).bind(checksum, found.contentType, t, id),
+    ...job.stmts,
+    auditStmt(env, { actor: s.user.id, action: 'media.processing', target: id, ip: clientIp(req), meta: { sha256: checksum, job: job.id } }),
   ]);
-  return json(200, { media: view({ ...r, state: 'ready', checksum_sha256: checksum, detected_content_type: found.contentType, ready_at: t }) });
+  getProcessor().enqueue(env, job.id, ctx); // in-Worker: ctx.waitUntil; never blocks the response
+  // Not playable until the job marks it ready (content routes require state 'ready').
+  return json(202, { media: view({ ...r, state: 'processing', checksum_sha256: checksum, detected_content_type: found.contentType }), job: { id: job.id, state: 'queued' } });
 }
 
 /** Slice 1 audience check, shared by GET /media/:id, /content and /access-url. Owner always; others only ready, unexpired, audience. */
@@ -144,7 +153,7 @@ async function health(env, ctx) {
   try { if (env.MEDIA) { await env.MEDIA.head('__vault_health_probe'); reachable = true; } else storageError = 'binding MEDIA missing'; }
   catch (e) { storageError = 'storage probe failed'; }
   const counts = await env.DB.prepare(`SELECT state, COUNT(*) AS n FROM media GROUP BY state`).all();
-  const by = { pending_upload: 0, uploaded: 0, ready: 0, rejected: 0, failed: 0, deleted: 0 };
+  const by = { pending_upload: 0, uploaded: 0, processing: 0, ready: 0, rejected: 0, failed: 0, deleted: 0 };
   for (const c of counts.results) by[c.state] = c.n;
   const last = await env.DB.prepare(`SELECT id, state, last_error, updated_at FROM media WHERE last_error IS NOT NULL ORDER BY updated_at DESC LIMIT 1`).first();
   return json(200, {
@@ -154,6 +163,7 @@ async function health(env, ctx) {
     storage: { binding: 'MEDIA', reachable, error: storageError },
     counts_by_state: by,
     last_error: last ? { media_id: last.id, state: last.state, message: last.last_error, at: last.updated_at } : null,
+    ...(await processingHealth(env)), // slice 3, additive
   });
 }
 
@@ -164,6 +174,8 @@ export async function mediaRoute(env, req, ctx, m, p) {
   if (m === 'PUT' && (mm = p.match(new RegExp(`^/media/uploads/${ID}$`)))) return putUpload(env, req, ctx, mm[1]);
   if (m === 'POST' && (mm = p.match(new RegExp(`^/media/${ID}/complete$`)))) return complete(env, req, ctx, mm[1]);
   if (m === 'GET' && (mm = p.match(new RegExp(`^/media/${ID}$`)))) return getMedia(env, ctx, mm[1]);
+  const j = await processingRoute(env, req, ctx, m, p);
+  if (j) return j;
   const c = await contentRoute(env, req, ctx, m, p, ID);
   if (c) return c;
   return null;

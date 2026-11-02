@@ -10,6 +10,7 @@ import { stripeWebhook } from './webhook.js';
 import { newId } from './crypto.js';
 import { audit, auditStmt } from './audit.js';
 import { mediaRoute } from './media.js';
+import { scheduledTick } from './processing.js';
 
 const HANDLE = /^[a-zA-Z0-9_]{3,30}$/;
 
@@ -155,16 +156,20 @@ async function route(req, env, ctx) {
 }
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ectx) {
     const requestId = crypto.randomUUID();
     const cors = corsHeaders(env, req);
     if (req.method === 'OPTIONS') {
       return new Response(null, { status: cors['Access-Control-Allow-Origin'] ? 204 : 403, headers: cors });
     }
     let res;
-    try { res = await route(req, env, {}); } catch (e) { res = errorResponse(e, requestId); }
+    try { res = await route(req, env, { waitUntil: ectx && typeof ectx.waitUntil === 'function' ? (p) => ectx.waitUntil(p) : undefined }); } catch (e) { res = errorResponse(e, requestId); }
     for (const [k, v] of Object.entries(cors)) res.headers.set(k, v);
     res.headers.set('X-Request-Id', requestId);
     return res;
+  },
+  // PIKK Vault slice 3: free cron trigger (wrangler.jsonc triggers.crons). Story expiry sweep + job retries.
+  async scheduled(controller, env, ectx) {
+    ectx.waitUntil(scheduledTick(env).catch((e) => console.error('vault scheduled failed', e && e.stack || e)));
   },
 };

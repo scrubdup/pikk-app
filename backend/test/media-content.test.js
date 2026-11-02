@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { SELF, env } from 'cloudflare:test';
-import { call, newUser, ORIGIN } from './helpers.js';
+import { call, newUser, ORIGIN, settle } from './helpers.js';
 import { parseRange } from '../src/media-content.js';
 
 const pad = (head, n = 256) => { const b = new Uint8Array(n); b.set(head); for (let i = head.length; i < n; i++) b[i] = i & 0xff; return b; };
@@ -21,7 +21,7 @@ async function upload(u, { type, content_type, bytes, filename = 'f.bin', access
   const p = await SELF.fetch(`https://api.test${c.json.upload.upload_url}`, { method: 'PUT', body: bytes,
     headers: { Origin: ORIGIN, Cookie: u.cookie, 'Content-Length': String(bytes.length), 'CF-Connecting-IP': '10.9.9.8' } });
   expect(p.status).toBe(200);
-  if (complete) expect((await call('POST', `/media/${id}/complete`, { cookie: u.cookie })).status).toBe(200);
+  if (complete) { expect((await call('POST', `/media/${id}/complete`, { cookie: u.cookie })).status).toBe(202); expect(await settle(id)).toBe('ready'); }
   return id;
 }
 const eq = (a, b) => expect(Array.from(a)).toEqual(Array.from(b));

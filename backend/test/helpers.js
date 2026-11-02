@@ -41,3 +41,14 @@ export async function post(u, body = 'hello') {
   if (r.status !== 201) throw new Error(`post failed ${r.status} ${JSON.stringify(r.json)}`);
   return r.json.post.id;
 }
+
+/** Slice 3: wait for the in-Worker processor (ctx.waitUntil) to finish a media item; drains directly as a deterministic fallback. */
+export async function settle(id, { drain = true } = {}) {
+  const { drainJobs } = await import('../src/processing.js');
+  for (let i = 0; i < 50; i++) {
+    const r = await env.DB.prepare('SELECT state FROM media WHERE id=?').bind(id).first();
+    if (r && r.state !== 'processing') return r.state;
+    if (drain && i > 2) await drainJobs(env); else await new Promise(res => setTimeout(res, 20));
+  }
+  return 'processing';
+}
