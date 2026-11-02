@@ -11,6 +11,7 @@ test('real auth client uses credentialed Cloudflare session requests', () => {
   assert.match(src, /'\/auth\/logout'/);
   assert.match(src, /'\/auth\/me'/);
   assert.match(src, /'\/auth\/verify'/);
+  assert.match(src, /'\/auth\/resend-verification'/);
 });
 
 test('real auth client does not hardcode an unverified Worker hostname', () => {
