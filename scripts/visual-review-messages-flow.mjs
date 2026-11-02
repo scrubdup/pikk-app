@@ -62,7 +62,7 @@ try {
           }
         }));
       });
-      await page.goto(base + '#/messages', { waitUntil: 'domcontentloaded' });
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await page.locator('.pikk-messages-hero').waitFor({ state: 'visible', timeout: 10000 });
       await verify('inbox');
 
