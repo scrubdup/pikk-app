@@ -83,7 +83,14 @@ export async function messagesRoute(env, req, ctx, method, path) {
       `SELECT c.id,c.created_at,
               p.id AS peer_id,p.handle AS peer_handle,p.display_name AS peer_display_name,
               (SELECT body FROM messages lm WHERE lm.conversation_id=c.id AND lm.deleted_at IS NULL ORDER BY lm.created_at DESC,lm.id DESC LIMIT 1) AS last_message,
-              (SELECT created_at FROM messages lm WHERE lm.conversation_id=c.id AND lm.deleted_at IS NULL ORDER BY lm.created_at DESC,lm.id DESC LIMIT 1) AS last_message_at
+              (SELECT created_at FROM messages lm WHERE lm.conversation_id=c.id AND lm.deleted_at IS NULL ORDER BY lm.created_at DESC,lm.id DESC LIMIT 1) AS last_message_at,
+              (SELECT COUNT(*) FROM messages um
+                WHERE um.conversation_id=c.id AND um.deleted_at IS NULL AND um.sender_id<>?1
+                  AND um.created_at > COALESCE(
+                    (SELECT created_at FROM messages rm WHERE rm.id=mine.last_read_message_id),
+                    mine.joined_at
+                  )
+              ) AS unread_count
          FROM conversations c
          JOIN conversation_members mine ON mine.conversation_id=c.id AND mine.user_id=?1
          JOIN conversation_members other ON other.conversation_id=c.id AND other.user_id<>?1
@@ -98,6 +105,27 @@ export async function messagesRoute(env, req, ctx, method, path) {
         LIMIT 100`
     ).bind(s.user.id).all();
     return { status: 200, body: { conversations: r.results } };
+  }
+
+  if (method === 'GET' && path === '/messages/unread-count') {
+    const s = requireActive(ctx);
+    const row = await env.DB.prepare(
+      `SELECT COUNT(*) AS n
+         FROM messages m
+         JOIN conversation_members mine ON mine.conversation_id=m.conversation_id AND mine.user_id=?1
+        WHERE m.deleted_at IS NULL AND m.sender_id<>?1
+          AND m.created_at > COALESCE(
+            (SELECT created_at FROM messages rm WHERE rm.id=mine.last_read_message_id),
+            mine.joined_at
+          )
+          AND NOT EXISTS (
+            SELECT 1
+              FROM conversation_members other
+              JOIN blocks b ON ((b.blocker_id=?1 AND b.blocked_id=other.user_id) OR (b.blocker_id=other.user_id AND b.blocked_id=?1))
+             WHERE other.conversation_id=m.conversation_id AND other.user_id<>?1
+          )`
+    ).bind(s.user.id).first();
+    return { status: 200, body: { unread: Number(row?.n || 0) } };
   }
 
   let match = path.match(/^\/messages\/conversations\/([\w-]{1,80})$/);

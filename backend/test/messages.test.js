@@ -111,4 +111,28 @@ describe('persistent messages', () => {
     expect(r.status).toBe(403);
     expect(r.json.error.code).toBe('email_unverified');
   });
+
+  it('tracks persistent unread counts and clears them after mark read', async () => {
+    const a=await newUser();
+    const b=await newUser();
+    const convo=await start(a,b.handle);
+    const id=convo.json.conversation.id;
+
+    await call('POST','/messages/conversations/'+id+'/messages',{
+      cookie:b.cookie,ip:freshIp(),body:{message:'Unread backend message.'}
+    });
+
+    let count=await call('GET','/messages/unread-count',{cookie:a.cookie,ip:freshIp()});
+    expect(count.status).toBe(200);
+    expect(count.json.unread).toBe(1);
+
+    const list=await call('GET','/messages/conversations',{cookie:a.cookie,ip:freshIp()});
+    const row=list.json.conversations.find(c=>c.id===id);
+    expect(Number(row.unread_count)).toBe(1);
+
+    await call('POST','/messages/conversations/'+id+'/read',{cookie:a.cookie,ip:freshIp(),body:{}});
+    count=await call('GET','/messages/unread-count',{cookie:a.cookie,ip:freshIp()});
+    expect(count.json.unread).toBe(0);
+  });
+
 });
