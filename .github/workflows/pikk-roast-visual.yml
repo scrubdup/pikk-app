@@ -4,7 +4,8 @@ on:
     paths:
       - 'src/pages/roast-arena.js'
       - 'src/roast-engine.js'
-      - 'src/styles.css'
+      - 'src/*.css'
+      - 'src/**/*.css'
       - 'scripts/visual-review-roast-taps.mjs'
       - '.github/workflows/pikk-roast-visual.yml'
 jobs:
