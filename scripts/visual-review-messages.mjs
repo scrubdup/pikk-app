@@ -13,8 +13,10 @@ try {
     const errors = [];
     page.on('pageerror', e => errors.push(String(e)));
     await page.goto(base + '#/profile', { waitUntil: 'domcontentloaded' });
-    await page.locator('#signinName').fill('PIKK QA');
-    await page.locator('#signinBtn').click();
+    // Profile no longer has demo sign-in (7859454). Seed a QA-only local profile the same way
+    // scripts/visual-review-messages-flow.mjs does; no backend session is claimed.
+    await page.evaluate((u) => localStorage.setItem('dbs_v1', JSON.stringify({ user: { ...u, createdAt: Date.now() } })), { id: 'u_pikkqa', username: 'PIKKQA', bio: 'Messages visual QA', avatar: '', followers: [], following: ['dbs'], memberships: { skeetPlus: false, backstage: false, innerCircle: false }, purchasedTracks: [] });
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await page.goto(base + '#/messages', { waitUntil: 'domcontentloaded' });
     await page.locator('.pikk-messages-hero').waitFor();
     assert.equal(await page.locator('#pikkMsgSearch').count(), 1);
