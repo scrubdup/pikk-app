@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { CREATE_MENU_ITEMS } from '../src/create-menu.js';
 
 // The app uses local/system fonts; avoid a flaky Chromium screenshot wait on
 // unrelated pending web fonts (e.g. third-party embedded media).
@@ -10,7 +11,7 @@ process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = '1';
 // existing Create dialog's actual grid, outlined icons, tile and cancel CSS.
 // These are real browser interactions, not static string checks.
 const sections = [
-  ['create', 'pikkCreateMenu', 34],
+  ['create', 'pikkCreateMenu', CREATE_MENU_ITEMS.length],
   ['music', 'pikkMusicMenu', 10],
   ['videos', 'pikkVideosMenu', 9],
   ['connect', 'pikkConnectMenu', 13],
