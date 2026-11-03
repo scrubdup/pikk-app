@@ -728,14 +728,14 @@ function renderGoLiveForm(user) {
     <div class="card" id="live-go">
       <h3>Go live · TEST MODE</h3>
       <p class="muted">Fake stream UI with title, viewer stub, chat, tips, gifts (coins), and paid song requests. Persisted in localStorage (<code>dbs_v1.live</code> + <code>coins</code> + <code>liveGiftLedger</code> + <code>liveSongRequests</code>).</p>
-      <div class="field"><label>Stream title</label>
+      <div class="field"><label for="liveTitle">Stream title</label>
         <input id="liveTitle" maxlength="80" placeholder="e.g. Listening session · Long Story Short" value="PIKK Live · ${esc(user.username)}" />
       </div>
       ${renderGoLiveCategoryFields()}
-      <div class="field"><label>Today's goal name <span class="muted">(optional)</span></label>
+      <div class="field"><label for="liveGoalNameGo">Today's goal name <span class="muted">(optional)</span></label>
         <input id="liveGoalNameGo" maxlength="80" placeholder="e.g. Studio session fund" />
       </div>
-      <div class="field"><label>Goal amount ($) <span class="muted">(optional)</span></label>
+      <div class="field"><label for="liveGoalAmtGo">Goal amount ($) <span class="muted">(optional)</span></label>
         <input id="liveGoalAmtGo" type="number" min="1" step="1" placeholder="50" />
       </div>
       <button class="btn primary block" id="liveStart">Start stream</button>
