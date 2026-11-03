@@ -649,9 +649,9 @@ function renderLiveDailyGoalCard(live, user) {
     <div class="card live-daily-goal" id="liveDailyGoal">
       <h3 style="margin:0 0 6px">Set today's Live goal</h3>
       <p class="muted" style="margin:0 0 10px;font-size:12px">Name + amount · 24h window · viewers can donate with coins · TEST MODE</p>
-      <div class="field"><label>Goal name</label>
+      <div class="field"><label for="liveGoalName">Goal name</label>
         <input id="liveGoalName" maxlength="80" placeholder="e.g. New merch drop fund" /></div>
-      <div class="field"><label>Goal amount ($)</label>
+      <div class="field"><label for="liveGoalAmt">Goal amount ($)</label>
         <input id="liveGoalAmt" type="number" min="1" step="1" placeholder="50" /></div>
       <button type="button" class="btn primary" id="liveGoalSave">Start 24h goal</button>
       <p class="chip" style="margin-top:10px">TEST MODE · demo coins only</p>
@@ -671,9 +671,9 @@ function renderLiveDailyGoalCard(live, user) {
   const hostEdit = isHost
     ? `<details class="live-goal-edit" style="margin-top:10px">
         <summary class="muted" style="cursor:pointer;font-size:12px">Edit goal (new 24h window)</summary>
-        <div class="field" style="margin-top:8px"><label>Goal name</label>
+        <div class="field" style="margin-top:8px"><label for="liveGoalName">Goal name</label>
           <input id="liveGoalName" maxlength="80" value="${esc(goal.name)}" /></div>
-        <div class="field"><label>Goal amount ($)</label>
+        <div class="field"><label for="liveGoalAmt">Goal amount ($)</label>
           <input id="liveGoalAmt" type="number" min="1" step="1" value="${esc(String(goal.targetAmount))}" /></div>
         <button type="button" class="btn" id="liveGoalSave">Save · reset 24h</button>
       </details>`
