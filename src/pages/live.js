@@ -1209,16 +1209,22 @@ export function bindLive(root) {
     const title = root.querySelector('#liveTitle')?.value?.trim();
     const goFields = readGoLiveFields(root);
     if (!goFields.category) return toast('Pick one Go Live category');
+    const goalName = root.querySelector('#liveGoalNameGo')?.value?.trim() || '';
+    const goalAmountRaw = root.querySelector('#liveGoalAmtGo')?.value?.trim() || '';
+    const goalAmount = Number(goalAmountRaw);
+    if (goalName && !goalAmountRaw) return toast('Enter a goal amount ($)');
+    if (goalAmountRaw && !goalName) return toast('Enter a goal name');
+    if (goalAmountRaw && (!Number.isFinite(goalAmount) || goalAmount <= 0 || !Number.isInteger(goalAmount))) {
+      return toast('Enter a whole-dollar goal amount greater than zero');
+    }
     const res = startLiveDemo(title, goFields);
     if (res?.error === 'signin') return toast('Sign in first');
     if (res?.error === 'already_live') return toast('Already live');
-    const gName = root.querySelector('#liveGoalNameGo')?.value?.trim();
-    const gAmt = Number(root.querySelector('#liveGoalAmtGo')?.value);
-    if (gName && gAmt > 0) {
-      const gRes = setLiveDailyGoal({ name: gName, targetAmount: gAmt });
+    if (goalName && goalAmountRaw) {
+      const gRes = setLiveDailyGoal({ name: goalName, targetAmount: goalAmount });
       if (gRes?.error === 'signin') toast('Sign in to set goal');
       else if (gRes?.error) toast('Goal not set · ' + gRes.error);
-      else toast(`Live goal set · $${gAmt} · 24h · TEST MODE`);
+      else toast(`Live goal set · ${goalAmount} · 24h · TEST MODE`);
     }
     notifyLiveOpen();
     toast('You are live · TEST MODE');
