@@ -6740,21 +6740,18 @@ export function refreshHotFeed() {
     .sort((a, b) => b.score - a.score || b.at - a.at)
     .slice(0, HOT_POSTS_LIMIT);
 
-  const prevIds = new Set((bucket.posts || []).map((p) => p.postId || p.id));
   const alerts = Array.isArray(state.engagementAlerts) ? [...state.engagementAlerts] : [];
-  const alertedRefs = new Set(
-    alerts.filter((a) => a.kind === 'post').map((a) => a.refId)
-  );
-
+  const alertedRefs = new Set(alerts.filter((a) => a.kind === 'post').map((a) => a.refId));
   const thresholds = getEngagementAlertThresholds();
-  // Scan all posts, not only the limited hot-feed strip. Alert once per post.
-  posts.forEach((p) => {
-    if (alertedRefs.has(p.id)) return;
+  // Hot Feed ranking and admin alert thresholds are separate features.
+  // Never let the Hot Feed threshold bypass an administrator's chosen values.
+  for (const p of posts) {
+    if (alertedRefs.has(p.id)) continue;
     const likes = ((state.likes && state.likes[p.id]) || []).length;
     const comments = ((state.comments && state.comments[p.id]) || []).length;
     const shares = Number((state.postShares && state.postShares[p.id]) || 0);
     const score = likes + comments + shares;
-    if (score < thresholds.postScore && comments < thresholds.commentCount) return;
+    if (score < thresholds.postScore && comments < thresholds.commentCount) continue;
     alerts.unshift({
       id: 'ea_post_' + p.id + '_' + Date.now().toString(36),
       kind: 'post', refId: p.id, title: String(p.text || 'Engaging post').slice(0, 80),
@@ -6762,26 +6759,7 @@ export function refreshHotFeed() {
       at: Date.now(), handledAt: null, handledNote: null,
     });
     alertedRefs.add(p.id);
-  });
-
-  ranked.forEach((r) => {
-    if (alertedRefs.has(r.id)) return;
-    // Only alert when newly crossing into hot (or first refresh after seed)
-    if (prevIds.has(r.id) && bucket.posts.length) return;
-    alerts.unshift({
-      id: 'ea_post_' + r.id + '_' + Date.now().toString(36),
-      kind: 'post',
-      refId: r.id,
-      title: (r.preview || r.text || 'Hot post').slice(0, 80),
-      username: r.username,
-      score: r.score,
-      mediaType: r.mediaType || 'text',
-      at: Date.now(),
-      handledAt: null,
-      handledNote: null,
-    });
-    alertedRefs.add(r.id);
-  });
+  }
 
   // Cap alerts
   const trimmed = alerts.slice(0, 60);
