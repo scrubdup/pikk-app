@@ -6764,24 +6764,6 @@ export function refreshHotFeed() {
     alertedRefs.add(p.id);
   });
 
-  ranked.forEach((r) => {
-    if (alertedRefs.has(r.id)) return;
-    // Only alert when newly crossing into hot (or first refresh after seed)
-    if (prevIds.has(r.id) && bucket.posts.length) return;
-    alerts.unshift({
-      id: 'ea_post_' + r.id + '_' + Date.now().toString(36),
-      kind: 'post',
-      refId: r.id,
-      title: (r.preview || r.text || 'Hot post').slice(0, 80),
-      username: r.username,
-      score: r.score,
-      mediaType: r.mediaType || 'text',
-      at: Date.now(),
-      handledAt: null,
-      handledNote: null,
-    });
-    alertedRefs.add(r.id);
-  });
 
   // Cap alerts
   const trimmed = alerts.slice(0, 60);
@@ -6859,6 +6841,7 @@ export function listEngagementAlerts({ openOnly = true } = {}) {
 }
 
 export function markEngagementAlertHandled(id, note) {
+  if (!isAdmin()) return { error: 'admin' };
   const aid = String(id || '');
   if (!aid) return { error: 'missing' };
   const alerts = Array.isArray(state.engagementAlerts) ? state.engagementAlerts : [];
