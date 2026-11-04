@@ -129,6 +129,7 @@ const defaultState = () => ({
     seededPostsVer: 0, // t172u · bump community engagement reseed
   },
   engagementAlerts: [], // { id, kind:'live'|'post', refId, title, username, score, viewers?, gifts?, at, handledAt?, handledNote? }
+  engagementAlertThresholds: { postScore: 10, commentCount: 5 }, // admin-configurable TEST MODE thresholds
   postShares: {}, // postId -> share count (demo)
   splashSeenAt: 0,
   // t255u · Daily goals (app-wide + per-host Live) · Design/Commerce consume same APIs
@@ -6691,6 +6692,24 @@ export function engagementScore(postId) {
  * Rebuild hotFeed.posts from engagement; create alerts for newly hot posts.
  * PRESERVES hotFeed.lives and seededLives (Live Social).
  */
+export function getEngagementAlertThresholds() {
+  const saved = state.engagementAlertThresholds || {};
+  return {
+    postScore: Number.isInteger(saved.postScore) && saved.postScore > 0 ? saved.postScore : 10,
+    commentCount: Number.isInteger(saved.commentCount) && saved.commentCount > 0 ? saved.commentCount : 5,
+  };
+}
+
+export function setEngagementAlertThresholds({ postScore, commentCount } = {}) {
+  if (!isAdmin()) return { error: 'admin' };
+  const valid = (n) => Number.isSafeInteger(Number(n)) && Number(n) >= 1 && Number(n) <= 1000000;
+  if (!valid(postScore) || !valid(commentCount)) return { error: 'invalid_threshold' };
+  state = { ...state, engagementAlertThresholds: { postScore: Number(postScore), commentCount: Number(commentCount) } };
+  save(state);
+  refreshHotFeed();
+  return { ok: true, thresholds: getEngagementAlertThresholds() };
+}
+
 export function refreshHotFeed() {
   const bucket = getHotFeedBucket();
   const posts = state.posts || [];
@@ -6726,6 +6745,24 @@ export function refreshHotFeed() {
   const alertedRefs = new Set(
     alerts.filter((a) => a.kind === 'post').map((a) => a.refId)
   );
+
+  const thresholds = getEngagementAlertThresholds();
+  // Scan all posts, not only the limited hot-feed strip. Alert once per post.
+  posts.forEach((p) => {
+    if (alertedRefs.has(p.id)) return;
+    const likes = ((state.likes && state.likes[p.id]) || []).length;
+    const comments = ((state.comments && state.comments[p.id]) || []).length;
+    const shares = Number((state.postShares && state.postShares[p.id]) || 0);
+    const score = likes + comments + shares;
+    if (score < thresholds.postScore && comments < thresholds.commentCount) return;
+    alerts.unshift({
+      id: 'ea_post_' + p.id + '_' + Date.now().toString(36),
+      kind: 'post', refId: p.id, title: String(p.text || 'Engaging post').slice(0, 80),
+      username: p.username, score, mediaType: p.mediaType || 'text',
+      at: Date.now(), handledAt: null, handledNote: null,
+    });
+    alertedRefs.add(p.id);
+  });
 
   ranked.forEach((r) => {
     if (alertedRefs.has(r.id)) return;
