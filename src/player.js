@@ -636,7 +636,7 @@ function playInternal() {
       const wait = setInterval(() => {
         if (ytPlayer?.playVideo) {
           clearInterval(wait);
-          loadCurrentIntoPlayer({ autoplay: true });
+          loadCurrentIntoPlayer({ autoplay: interrupts.size === 0 && playingDesired });
         }
       }, 120);
       setTimeout(() => clearInterval(wait), 8000);
@@ -747,9 +747,8 @@ export function playTrackAt(i) {
   if (i < 0 || i >= queue.length) return;
   index = i;
   userArmed = true;
-  interrupts.clear();
   playingDesired = true;
-  loadCurrentIntoPlayer({ autoplay: true });
+  loadCurrentIntoPlayer({ autoplay: interrupts.size === 0 });
   syncUi();
 }
 
@@ -758,8 +757,8 @@ function bindUi() {
   uiBound = true;
   document.getElementById('spPlay')?.addEventListener('click', () => {
     if (interrupts.size > 0) {
-      // User override: clear soft interrupts and play
-      interrupts.clear();
+      toast('Other audio is playing — PIKK music will resume afterward');
+      return;
     }
     if (isYtPlaying()) {
       pauseDbsPlayer('user');
@@ -768,11 +767,9 @@ function bindUi() {
     }
   });
   document.getElementById('spPrev')?.addEventListener('click', () => {
-    interrupts.clear();
     prevTrack();
   });
   document.getElementById('spNext')?.addEventListener('click', () => {
-    interrupts.clear();
     nextTrack();
   });
   bindProgressAndVolume();
