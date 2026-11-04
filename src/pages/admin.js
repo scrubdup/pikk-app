@@ -15,6 +15,8 @@ import {
   ensureFanClubsSeeded,
   ensureHotPostsSeeded,
   listEngagementAlerts,
+  getEngagementAlertThresholds,
+  setEngagementAlertThresholds,
   markEngagementAlertHandled,
   adminQuickLike,
   adminQuickComment,
@@ -311,6 +313,7 @@ function revenueShellHtml(overview) {
 function engagementAlertsHtml(overview) {
   ensureHotPostsSeeded();
   refreshHotFeed();
+  const thresholds = getEngagementAlertThresholds();
   const open = listEngagementAlerts({ openOnly: true });
   const allCount = listEngagementAlerts({ openOnly: false }).length;
   const hf = overview.hotFeed || {};
@@ -344,6 +347,11 @@ function engagementAlertsHtml(overview) {
     : '<p class="muted">No open engagement alerts. Hot posts/lives will appear here when score spikes (TEST MODE).</p>';
   return `<section class="card admin-engagement" id="adminEngagement">
     <h3>Engagement alerts</h3>
+    <form id="adminEngagementThresholdForm" class="row wrap" style="gap:8px;align-items:end">
+      <label>Post engagement score <input type="number" name="postScore" min="1" max="1000000" required value="${thresholds.postScore}" style="width:110px"></label>
+      <label>Comment count <input type="number" name="commentCount" min="1" max="1000000" required value="${thresholds.commentCount}" style="width:110px"></label>
+      <button class="btn primary" type="submit">Save alert thresholds</button>
+    </form>
     <div class="row wrap" style="gap:8px;margin-bottom:8px">
       <span class="chip">TEST MODE</span>
       <span class="chip">§38 Hot Feed</span>
@@ -501,6 +509,18 @@ export function bindAdmin(root) {
       toast(btn.dataset.status === 'approved' ? 'Open Mic approved' : 'Open Mic rejected');
       navigate('#/admin');
     });
+  });
+
+  root.querySelector('#adminEngagementThresholdForm')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const res = setEngagementAlertThresholds({
+      postScore: form.elements.postScore.value,
+      commentCount: form.elements.commentCount.value,
+    });
+    if (res.error) return toast(res.error === 'admin' ? 'Admin required' : 'Enter whole-number thresholds from 1 to 1,000,000');
+    toast('Engagement thresholds saved · TEST MODE');
+    navigate('#/admin');
   });
 
   root.querySelectorAll('.admin-ea-like').forEach((btn) => {
