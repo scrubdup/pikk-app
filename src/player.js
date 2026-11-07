@@ -491,6 +491,13 @@ function ensureYtPlayer() {
         // t347u: count a real play after ≥3 s of continuous playback (shared organic/promote counter)
         clearTimeout(stickyPlayTimer);
         if (e.data === 1) {
+          // The embed may start playing asynchronously after an external audio interrupt.
+          // Stop it immediately rather than allowing two audio sources to overlap.
+          if (interrupts.size > 0 || !playingDesired) {
+            try { ytPlayer?.pauseVideo?.(); } catch (_) {}
+            syncUi();
+            return;
+          }
           const t = queue[index];
           stickyPlayTimer = setTimeout(() => {
             if (queue[index] === t && isYtPlaying()) { recordPlay(t?.youtubeId || t?.title, { kind: 'audio', seconds: 3, source: t?.promoted ? 'promote' : 'organic' }); syncUi(); }
