@@ -534,8 +534,10 @@ function loadCurrentIntoPlayer({ autoplay } = { autoplay: false }) {
       }
       if (autoplay && userArmed && interrupts.size === 0) {
         setTimeout(() => {
+          // An external video/live may have started during the playlist delay.
+          if (interrupts.size > 0 || !userArmed || !playingDesired) return;
           try {
-            ytPlayer.playVideo();
+            ytPlayer?.playVideo?.();
           } catch (_) {}
         }, 250);
       }
