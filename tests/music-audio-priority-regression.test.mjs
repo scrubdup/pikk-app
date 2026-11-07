@@ -32,3 +32,10 @@ test('manual player controls cannot wipe video/live interruption reasons', () =>
   const select = bodyBetween('function playTrackAt(', 'function ',);
   assert.doesNotMatch(select, /interrupts\.clear\(\)/);
 });
+
+test('delayed playlist autoplay rechecks interruption state at callback time', () => {
+  const player = bodyBetween('function loadCurrentIntoPlayer(', 'function ');
+  assert.match(player, /setTimeout\(\(\) => \{/);
+  assert.match(player, /if \(interrupts\.size > 0 \|\| !userArmed \|\| !playingDesired\) return/);
+  assert.match(player, /ytPlayer\?\.playVideo\?\.\(\)/);
+});
