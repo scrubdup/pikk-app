@@ -30,8 +30,8 @@ function safeName(name) {
   return String(name || 'audio').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120) || 'audio';
 }
 
-function requireMediaStorage(env) {
-  if (!env.MEDIA || typeof env.MEDIA.put !== 'function') {
+function requireMediaStorage(env, operation = 'put') {
+  if (!env.MEDIA || typeof env.MEDIA[operation] !== 'function') {
     throw new ApiError(503, 'media_storage_not_configured', 'PIKK media storage is not configured yet');
   }
   return env.MEDIA;
@@ -145,10 +145,121 @@ export async function musicUploadRoute(env, req, ctx, method, path) {
     return { status: 200, body: { uploads: r.results } };
   }
 
+
+  // Owner-only private DRAFT delete. Claim (status=draft → deleted) before storage delete.
+  // Owned deleted rows may retry storage cleanup (no sweeper). Foreign/missing → 404.
+  // Published/other statuses → 409. No automatic cleanup cron.
+  const deleteMatch = path.match(/^\/media\/music\/([\w-]{1,80})$/);
+  if (method === 'DELETE' && deleteMatch) {
+    const s = requireVerified(ctx);
+    const storage = requireMediaStorage(env, 'delete');
+    const row = await env.DB.prepare(
+      `SELECT id, storage_key, status, deleted_at FROM media_assets
+        WHERE id=? AND owner_id=? AND kind='music'`
+    ).bind(deleteMatch[1], s.user.id).first();
+    if (!row) throw new ApiError(404, 'not_found', 'Music upload not found');
+
+    const isCleanupRetry = row.status === 'deleted';
+    if (!isCleanupRetry && row.status !== 'draft') {
+      throw new ApiError(409, 'invalid_state', 'Only private drafts can be deleted');
+    }
+
+    let claimed = false;
+    if (!isCleanupRetry) {
+      const deletedAt = new Date().toISOString();
+      const claim = await env.DB.prepare(
+        `UPDATE media_assets SET status='deleted', deleted_at=?
+          WHERE id=? AND owner_id=? AND status='draft'`
+      ).bind(deletedAt, row.id, s.user.id).run();
+      if ((claim?.meta?.changes ?? 0) !== 1) {
+        // Lost race to another delete claim — treat as gone for this caller unless row is now theirs deleted (retry path next call)
+        throw new ApiError(404, 'not_found', 'Music upload not found');
+      }
+      claimed = true;
+    }
+
+    let cleanupPending = false;
+    let keyRefused = false;
+    try {
+      await musicDelete(storage, row.storage_key, s.user.id);
+    } catch (e) {
+      if (e instanceof MusicKeyError || (e && e.name === 'MusicKeyError')) {
+        keyRefused = true;
+      } else {
+        cleanupPending = true;
+      }
+    }
+
+    // Permanent key refusal: row stays deleted (library gone) but do not claim pending auto-cleanup.
+    if (keyRefused) {
+      if (claimed) {
+        try {
+          await audit(env, {
+            actor: s.user.id,
+            action: 'music.upload_deleted',
+            target: row.id,
+            ip: clientIp(req),
+            meta: { cleanup_pending: false, storage_key_refused: true, prior_status: 'draft' },
+          });
+        } catch { /* claim durable; audit best-effort */ }
+      }
+      return {
+        status: 422,
+        body: {
+          ok: false, id: row.id, status: 'deleted', cleanup_pending: false,
+          error: { code: 'storage_key_refused', message: 'Stored object key is invalid; storage was not contacted' },
+        },
+      };
+    }
+
+    if (claimed) {
+      // Exactly one music.upload_deleted audit on the draft→deleted claim (not on cleanup retries).
+      try {
+        await audit(env, {
+          actor: s.user.id,
+          action: 'music.upload_deleted',
+          target: row.id,
+          ip: clientIp(req),
+          meta: { cleanup_pending: cleanupPending, prior_status: 'draft' },
+        });
+      } catch {
+        // MD-4: storage outcome already decided; do not convert a completed delete into 500.
+        if (!cleanupPending) {
+          return {
+            status: 200,
+            body: {
+              ok: true, id: row.id, status: 'deleted', cleanup_pending: false,
+              audit_failed: true,
+              message: 'Draft deleted; audit log write failed',
+            },
+          };
+        }
+      }
+    }
+
+    if (cleanupPending) {
+      return {
+        status: 202,
+        body: {
+          ok: true, id: row.id, status: 'deleted', cleanup_pending: true,
+          retry_required: true,
+          message: 'Draft removed from your library, but storage delete failed. Retry Delete to finish removing stored bytes — there is no automatic cleanup sweeper.',
+        },
+      };
+    }
+    return {
+      status: 200,
+      body: {
+        ok: true, id: row.id, status: 'deleted', cleanup_pending: false,
+        cleanup_retry: isCleanupRetry,
+      },
+    };
+  }
+
   const match = path.match(/^\/media\/music\/([\w-]{1,80})\/file$/);
   if (method === 'GET' && match) {
     const s = requireVerified(ctx);
-    const storage = requireMediaStorage(env);
+    const storage = requireMediaStorage(env, 'get');
     const row = await env.DB.prepare(
       `SELECT id,storage_key,original_name,mime_type FROM media_assets
         WHERE id=? AND owner_id=? AND kind='music' AND status<>'deleted'`

@@ -16,6 +16,8 @@ describe('backend readiness health', () => {
     expect(body.capabilities.email_verification).toBe(true);
     expect(typeof body.capabilities.email_delivery).toBe('boolean');
     expect(typeof body.capabilities.media_storage).toBe('boolean');
+    expect(typeof body.capabilities.payments_webhook).toBe('boolean');
+    expect(body.capabilities.membership_status).toBe(true);
     expect(JSON.stringify(body)).not.toMatch(/api[_-]?key|secret|token/i);
   });
 });

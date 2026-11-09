@@ -14,6 +14,7 @@ async function request(path,{method='GET',body}={}){
 }
 export const accountApi={
   me:()=>request('/auth/me'),
+  publicProfile:(handle)=>request('/users/'+encodeURIComponent(String(handle||'').replace(/^@/,''))),
   updateSignupRoles:(roles)=>request('/account/signup-roles',{method:'POST',body:{signup_roles:roles}}),
   updateProfile:({displayName,bio,avatarUrl})=>request('/account/profile',{method:'POST',body:{display_name:displayName,bio,avatar_url:avatarUrl}}),
   listRoleReviews:(status='')=>request('/admin/signup-roles'+(status?'?status='+encodeURIComponent(status):'')),

@@ -1,5 +1,5 @@
 import { ApiError, json, errorResponse, corsHeaders, readJson, clientIp } from './http.js';
-import { signup, login, logout, verifyEmail, resendVerification, loadSession, requireAuth, requireVerified, requireActive } from './auth.js';
+import { signup, login, logout, verifyEmail, resendVerification, requestPasswordReset, resetPassword, loadSession, requireAuth, requireVerified, requireActive } from './auth.js';
 import { requirePermission, GRANTABLE_ROLES, OWNER_ROLE } from './permissions.js';
 import { opsSummary } from './ops.js';
 import { bootstrapOwner } from './bootstrap.js';
@@ -10,6 +10,7 @@ import { requireString, requirePositiveInt, validateSignupRoles } from './valida
 import { rateLimit } from './ratelimit.js';
 import { balance, transfer } from './ledger.js';
 import { stripeWebhook } from './webhook.js';
+import { membershipMe, rejectClientMembershipGrant } from './memberships.js';
 import { newId } from './crypto.js';
 import { audit, auditStmt } from './audit.js';
 import { mediaRoute } from './media.js';
@@ -66,6 +67,8 @@ async function route(req, env, ctx) {
       email_verification: !!env.DB,
       email_delivery: !!(env.RESEND_API_KEY && env.EMAIL_FROM),
       media_storage: !!env.MEDIA,
+      payments_webhook: !!env.STRIPE_WEBHOOK_SECRET,
+      membership_status: !!env.DB,
     },
   });
 
@@ -84,6 +87,16 @@ async function route(req, env, ctx) {
     const s = requireActive(ctx);
     await rateLimit(env, `verify-email:${s.user.id}`, 3, 3600);
     return json(200, await resendVerification(env, req, s));
+  }
+  if (m === 'POST' && p === '/auth/forgot-password') {
+    await rateLimit(env, `pwreset-ip:${ip}`, 5, 3600);
+    const b = await readJson(req);
+    // Per-email bucket removed: it let third parties suppress a victim's resets (sec review A7).
+    return json(200, (await requestPasswordReset(env, req, b, ctx)).body);
+  }
+  if (m === 'POST' && p === '/auth/reset-password') {
+    await rateLimit(env, `pwreset-consume:${ip}`, 10, 3600);
+    return withCookie(await resetPassword(env, req, await readJson(req)));
   }
   if (m === 'GET' && p === '/auth/me') { const s = requireAuth(ctx); return json(200, { user: s.user, roles: s.roles, signup_roles: s.signupRoles }); }
   if (m === 'POST' && p === '/account/profile') {
@@ -249,6 +262,14 @@ async function route(req, env, ctx) {
     return json(200, { user: { handle: u.handle, display_name: u.display_name, bio: u.bio || '', avatar_url: u.avatar_url || '', created_at: u.created_at } });
   }
 
+  if (m === 'GET' && p === '/memberships/me') {
+    const s = requireAuth(ctx);
+    return json(200, { membership: await membershipMe(env, s) });
+  }
+  if (m === 'POST' && (p === '/memberships/join' || p === '/memberships/activate' || p === '/memberships/grant')) {
+    requireAuth(ctx);
+    rejectClientMembershipGrant();
+  }
   if (m === 'GET' && p === '/ledger/balance') { const s = requireAuth(ctx); return json(200, { balance: await balance(env, s.user.id), currency: 'pikk_coin' }); }
   if (m === 'POST' && p === '/ledger/transfer') {
     const s = requireVerified(ctx); const b = await readJson(req);

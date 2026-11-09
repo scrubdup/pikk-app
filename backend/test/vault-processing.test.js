@@ -127,7 +127,7 @@ describe('slice 3: processing states', () => {
     await drainJobs(env); // never exceeds max attempts
     expect((await jobFor(id)).attempts).toBe(3);
     expect(await auditCount('media.processing_failed', id)).toBe(1);
-    expect((await call('GET', `/media/${id}`, { cookie: u.cookie })).json.media).toMatchObject({ state: 'failed', error: 'object missing' });
+    expect((await call('GET', `/media/${id}`, { cookie: u.cookie })).json.media).toMatchObject({ state: 'failed', error: 'Upload incomplete' });
   });
 
   it('permanent failure (content swapped after complete) fails in 1 attempt and deletes the object', async () => {

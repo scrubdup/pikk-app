@@ -19,8 +19,62 @@ import {
 import { esc, shellPage, toast, ytEmbedSrc } from '../ui.js';
 import { navigate } from '../router.js';
 import { resolveMediaSrc } from '../media-db.js';
+import { isVaultApiConfigured, fetchVaultMediaStorageReady } from '../api/vault-client.js';
+import { renderVaultMediaPanelHtml, bindVaultMediaPanel } from './vault-media-ui.js';
 import { bindPageYoutubeEmbeds } from '../player.js';
 import { musicUploadApi, isMusicUploadApiConfigured } from '../api/music-upload-client.js';
+import { getLiveAuthMeUserId } from '../auth/readiness.js';
+
+
+/** Server-auth user–scoped cleanup-pending draft ids (sessionStorage). Never use local demo identity. */
+export const MUSIC_CLEANUP_PENDING_PREFIX = 'pikk_music_cleanup_pending:';
+export const MUSIC_CLEANUP_PENDING_LEGACY = 'pikk_music_cleanup_pending';
+export const MUSIC_DRAFT_ID_RE = /^[\w-]{1,80}$/;
+
+export function musicCleanupPendingKey(userId) {
+  const id = userId != null ? String(userId) : '';
+  if (!id || !MUSIC_DRAFT_ID_RE.test(id)) return null;
+  return MUSIC_CLEANUP_PENDING_PREFIX + id;
+}
+
+export function sanitizeMusicCleanupPendingIds(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const x of raw) {
+    if (typeof x !== 'string' || !MUSIC_DRAFT_ID_RE.test(x)) continue;
+    if (seen.has(x)) continue;
+    seen.add(x);
+    out.push(x);
+  }
+  return out;
+}
+
+export function readMusicCleanupPending(userId) {
+  const key = musicCleanupPendingKey(userId);
+  if (!key) return [];
+  try {
+    return sanitizeMusicCleanupPendingIds(JSON.parse(sessionStorage.getItem(key) || '[]'));
+  } catch {
+    return [];
+  }
+}
+
+export function writeMusicCleanupPending(userId, ids) {
+  const key = musicCleanupPendingKey(userId);
+  if (!key) return;
+  try {
+    sessionStorage.setItem(key, JSON.stringify(sanitizeMusicCleanupPendingIds(ids)));
+  } catch { /* ignore quota */ }
+}
+
+export function retireLegacyMusicCleanupPendingKey() {
+  try { sessionStorage.removeItem(MUSIC_CLEANUP_PENDING_LEGACY); } catch { /* ignore */ }
+}
+
+let musicBindGen = 0;
+let lastMusicBoundUserId = null;
+
 
 function refresh(hash) {
   navigate(hash || '#/music');
@@ -113,7 +167,7 @@ function renderVaultCards(unlocked) {
       <article class="vault-card unlocked" data-id="${esc(item.id)}">
         <img src="${esc(item.cover)}" alt="${esc(item.title)}" />
         <div class="vault-meta">
-          <span class="chip" style="border-color:#2a4a3a;color:#8dffb0">Unlocked</span>
+          <span class="chip" style="border-color:var(--line);color:var(--tx)">Unlocked</span>
           <strong>${esc(item.title)}</strong>
           <div class="muted" style="font-size:12px">${esc(item.artist)} · ${esc(item.status)}</div>
           <div class="muted" style="font-size:11px">Requires ${esc(vaultTier(item.tier))} · no audio yet</div>
@@ -414,7 +468,8 @@ export function renderMusic(route = {}) {
     </div>
 
     <div class="card" id="vault">
-      <h2>Vault ${vaultOk ? '<span class="chip" style="border-color:#2a4a3a;color:#8dffb0">Unlocked · ' + esc(tierLabel(membership)) + '</span>' : '<span class="chip">Locked</span>'}</h2>
+      <h2>Vault ${vaultOk ? '<span class="chip" style="border-color:var(--line);color:var(--tx)">Unlocked · ' + esc(tierLabel(membership)) + '</span>' : '<span class="chip">Locked</span>'}</h2>
+      <p class="muted" style="font-size:12px;margin:6px 0 0" id="vaultApiStatus">Demo membership cards below are separate from real Vault media.${isVaultApiConfigured() ? ' Checking storage readiness…' : ' API not configured.'}</p>
       <p class="muted">Exclusive unreleased tracks &amp; previews for members. Nested under Music — not a bottom-nav tab.</p>
 
       <div class="vault-grid" style="margin:12px 0">
@@ -433,6 +488,8 @@ export function renderMusic(route = {}) {
             </div>`
       }
 
+      ${renderVaultMediaPanelHtml()}
+
       <h3 style="margin:16px 0 8px">Membership (TEST MODE)</h3>
       <div class="grid-2">${tiers}</div>
     </div>
@@ -446,22 +503,128 @@ export function renderMusic(route = {}) {
 
 export function renderMusicUploadDrafts(items=[]) {
   if(!items.length)return '<p class="muted">No backend music drafts yet.</p>';
-  return `<div class="support-history">${items.map(item=>`<article class="card" style="margin:0 0 8px"><div class="row wrap"><strong>${esc(item.title)}</strong><span class="chip">${esc(item.status)}</span></div><p class="muted" style="margin:5px 0">${esc(item.artist_name)}${item.album_title?' · '+esc(item.album_title):''}</p><small class="muted">${esc(item.original_name)} · ${Math.max(1,Math.round((Number(item.size_bytes)||0)/1024/1024*10)/10)} MB${item.explicit_content?' · Explicit':''}</small></article>`).join('')}</div>`;
+  return `<div class="support-history">${items.map(item=>`<article class="card" style="margin:0 0 8px"><div class="row wrap"><strong>${esc(item.title)}</strong><span class="chip">${esc(item.status)}</span></div><p class="muted" style="margin:5px 0">${esc(item.artist_name)}${item.album_title?' · '+esc(item.album_title):''}</p><small class="muted">${esc(item.original_name)} · ${Math.max(1,Math.round((Number(item.size_bytes)||0)/1024/1024*10)/10)} MB${item.explicit_content?' · Explicit':''}</small><div style="margin-top:8px"><button type="button" class="btn ghost music-draft-delete" data-id="${esc(item.id)}">Delete draft</button></div></article>`).join('')}</div>`;
 }
 
 export function bindMusic(root) {
+  const statusEl = document.getElementById('vaultApiStatus');
+  if (statusEl && isVaultApiConfigured()) {
+    fetchVaultMediaStorageReady().then((r) => {
+      if (!statusEl.isConnected) return;
+      if (!r.reachable) {
+        statusEl.textContent = 'API base set · could not reach /health · My Vault media mutations disabled.';
+      } else if (r.mediaStorage) {
+        statusEl.textContent = 'Worker reports media storage ready · use My Vault media panel for private uploads (no thumbnails/transcoding yet).';
+      } else {
+        statusEl.textContent = 'API base set · media storage not ready (R2 unbound / media_storage:false) · My Vault media mutations disabled.';
+      }
+    }).catch(() => {
+      if (statusEl.isConnected) statusEl.textContent = 'API base set · could not reach /health · My Vault media mutations disabled.';
+    });
+  }
+  bindVaultMediaPanel(root);
+
   const uploadForm=root.querySelector('#pikkMusicUploadForm');
   const uploadList=root.querySelector('#pikkMusicUploadList');
   const uploadStatus=root.querySelector('#musicUploadStatus');
+  retireLegacyMusicCleanupPendingKey();
+
+  let listRequestGen = 0;
+  const bindUserId = getLiveAuthMeUserId() || null;
+  musicBindGen += 1;
+  const bindGen = musicBindGen;
+  if (String(bindUserId || '') !== String(lastMusicBoundUserId || '')) {
+    lastMusicBoundUserId = bindUserId;
+    if (uploadList) uploadList.innerHTML = '';
+  }
+
+  const stillThisBind = () => bindGen === musicBindGen
+    && String(getLiveAuthMeUserId() || '') === String(bindUserId || '');
+
   const loadUploads=async()=>{
     if(!uploadList)return;
+    const reqGen = ++listRequestGen;
+    const uid = getLiveAuthMeUserId() || null;
+    if (!uid) {
+      if (!stillThisBind() || reqGen !== listRequestGen) return;
+      uploadList.innerHTML='<p class="muted">Sign in from <a href="#/profile">Profile</a> to view your music drafts.</p>';
+      return;
+    }
     try{
       const data=await musicUploadApi.list();
-      uploadList.innerHTML=renderMusicUploadDrafts(data.uploads||[]);
+      if (!stillThisBind() || reqGen !== listRequestGen) return;
+      if (String(getLiveAuthMeUserId() || '') !== String(uid)) return;
+      const uploads=Array.isArray(data?.uploads)?data.uploads:[];
+      uploadList.innerHTML=renderMusicUploadDrafts(uploads);
+      const pending=readMusicCleanupPending(uid).filter(id=>!uploads.some(u=>u&&u.id===id));
+      for(const id of pending){
+        uploadList.insertAdjacentHTML('beforeend',
+          `<article class="card" style="margin:0 0 8px" data-cleanup-pending="1"><div class="row wrap"><strong>Draft</strong><span class="chip">cleanup pending</span></div><p class="muted" style="margin:5px 0">Storage delete incomplete — retry required (no automatic sweeper).</p><div style="margin-top:8px"><button type="button" class="btn ghost music-draft-cleanup-retry" data-id="${esc(id)}">Retry storage cleanup</button></div></article>`);
+      }
     }catch(err){
+      if (!stillThisBind() || reqGen !== listRequestGen) return;
       uploadList.innerHTML=err?.status===401?'<p class="muted">Sign in from <a href="#/profile">Profile</a> to view your music drafts.</p>':`<p class="muted">Could not load drafts: ${esc(err?.message||'Unknown error')}</p>`;
     }
   };
+
+  uploadList?.addEventListener('click',async event=>{
+    const button=event.target.closest('.music-draft-delete,.music-draft-cleanup-retry');if(!button)return;
+    const isRetry=button.classList.contains('music-draft-cleanup-retry');
+    const id=String(button.dataset.id||'');
+    const uidAtClick=getLiveAuthMeUserId()||null;
+    if(!uidAtClick){toast('Sign in required');return;}
+    if(!MUSIC_DRAFT_ID_RE.test(id)){
+      writeMusicCleanupPending(uidAtClick, readMusicCleanupPending(uidAtClick).filter(x=>x!==id));
+      button.closest('article')?.remove();
+      toast('Invalid draft id');
+      return;
+    }
+    if(!isRetry && !confirm('Delete this private music draft?'))return;
+    if(button.dataset.busy==='1')return;
+    button.dataset.busy='1';
+    button.disabled=true;
+    const genAtClick=bindGen;
+    try{
+      const data=await musicUploadApi.deleteDraft(id);
+      const bindOk=genAtClick===musicBindGen;
+      const userOk=String(getLiveAuthMeUserId()||'')===String(uidAtClick);
+      if(data?.cleanup_pending || data?.retry_required){
+        // Persist under initiating user even if tab switched — recoverable for A, never shown to B.
+        writeMusicCleanupPending(uidAtClick, readMusicCleanupPending(uidAtClick).concat(id));
+        if(!bindOk || !userOk)return;
+        toast(data.message||'Storage delete failed — retry Delete to finish. No automatic cleanup.');
+        const card=button.closest('article');
+        if(card){
+          card.dataset.cleanupPending='1';
+          button.textContent='Retry storage cleanup';
+          button.classList.add('music-draft-cleanup-retry');
+          button.classList.remove('music-draft-delete');
+          button.disabled=false;
+          button.dataset.busy='0';
+        }
+        return;
+      }
+      writeMusicCleanupPending(uidAtClick, readMusicCleanupPending(uidAtClick).filter(x=>x!==id));
+      if(!bindOk || !userOk)return;
+      toast(isRetry?'Stored audio removed':'Music draft deleted');
+      await loadUploads();
+    }catch(err){
+      const bindOk=genAtClick===musicBindGen;
+      const userOk=String(getLiveAuthMeUserId()||'')===String(uidAtClick);
+      if(err?.status===404 || err?.status===409){
+        writeMusicCleanupPending(uidAtClick, readMusicCleanupPending(uidAtClick).filter(x=>x!==id));
+        if(!bindOk || !userOk)return;
+        button.closest('article')?.remove();
+        toast(err?.message||(err?.status===409?'Only private drafts can be deleted':'Draft not found'));
+        return;
+      }
+      if(!bindOk || !userOk)return;
+      toast(err?.message||'Could not delete music draft');
+      button.disabled=false;
+      button.dataset.busy='0';
+    }
+  });
+
   uploadForm?.addEventListener('submit',async event=>{
     event.preventDefault();
     const file=root.querySelector('#musicUploadFile')?.files?.[0];
@@ -479,11 +642,13 @@ export function bindMusic(root) {
         rightsCertified:!!root.querySelector('#musicUploadRights')?.checked,
         explicitContent:!!root.querySelector('#musicUploadExplicit')?.checked,
       });
+      if(!stillThisBind())return;
       if(uploadStatus)uploadStatus.textContent=`Draft uploaded: ${data.upload.title}. It is not published yet.`;
       toast('Music draft uploaded');
       uploadForm.reset();
       await loadUploads();
     }catch(err){
+      if(!stillThisBind())return;
       const messages={
         unauthenticated:'Sign in to upload music.',
         email_unverified:'Verify your email before uploading music.',

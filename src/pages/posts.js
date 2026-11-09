@@ -82,7 +82,7 @@ export function renderPersistentPosts(posts=[], { focusId='', currentHandle='' }
       <div class="meta">
         <div class="avatar">${esc((p.display_name || handle || '?')[0].toUpperCase())}</div>
         <div class="spacer">
-          <div class="who"><a href="#/user?h=${encodeURIComponent(handle)}" data-user-link="${esc(handle)}">@${esc(handle)}</a> <span class="chip">Persistent</span> <span class="chip">${esc(p.kind || 'text')}</span></div>
+          <div class="who"><a href="#/profile/${encodeURIComponent(handle)}" data-user-link="${esc(handle)}">@${esc(handle)}</a> <span class="chip">Persistent</span> <span class="chip">${esc(p.kind || 'text')}</span></div>
           <div class="when">${new Date(p.created_at).toLocaleString()}</div>
         </div>
         ${canFollow ? `<button class="btn ghost persistent-follow" data-handle="${esc(handle)}">Follow</button>` : ''}
@@ -270,7 +270,7 @@ export function renderPosts(route) {
     {
       lead: remote
         ? 'Persistent PIKK text posts · Discover and Following load from the backend. Media uploads are next.'
-        : 'Post Text, a Picture, Short, or Video · Shorts live here (not separate tabs) · Hot strip ranks engagement.',
+        : 'Demo · this browser only (localStorage) · Post Text, Picture, Short, or Video · not shared across devices.',
     }
   );
 }
@@ -353,6 +353,7 @@ export function bindPosts(root) {
       const media = (root.querySelector('#postImg')?.value || '').trim();
 
       if (remote) {
+        // API is authoritative: never fall back to localStorage createPost on failure.
         if (mediaType !== 'text') {
           return toast('Persistent Picture/Short/Video uploads are not connected yet');
         }

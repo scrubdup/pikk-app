@@ -28,3 +28,11 @@ test('engagement threshold updates are admin-gated and validated', () => {
   assert.match(setter, /Number\.isSafeInteger/);
   assert.match(setter, /refreshHotFeed\(\)/);
 });
+
+test('markEngagementAlertHandled is admin-gated (non-admin cannot handle)', () => {
+  const start = source.indexOf('export function markEngagementAlertHandled(');
+  const end = source.indexOf('export function markAlertHandled(', start);
+  const body = source.slice(start, end > start ? end : start + 500);
+  assert.ok(start >= 0);
+  assert.match(body, /if \(!isAdmin\(\)\) return \{ error: 'admin' \}/);
+});

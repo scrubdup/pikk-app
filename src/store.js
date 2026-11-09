@@ -524,6 +524,8 @@ export function updateProfile({ bio, avatar, username }) {
 export function setMembership(tier, on = true) {
   const user = state.user;
   if (!user) return { error: 'signin' };
+  // Paid membership cannot be self-granted in the browser when the API is configured.
+  if (isApiConfigured()) return { error: 'server_authoritative', membership: getMembership() };
 
   // Canonical demo field: user.membership = 'skeet+' | 'backstage' | 'inner' | null
   let membership = user.membership ?? null;
@@ -556,7 +558,41 @@ export function setMembership(tier, on = true) {
   return next;
 }
 
+/** True when the frontend is wired to the Worker API (not local demo-only). */
+export function isApiConfigured() {
+  const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
+  const apiBase = (typeof window !== 'undefined' && typeof window.__PIKK_API_BASE__ === 'string' && window.__PIKK_API_BASE__.trim())
+    || String(env.VITE_PIKK_API_BASE || '').trim();
+  return !!apiBase;
+}
+
+// Server membership from GET /memberships/me — never persisted to localStorage.
+let serverMembership = { status: 'inactive', plan: null, authoritative: true };
+export function setServerMembership(m) {
+  if (!m || typeof m !== 'object') {
+    serverMembership = { status: 'inactive', plan: null, authoritative: true };
+    return serverMembership;
+  }
+  serverMembership = {
+    status: m.status === 'active' ? 'active' : 'inactive',
+    plan: typeof m.plan === 'string' ? m.plan : null,
+    authoritative: true,
+    billing_configured: !!m.billing_configured,
+    activation: m.activation || 'not_available',
+    source: m.source || 'none',
+  };
+  return { ...serverMembership };
+}
+export function getServerMembership() {
+  return { ...serverMembership };
+}
+
 export function getMembership() {
+  // When API is configured, localStorage / demo user.membership is not authority.
+  if (isApiConfigured()) {
+    if (serverMembership.status === 'active' && serverMembership.plan) return serverMembership.plan;
+    return null;
+  }
   const user = state.user;
   if (!user) return null;
   if (user.membership) return user.membership;
@@ -6837,6 +6873,7 @@ export function listEngagementAlerts({ openOnly = true } = {}) {
 }
 
 export function markEngagementAlertHandled(id, note) {
+  if (!isAdmin()) return { error: 'admin' };
   const aid = String(id || '');
   if (!aid) return { error: 'missing' };
   const alerts = Array.isArray(state.engagementAlerts) ? state.engagementAlerts : [];

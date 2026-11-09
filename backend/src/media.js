@@ -6,11 +6,11 @@ import { auditStmt, audit } from './audit.js';
 import { newId, hex } from './crypto.js';
 import { contentRoute } from './media-content.js';
 import { NOT_BLOCKED_SQL } from './blocks.js';
-import { MEDIA_LIMITS, STORY_TTL_HOURS, ACCESS_POLICIES, UPLOAD_RATE, VAULT_VERSION } from './media-config.js';
+import { MEDIA_LIMITS, STORY_TTL_HOURS, ACCESS_POLICIES, UPLOAD_RATE, VAULT_VERSION, DELETE_R2_PENDING_ERR } from './media-config.js';
 import { sniff } from './magic.js';
 import { assertQuota, userUsage, storageRoute, stats } from './storage.js';
 import { startMultipart, multipartRoute } from './multipart.js';
-import { backupRoute, backupHealth } from './backup.js';
+import { backupRoute, backupHealth, purgeBackupForMedia } from './backup.js';
 import { VAULT_QUOTA } from './media-config.js';
 import { enqueueStmts, getProcessor, processingRoute, processingHealth } from './processing.js';
 import { vaultKey, vaultDeleteFor, vaultPutFor, assertVaultKeyFor } from './vault-keys.js';
@@ -31,7 +31,16 @@ function storage(env) {
 }
 
 async function setState(env, id, state, err = null) {
-  await env.DB.prepare(`UPDATE media SET state=?, last_error=?, updated_at=? WHERE id=?`).bind(state, err, now(), id).run();
+  await env.DB.prepare(`UPDATE media SET state=?, last_error=?, updated_at=? WHERE id=? AND deleted_at IS NULL`).bind(state, err, now(), id).run();
+}
+
+/** Map internal last_error to a safe owner-facing message (no paths/keys/stacks). */
+function safeOwnerError(lastError) {
+  const msg = String(lastError || '');
+  if (/size mismatch/i.test(msg)) return 'Stored size did not match';
+  if (/content does not match/i.test(msg)) return 'File type did not match';
+  if (/object missing/i.test(msg)) return 'Upload incomplete';
+  return 'Processing failed';
 }
 
 function view(r) {
@@ -40,7 +49,7 @@ function view(r) {
     created_at: r.created_at, ready_at: r.ready_at,
     width: r.width ?? null, height: r.height ?? null, duration_ms: r.duration_ms ?? null,
     thumbnail: r.thumbnail_state || 'unavailable_pending_provider', variants: r.variants_state || 'unavailable_pending_provider',
-    error: r.state === 'failed' ? r.last_error : undefined };
+    error: r.state === 'failed' ? safeOwnerError(r.last_error) : undefined };
 }
 
 async function createUpload(env, req, ctx) {
@@ -100,7 +109,14 @@ async function putUpload(env, req, ctx, id) {
     throw new ApiError(422, 'size_mismatch', 'Stored size mismatch');
   }
   const t = now();
-  await env.DB.prepare(`UPDATE media SET state='uploaded', uploaded_at=?, updated_at=? WHERE id=?`).bind(t, t, id).run();
+  const claimed = await env.DB.prepare(
+    `UPDATE media SET state='uploaded', uploaded_at=?, updated_at=? WHERE id=? AND state='pending_upload' AND deleted_at IS NULL`
+  ).bind(t, t, id).run();
+  if ((claimed?.meta?.changes ?? 0) !== 1) {
+    // Lost race with cleanup/cancel — remove orphan object; do not resurrect the row.
+    await vaultDeleteFor(storage(env), r.object_key, r);
+    throw new ApiError(409, 'invalid_state', 'Upload is no longer accepting data');
+  }
   return json(200, { media: { id, state: 'uploaded' } });
 }
 
@@ -126,12 +142,13 @@ async function complete(env, req, ctx, id) {
   await full.body.pipeTo(digest);
   const checksum = hex(await digest.digest);
   const t = now();
-  const job = enqueueStmts(env, id);
-  await env.DB.batch([
-    env.DB.prepare(`UPDATE media SET checksum_sha256=?, detected_content_type=?, updated_at=? WHERE id=?`).bind(checksum, found.contentType, t, id),
-    ...job.stmts,
-    auditStmt(env, { actor: s.user.id, action: 'media.processing', target: id, ip: clientIp(req), meta: { sha256: checksum, job: job.id } }),
-  ]);
+  const job = enqueueStmts(env, id, { checksum, contentType: found.contentType });
+  // CAS first; job INSERT is EXISTS-gated inside enqueueStmts. Audit only if CAS won.
+  const results = await env.DB.batch(job.stmts);
+  if ((results[0]?.meta?.changes ?? 0) !== 1 || (results[1]?.meta?.changes ?? 0) !== 1) {
+    throw new ApiError(409, 'invalid_state', 'Upload is no longer completable');
+  }
+  await audit(env, { actor: s.user.id, action: 'media.processing', target: id, ip: clientIp(req), meta: { sha256: checksum, job: job.id } });
   getProcessor().enqueue(env, job.id, ctx); // in-Worker: ctx.waitUntil; never blocks the response
   // Not playable until the job marks it ready (content routes require state 'ready').
   return json(202, { media: view({ ...r, state: 'processing', checksum_sha256: checksum, detected_content_type: found.contentType }), job: { id: job.id, state: 'queued' } });
@@ -162,6 +179,130 @@ async function getMedia(env, ctx, id) {
   return json(200, { media: pub });
 }
 
+/** Opaque cursor: base64url("created_at\\nid"). Tie-break on id for identical timestamps. */
+function encodeMediaCursor(row) {
+  const raw = `${row.created_at}\n${row.id}`;
+  const b64 = btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return b64;
+}
+function decodeMediaCursor(raw) {
+  if (raw == null || raw === '') return null;
+  const s = String(raw);
+  if (s.length > 256 || /[^A-Za-z0-9_-]/.test(s)) throw new ApiError(400, 'invalid_cursor', 'Invalid cursor');
+  let decoded;
+  try {
+    const pad = '='.repeat((4 - (s.length % 4)) % 4);
+    decoded = atob(s.replace(/-/g, '+').replace(/_/g, '/') + pad);
+  } catch {
+    throw new ApiError(400, 'invalid_cursor', 'Invalid cursor');
+  }
+  const i = decoded.indexOf('\n');
+  if (i <= 0) throw new ApiError(400, 'invalid_cursor', 'Invalid cursor');
+  const created_at = decoded.slice(0, i);
+  const id = decoded.slice(i + 1);
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(created_at) || !/^med_/.test(id)) {
+    throw new ApiError(400, 'invalid_cursor', 'Invalid cursor');
+  }
+  return { created_at, id };
+}
+
+async function listMine(env, req, ctx) {
+  const s = requireVerified(ctx);
+  const url = new URL(req.url);
+  let limit = Number(url.searchParams.get('limit') || 50);
+  if (!Number.isSafeInteger(limit) || limit < 1) limit = 50;
+  if (limit > 100) limit = 100;
+  // Ignore foreign owner_id query params — session owner only.
+  const cursor = decodeMediaCursor(url.searchParams.get('cursor') || url.searchParams.get('before'));
+  let rows;
+  if (cursor) {
+    rows = (await env.DB.prepare(
+      `SELECT * FROM media WHERE owner_id=? AND deleted_at IS NULL
+        AND (created_at < ? OR (created_at = ? AND id < ?))
+        ORDER BY created_at DESC, id DESC LIMIT ?`
+    ).bind(s.user.id, cursor.created_at, cursor.created_at, cursor.id, limit + 1).all()).results;
+  } else {
+    rows = (await env.DB.prepare(
+      `SELECT * FROM media WHERE owner_id=? AND deleted_at IS NULL
+        ORDER BY created_at DESC, id DESC LIMIT ?`
+    ).bind(s.user.id, limit + 1).all()).results;
+  }
+  let next_cursor = null;
+  if (rows.length > limit) {
+    const last = rows[limit - 1];
+    rows = rows.slice(0, limit);
+    next_cursor = encodeMediaCursor(last);
+  }
+  return json(200, { media: rows.map(view), count: rows.length, next_cursor });
+}
+
+/**
+ * Owner-only delete of READY media. Claim (CAS) before primary+backup storage delete.
+ * Soft-delete tombstone is durable even if R2/backup purge fails → 202 cleanup_pending
+ * (does not claim all bytes erased). Sweeper retries with owner-delete provenance.
+ * Also drops media_backups row and MEDIA_BACKUP object for this row only.
+ * Unfinished uploads use DELETE /media/uploads/:id (cancel), not this route.
+ */
+async function deleteReady(env, req, ctx, id) {
+  const s = requireVerified(ctx);
+  const r = await env.DB.prepare(
+    `SELECT * FROM media WHERE id=? AND owner_id=? AND deleted_at IS NULL`
+  ).bind(id, s.user.id).first();
+  if (!r) throw notFound();
+  if (r.state !== 'ready') {
+    throw new ApiError(409, 'invalid_state', 'Only ready media can be deleted here; cancel unfinished uploads instead');
+  }
+  const t = now();
+  const claim = await env.DB.prepare(
+    `UPDATE media SET state='deleted', deleted_at=?, last_error='deleted by owner', updated_at=?
+      WHERE id=? AND owner_id=? AND deleted_at IS NULL AND state='ready'`
+  ).bind(t, t, id, s.user.id).run();
+  if ((claim?.meta?.changes ?? 0) !== 1) {
+    throw new ApiError(409, 'invalid_state', 'Only ready media can be deleted here');
+  }
+  // Fail in-flight processing jobs if any race left one (ready normally has none).
+  await env.DB.prepare(
+    `UPDATE processing_jobs SET state='failed', last_error='media deleted', finished_at=?, updated_at=?
+      WHERE media_id=? AND state IN ('queued','running')`
+  ).bind(t, t, id).run();
+
+  // Primary + backup cleanup. Soft-delete is durable even if R2/backup purge fails (202 cleanup_pending).
+  // Do not claim all bytes erased until both succeed; sweeper retries with owner-delete provenance.
+  let cleanupPending = false;
+  if (env.MEDIA) {
+    try { await vaultDeleteFor(env.MEDIA, r.object_key, r); }
+    catch (e) { cleanupPending = true; }
+  }
+  try { await purgeBackupForMedia(env, r); }
+  catch (e) { cleanupPending = true; }
+  if (cleanupPending) {
+    await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
+      .bind(DELETE_R2_PENDING_ERR, t, id).run();
+  }
+  await audit(env, {
+    actor: s.user.id,
+    action: 'media.deleted',
+    target: id,
+    ip: clientIp(req),
+    meta: {
+      prior_state: 'ready',
+      cleanup_pending: cleanupPending,
+      size_bytes: r.size_bytes,
+      // Honest: 202 means library tombstone is set; primary/backup byte erasure may still be queued.
+      storage_erased: !cleanupPending,
+    },
+  });
+  if (cleanupPending) {
+    return json(202, {
+      media: {
+        id, state: 'deleted', deleted: true, cleanup_pending: true,
+        message: 'Removed from your library; storage cleanup is still pending',
+      },
+    });
+  }
+  return json(200, { media: { id, state: 'deleted', deleted: true, cleanup_pending: false } });
+}
+
 async function usersOverAlert(env) {
   const r = await env.DB.prepare(
     `SELECT COUNT(*) AS n FROM (SELECT m.owner_id, SUM(m.size_bytes) AS b, COALESCE(o.max_bytes, ?1) AS q FROM media m LEFT JOIN vault_quota_overrides o ON o.user_id=m.owner_id
@@ -179,12 +320,31 @@ async function health(env, ctx) {
   const by = { pending_upload: 0, uploaded: 0, processing: 0, ready: 0, rejected: 0, failed: 0, deleted: 0 };
   for (const c of counts.results) by[c.state] = c.n;
   const last = await env.DB.prepare(`SELECT id, state, last_error, updated_at FROM media WHERE last_error IS NOT NULL ORDER BY updated_at DESC LIMIT 1`).first();
+  const quarantined = (await env.DB.prepare(
+    `SELECT id, owner_id, state, last_error, updated_at, object_key FROM media
+      WHERE state='deleted' AND last_error LIKE 'cleanup: quarantined:%'
+      ORDER BY updated_at DESC LIMIT 25`
+  ).all()).results;
+  const pendingR2 = (await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM media WHERE state='deleted' AND last_error LIKE '%r2 delete pending%'`
+  ).first()).n;
   return json(200, {
     status: reachable ? 'ok' : 'degraded',
     version: VAULT_VERSION,
     checked_at: now(),
     storage: { binding: 'MEDIA', configured, reachable, error: storageError },
     counts_by_state: by,
+    cleanup: {
+      r2_pending: pendingR2,
+      quarantined_count: quarantined.length >= 25
+        ? (await env.DB.prepare(`SELECT COUNT(*) AS n FROM media WHERE state='deleted' AND last_error LIKE 'cleanup: quarantined:%'`).first()).n
+        : quarantined.length,
+      quarantined_sample: quarantined.map((q) => ({
+        id: q.id, owner_id: q.owner_id, last_error: q.last_error, updated_at: q.updated_at,
+        // object_key for operator local tooling only — admin.access required for this route
+        object_key: q.object_key,
+      })),
+    },
     last_error: last ? { media_id: last.id, state: last.state, message: last.last_error, at: last.updated_at } : null,
     ...(await processingHealth(env)), // slice 3, additive
     // slice 4, additive
@@ -199,6 +359,8 @@ async function health(env, ctx) {
 export async function mediaRoute(env, req, ctx, m, p) {
   let mm;
   if (m === 'GET' && p === '/vault/health') return health(env, ctx);
+  if (m === 'GET' && p === '/media') return listMine(env, req, ctx);
+  if (m === 'DELETE' && (mm = p.match(new RegExp(`^/media/${ID}$`)))) return deleteReady(env, req, ctx, mm[1]);
   if (m === 'POST' && p === '/media/uploads') return createUpload(env, req, ctx);
   if (m === 'PUT' && (mm = p.match(new RegExp(`^/media/uploads/${ID}$`)))) return putUpload(env, req, ctx, mm[1]);
   if (m === 'POST' && (mm = p.match(new RegExp(`^/media/${ID}/complete$`)))) return complete(env, req, ctx, mm[1]);
