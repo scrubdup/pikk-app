@@ -10,7 +10,7 @@ import { MEDIA_LIMITS, STORY_TTL_HOURS, ACCESS_POLICIES, UPLOAD_RATE, VAULT_VERS
 import { sniff } from './magic.js';
 import { assertQuota, userUsage, storageRoute, stats } from './storage.js';
 import { startMultipart, multipartRoute } from './multipart.js';
-import { backupRoute, backupHealth } from './backup.js';
+import { backupRoute, backupHealth, purgeBackupForMedia } from './backup.js';
 import { VAULT_QUOTA } from './media-config.js';
 import { enqueueStmts, getProcessor, processingRoute, processingHealth } from './processing.js';
 import { vaultKey, vaultDeleteFor, vaultPutFor, assertVaultKeyFor } from './vault-keys.js';
@@ -237,8 +237,10 @@ async function listMine(env, req, ctx) {
 }
 
 /**
- * Owner-only delete of READY media. Claim (CAS) before R2 delete.
- * Soft-delete succeeds even if R2 fails → 202 cleanup_pending with shared sweeper marker.
+ * Owner-only delete of READY media. Claim (CAS) before primary+backup storage delete.
+ * Soft-delete tombstone is durable even if R2/backup purge fails → 202 cleanup_pending
+ * (does not claim all bytes erased). Sweeper retries with owner-delete provenance.
+ * Also drops media_backups row and MEDIA_BACKUP object for this row only.
  * Unfinished uploads use DELETE /media/uploads/:id (cancel), not this route.
  */
 async function deleteReady(env, req, ctx, id) {
@@ -264,24 +266,39 @@ async function deleteReady(env, req, ctx, id) {
       WHERE media_id=? AND state IN ('queued','running')`
   ).bind(t, t, id).run();
 
+  // Primary + backup cleanup. Soft-delete is durable even if R2/backup purge fails (202 cleanup_pending).
+  // Do not claim all bytes erased until both succeed; sweeper retries with owner-delete provenance.
   let cleanupPending = false;
   if (env.MEDIA) {
     try { await vaultDeleteFor(env.MEDIA, r.object_key, r); }
-    catch (e) {
-      await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
-        .bind(DELETE_R2_PENDING_ERR, t, id).run();
-      cleanupPending = true;
-    }
+    catch (e) { cleanupPending = true; }
+  }
+  try { await purgeBackupForMedia(env, r); }
+  catch (e) { cleanupPending = true; }
+  if (cleanupPending) {
+    await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
+      .bind(DELETE_R2_PENDING_ERR, t, id).run();
   }
   await audit(env, {
     actor: s.user.id,
     action: 'media.deleted',
     target: id,
     ip: clientIp(req),
-    meta: { prior_state: 'ready', cleanup_pending: cleanupPending, size_bytes: r.size_bytes },
+    meta: {
+      prior_state: 'ready',
+      cleanup_pending: cleanupPending,
+      size_bytes: r.size_bytes,
+      // Honest: 202 means library tombstone is set; primary/backup byte erasure may still be queued.
+      storage_erased: !cleanupPending,
+    },
   });
   if (cleanupPending) {
-    return json(202, { media: { id, state: 'deleted', deleted: true, cleanup_pending: true } });
+    return json(202, {
+      media: {
+        id, state: 'deleted', deleted: true, cleanup_pending: true,
+        message: 'Removed from your library; storage cleanup is still pending',
+      },
+    });
   }
   return json(200, { media: { id, state: 'deleted', deleted: true, cleanup_pending: false } });
 }

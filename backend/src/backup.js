@@ -40,6 +40,14 @@ export async function runBackup(env, trigger = 'cron') {
       const key = vaultBackupKey(m.object_key); // objects/vault/<type>/<owner>/<id>
       // R2 verifies the sha256 on write; a corrupted source fails here instead of producing a bad backup.
       await env.MEDIA_BACKUP.put(key, src.body, { sha256: m.checksum_sha256, customMetadata: { media_id: m.id, sha256: m.checksum_sha256 } });
+      // Concurrent owner-delete may have claimed the row while we copied — never record/keep a backup for deleted media.
+      const still = await env.DB.prepare(
+        `SELECT 1 AS ok FROM media WHERE id=? AND owner_id=? AND state='ready' AND deleted_at IS NULL`
+      ).bind(m.id, m.owner_id).first();
+      if (!still) {
+        try { await env.MEDIA_BACKUP.delete(key); } catch { /* best-effort */ }
+        continue;
+      }
       await env.DB.prepare(`INSERT INTO media_backups(media_id,backup_key,checksum_sha256,size_bytes,run_id,backed_up_at) VALUES (?,?,?,?,?,?)
         ON CONFLICT(media_id) DO UPDATE SET backup_key=excluded.backup_key, checksum_sha256=excluded.checksum_sha256, size_bytes=excluded.size_bytes, run_id=excluded.run_id, backed_up_at=excluded.backed_up_at`)
         .bind(m.id, key, m.checksum_sha256, m.size_bytes, id, now()).run();
@@ -72,6 +80,23 @@ export async function runBackup(env, trigger = 'cron') {
 /** Backup copy key for a Vault object: objects/vault/<type>/<owner>/<id>. Refuses non-vault keys. */
 export function vaultBackupKey(objectKey) { return BACKUP.objectPrefix + assertVaultKey(objectKey); }
 
+/**
+ * Remove the backup object + media_backups row for THIS media row only.
+ * Key is derived from row.object_key after assertVaultKeyFor — never trusts client-supplied backup keys.
+ * Returns { ok:true } or throws on backup R2 failure (caller marks cleanup_pending).
+ * Idempotent if backup already absent.
+ */
+export async function purgeBackupForMedia(env, row) {
+  if (!row || typeof row.id !== 'string' || !row.id) throw new VaultKeyError(row && row.object_key);
+  assertVaultKeyFor(row.object_key, row);
+  const bkey = vaultBackupKey(row.object_key);
+  if (env.MEDIA_BACKUP) {
+    await env.MEDIA_BACKUP.delete(bkey);
+  }
+  await env.DB.prepare(`DELETE FROM media_backups WHERE media_id=?`).bind(row.id).run();
+  return { backup_key: bkey, purged: true };
+}
+
 export async function restoreBackup({ sourceBucket, targetDb, targetBucket, manifestKey }) {
   if (!sourceBucket || !targetDb || !targetBucket) throw new Error('restore requires explicit sourceBucket, targetDb and targetBucket');
   let key = manifestKey;
@@ -80,7 +105,7 @@ export async function restoreBackup({ sourceBucket, targetDb, targetBucket, mani
   if (!mo) throw new Error('manifest not found');
   const man = await mo.json();
   if (man.format !== 'pikk-vault-backup-manifest/1') throw new Error('unsupported manifest format');
-  const report = { manifest_key: key, run_id: man.run_id, restored: 0, verified: 0, skipped_missing_owner: [], skipped_invalid: [], errors: [] };
+  const report = { manifest_key: key, run_id: man.run_id, restored: 0, verified: 0, skipped_missing_owner: [], skipped_invalid: [], skipped_owner_deleted: [], skipped_missing_backup: [], errors: [] };
   for (const e of man.entries) {
     // An entry must carry a non-empty string id: otherwise skip it as invalid (no object write, no row insert).
     if (!e || typeof e !== 'object' || typeof e.id !== 'string' || e.id === '') { report.skipped_invalid.push({ object_key: e && e.object_key, reason: 'missing id' }); continue; }
@@ -89,12 +114,23 @@ export async function restoreBackup({ sourceBucket, targetDb, targetBucket, mani
       if (!owner) { report.skipped_missing_owner.push(e.id); continue; }
       assertVaultKeyFor(e.object_key, e); // manifest entry's key must match its own owner_id/media_type/id
       if (e.backup_key !== vaultBackupKey(e.object_key)) throw new VaultKeyError(e.backup_key);
+      // Never resurrect an owner-deleted tombstone already present in the target DB.
+      const tomb = await targetDb.prepare(
+        `SELECT state, deleted_at, last_error, owner_id FROM media WHERE id=?`
+      ).bind(e.id).first();
+      if (tomb && tomb.deleted_at && tomb.owner_id === e.owner_id
+          && (/deleted by owner/i.test(String(tomb.last_error || '')) || /owner delete/i.test(String(tomb.last_error || '')))) {
+        report.skipped_owner_deleted.push(e.id);
+        continue;
+      }
       // Never overwrite another owner's row/object: any existing row with this id or key must be the same owner+key.
-      const clash = (await targetDb.prepare(`SELECT id, owner_id, object_key FROM media WHERE id=? OR object_key=?`).bind(e.id, e.object_key).all()).results
+      const clash = (await targetDb.prepare(`SELECT id, owner_id, object_key, deleted_at, last_error FROM media WHERE id=? OR object_key=?`).bind(e.id, e.object_key).all()).results
         .find(x => x.owner_id !== e.owner_id || x.id !== e.id || x.object_key !== e.object_key);
       if (clash) throw new VaultKeyError(e.object_key);
+      // If an existing same-owner tombstone somehow matched above incompletely, still refuse REPLACE over deleted_at.
+      if (tomb && tomb.deleted_at) { report.skipped_owner_deleted.push(e.id); continue; }
       const src = await sourceBucket.get(e.backup_key);
-      if (!src) throw new Error('backup object missing');
+      if (!src) { report.skipped_missing_backup.push(e.id); continue; }
       await vaultPutFor(targetBucket, e.object_key, e, src.body, { sha256: e.checksum_sha256, httpMetadata: { contentType: 'application/octet-stream' } });
       const cols = MEDIA_COLS;
       await targetDb.prepare(`INSERT OR REPLACE INTO media(${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).bind(...cols.map(c => e[c] ?? null)).run();

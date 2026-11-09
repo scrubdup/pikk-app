@@ -49,6 +49,6 @@ export const BACKUP = Object.freeze({
   batchLimit: 200,              // objects copied per run (cron catches up on later runs)
   manifestPrefix: 'manifests/',
   objectPrefix: 'objects/',
-  retentionDays: 30,            // documented policy placeholder; deletion of backup copies is NOT automated yet
+  retentionDays: 30,            // placeholder for non-deleted historical backup-run retention; owner-delete prunes that media's backup object+row (not a restore/undelete policy)
   rpoHours: 24, rtoHours: 24,   // targets (planned), not measured
 });

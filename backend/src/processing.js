@@ -1,4 +1,5 @@
 import { vaultDeleteFor, assertVaultKeyFor, isNoSuchUpload, VaultKeyError } from './vault-keys.js';
+import { purgeBackupForMedia } from './backup.js';
 // PIKK Vault slice 3: processing pipeline, Story expiry sweeper, admin controls.
 // Processor runs in-Worker via ctx.waitUntil behind a pluggable interface so Cloudflare Queues can replace it later
 // (owner approval + paid plan required for Queues; not used here).
@@ -193,6 +194,8 @@ async function finishAbandonedR2(env, r, t) {
   const err = String(r.last_error || '');
   const fromCancel = /cancel/i.test(err);
   const fromOwnerDelete = /owner delete/i.test(err) || /^deleted by owner/i.test(err);
+  // Owner-delete retries also purge MEDIA_BACKUP object + media_backups row (same row only).
+  if (fromOwnerDelete) await purgeBackupForMedia(env, r);
   let doneErr = R2_DONE_ERR;
   if (fromCancel) doneErr = 'cancelled by owner';
   else if (fromOwnerDelete) doneErr = 'deleted by owner';
