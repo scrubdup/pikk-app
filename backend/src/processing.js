@@ -8,7 +8,7 @@ import { auditStmt, audit } from './audit.js';
 import { newId } from './crypto.js';
 import { sniff } from './magic.js';
 import { probe } from './probe.js';
-import { MEDIA_LIMITS, PROCESSING } from './media-config.js';
+import { MEDIA_LIMITS, PROCESSING, PENDING_UPLOAD_TTL_HOURS } from './media-config.js';
 
 const now = () => new Date().toISOString();
 export const JOB_STATES = ['queued', 'running', 'succeeded', 'failed'];
@@ -133,6 +133,38 @@ async function reclaimStuck(env) {
   ]);
 }
 
+
+/** Soft-delete abandoned unfinished uploads (pending_upload / uploaded) older than PENDING_UPLOAD_TTL_HOURS.
+ * Frees quota reservations and removes any partial R2 object. Does not touch ready/processing media.
+ * Bound to vault keys only via vaultDeleteFor.
+ */
+export async function cleanupAbandonedUploads(env, { limit = PROCESSING.sweepLimit, nowMs = Date.now() } = {}) {
+  const cutoff = new Date(nowMs - PENDING_UPLOAD_TTL_HOURS * 3600e3).toISOString();
+  const t = now();
+  const rows = (await env.DB.prepare(
+    `SELECT id, object_key, owner_id, media_type, state FROM media
+      WHERE deleted_at IS NULL AND state IN ('pending_upload','uploaded') AND created_at < ?
+      ORDER BY created_at ASC LIMIT ?`
+  ).bind(cutoff, limit).all()).results;
+  let deleted = 0; let errors = 0;
+  for (const r of rows) {
+    try {
+      if (env.MEDIA) await vaultDeleteFor(env.MEDIA, r.object_key, r);
+      const ses = await env.DB.prepare(`SELECT r2_upload_id, state FROM media_multipart WHERE media_id=?`).bind(r.id).first();
+      if (ses && ses.state === 'active' && env.MEDIA) {
+        try { await env.MEDIA.resumeMultipartUpload(r.object_key, ses.r2_upload_id).abort(); } catch { /* already gone */ }
+      }
+      await env.DB.batch([
+        env.DB.prepare(`UPDATE media SET state='deleted', deleted_at=?, last_error='abandoned upload cleanup', updated_at=? WHERE id=? AND deleted_at IS NULL AND state IN ('pending_upload','uploaded')`).bind(t, t, r.id),
+        env.DB.prepare(`UPDATE media_multipart SET state='aborted', updated_at=? WHERE media_id=? AND state='active'`).bind(t, r.id),
+        auditStmt(env, { action: 'media.upload_abandoned', target: r.id, meta: { owner: r.owner_id, prior_state: r.state, object_deleted: !!env.MEDIA } }),
+      ]);
+      deleted++;
+    } catch (e) { errors++; console.error('abandoned upload cleanup failed', r.id, e && e.message); }
+  }
+  return { at: t, scanned: rows.length, deleted, errors, cutoff };
+}
+
 // ---- Story expiry sweeper (cron) ----
 export async function sweepExpiredStories(env, { limit = PROCESSING.sweepLimit } = {}) {
   const t = now();
@@ -157,9 +189,10 @@ export async function sweepExpiredStories(env, { limit = PROCESSING.sweepLimit }
 /** Cron entry point: sweep stories, reclaim stuck jobs, drain due jobs (retries with backoff). */
 export async function scheduledTick(env) {
   const sweep = await sweepExpiredStories(env);
+  const abandoned = await cleanupAbandonedUploads(env);
   await reclaimStuck(env);
   const drain = await drainJobs(env);
-  return { sweep, drain };
+  return { sweep, abandoned, drain };
 }
 
 // ---- admin controls (admin.access, audited) ----

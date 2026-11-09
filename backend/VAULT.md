@@ -24,3 +24,21 @@
 - Restore: `restoreBackup({sourceBucket,targetDb,targetBucket})` into an ISOLATED D1+R2 only; verifies size+sha256; skips (reports) entries whose owner is absent. Users come from D1 Time Travel/export. Not exposed over HTTP.
 - Planned, not done: backup retention deletion (policy 30 days), measured RPO/RTO, production restore drill, cost source. Thumbnails remain `unavailable_pending_provider` (paid Images).
 - LOCAL ONLY: `MEDIA` and `MEDIA_BACKUP` are placeholder buckets; nothing provisioned.
+
+## Abandoned unfinished uploads (cleanup)
+- Cron path `cleanupAbandonedUploads` (via `scheduledTick` / `runVaultCron` when `VAULT_CRON_ENABLED=true` and MEDIA is bound) soft-deletes `pending_upload` and `uploaded` rows older than `PENDING_UPLOAD_TTL_HOURS` (24h), aborts active multipart, deletes the vault R2 object, writes `media.upload_abandoned` audit.
+- Owner cancel remains `DELETE /media/uploads/:id` (immediate). Ready/processing media is never touched by this sweeper.
+- Stats still report `stale_pending_uploads_24h` for operators.
+
+## Media processing audit (what exists vs missing)
+| Capability | Status |
+|---|---|
+| Magic-byte sniff + declared MIME match on complete | Implemented |
+| SHA-256 checksum of stored object | Implemented |
+| In-Worker probe job (dimensions / some durations) | Implemented (PNG/GIF/WebP/JPEG dims; WAV/FLAC/MP4/MOV/M4A duration; MP3/OGG/WebM duration=null) |
+| State machine pending→uploaded→processing→ready/failed/rejected | Implemented |
+| Story TTL soft-delete sweeper | Implemented (cron gated) |
+| Thumbnails / image variants | **NOT implemented** — `unavailable_pending_provider` (paid Images) |
+| Video transcoding / adaptive variants | **NOT implemented** — `unavailable_pending_provider` |
+| Cloudflare Queues processor | Not used (swap point exists; needs owner approval) |
+| Stream / Images paid providers | Not integrated |
