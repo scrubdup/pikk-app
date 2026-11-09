@@ -1,4 +1,10 @@
 import { vaultDeleteFor, assertVaultKeyFor } from './vault-keys.js';
+
+function isNoSuchUpload(err) {
+  const msg = String(err && (err.message || err) || '');
+  return /no such upload|nosuchupload|not.?found|does not exist|404/i.test(msg);
+}
+
 // PIKK Vault slice 4: resumable uploads via R2 multipart, bounded per-part retry, cancel.
 import { ApiError, json, clientIp } from './http.js';
 import { requireVerified } from './auth.js';
@@ -106,11 +112,17 @@ async function completeParts(env, req, ctx, id) {
     ]);
     throw new ApiError(422, 'size_mismatch', 'Stored size mismatch');
   }
-  await env.DB.batch([
-    env.DB.prepare(`UPDATE media SET state='uploaded', uploaded_at=?, updated_at=? WHERE id=?`).bind(t, t, id),
-    env.DB.prepare(`UPDATE media_multipart SET state='completed', updated_at=? WHERE media_id=?`).bind(t, id),
+  const results = await env.DB.batch([
+    env.DB.prepare(
+      `UPDATE media SET state='uploaded', uploaded_at=?, updated_at=? WHERE id=? AND state='pending_upload' AND deleted_at IS NULL`
+    ).bind(t, t, id),
+    env.DB.prepare(`UPDATE media_multipart SET state='completed', updated_at=? WHERE media_id=? AND state='active'`).bind(t, id),
     auditStmt(env, { actor: s.user.id, action: 'media.multipart_assembled', target: id, ip: clientIp(req), meta: { parts: ses.part_count } }),
   ]);
+  if ((results[0]?.meta?.changes ?? 0) !== 1) {
+    await vaultDeleteFor(bucket(env), r.object_key, r);
+    throw new ApiError(409, 'invalid_state', 'Upload is no longer accepting data');
+  }
   // Same validation path as single PUT: client calls POST /media/:id/complete next (sniff + checksum + processing).
   return json(200, { media: { id, state: 'uploaded' }, next: `/media/${id}/complete` });
 }
@@ -120,17 +132,38 @@ async function cancel(env, req, ctx, id) {
   const { s, r } = await owned(env, ctx, id);
   if (!['pending_upload', 'uploaded'].includes(r.state)) throw new ApiError(409, 'invalid_state', 'Only unfinished uploads can be cancelled');
   const ses = await env.DB.prepare(`SELECT * FROM media_multipart WHERE media_id=?`).bind(id).first();
-  if (ses && ses.state === 'active') {
-    try { await bucket(env).resumeMultipartUpload(r.object_key, ses.r2_upload_id).abort(); } catch { /* already gone */ }
-  }
-  if (env.MEDIA) await vaultDeleteFor(env.MEDIA, r.object_key, r); // bound to this row; never a raw delete
   const t = now();
-  await env.DB.batch([
-    env.DB.prepare(`UPDATE media SET state='deleted', deleted_at=?, last_error='cancelled by owner', updated_at=? WHERE id=?`).bind(t, t, id),
-    env.DB.prepare(`UPDATE media_multipart SET state='aborted', updated_at=? WHERE media_id=?`).bind(t, id),
-    auditStmt(env, { actor: s.user.id, action: 'media.upload_cancelled', target: id, ip: clientIp(req) }),
-  ]);
-  return json(200, { media: { id, state: 'deleted', cancelled: true } });
+  // Claim the row first so a racing PUT cannot resurrect it.
+  const claim = await env.DB.prepare(
+    `UPDATE media SET state='deleted', deleted_at=?, last_error='cancelled by owner', updated_at=? WHERE id=? AND deleted_at IS NULL AND state IN ('pending_upload','uploaded')`
+  ).bind(t, t, id).run();
+  if ((claim?.meta?.changes ?? 0) !== 1) throw new ApiError(409, 'invalid_state', 'Only unfinished uploads can be cancelled');
+
+  let multipartAborted = false;
+  if (ses && ses.state === 'active') {
+    try {
+      await bucket(env).resumeMultipartUpload(r.object_key, ses.r2_upload_id).abort();
+      multipartAborted = true;
+    } catch (e) {
+      if (isNoSuchUpload(e)) multipartAborted = true;
+      else {
+        // Transient R2 failure: keep multipart active for retry; object delete still attempted below.
+        multipartAborted = false;
+      }
+    }
+  }
+  if (env.MEDIA) {
+    try { await vaultDeleteFor(env.MEDIA, r.object_key, r); }
+    catch (e) {
+      await env.DB.prepare(`UPDATE media SET last_error=? WHERE id=?`).bind('cancel: r2 delete pending', id).run();
+      throw e;
+    }
+  }
+  if (multipartAborted) {
+    await env.DB.prepare(`UPDATE media_multipart SET state='aborted', updated_at=? WHERE media_id=? AND state='active'`).bind(t, id).run();
+  }
+  await audit(env, { actor: s.user.id, action: 'media.upload_cancelled', target: id, ip: clientIp(req), meta: { multipart_aborted: multipartAborted } });
+  return json(200, { media: { id, state: 'deleted', cancelled: true, multipart_aborted: multipartAborted } });
 }
 
 export async function multipartRoute(env, req, ctx, m, p, ID) {

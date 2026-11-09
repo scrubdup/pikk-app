@@ -19,7 +19,7 @@ import {
 import { esc, shellPage, toast, ytEmbedSrc } from '../ui.js';
 import { navigate } from '../router.js';
 import { resolveMediaSrc } from '../media-db.js';
-import { isVaultApiConfigured } from '../api/vault-client.js';
+import { isVaultApiConfigured, fetchVaultMediaStorageReady } from '../api/vault-client.js';
 import { bindPageYoutubeEmbeds } from '../player.js';
 import { musicUploadApi, isMusicUploadApiConfigured } from '../api/music-upload-client.js';
 
@@ -114,7 +114,7 @@ function renderVaultCards(unlocked) {
       <article class="vault-card unlocked" data-id="${esc(item.id)}">
         <img src="${esc(item.cover)}" alt="${esc(item.title)}" />
         <div class="vault-meta">
-          <span class="chip" style="border-color:#2a4a3a;color:#8dffb0">Unlocked</span>
+          <span class="chip" style="border-color:var(--line);color:var(--tx)">Unlocked</span>
           <strong>${esc(item.title)}</strong>
           <div class="muted" style="font-size:12px">${esc(item.artist)} · ${esc(item.status)}</div>
           <div class="muted" style="font-size:11px">Requires ${esc(vaultTier(item.tier))} · no audio yet</div>
@@ -415,10 +415,8 @@ export function renderMusic(route = {}) {
     </div>
 
     <div class="card" id="vault">
-      <h2>Vault ${vaultOk ? '<span class="chip" style="border-color:#2a4a3a;color:#8dffb0">Unlocked · ' + esc(tierLabel(membership)) + '</span>' : '<span class="chip">Locked</span>'}</h2>
-      <p class="muted" style="font-size:12px;margin:6px 0 0" id="vaultApiStatus">${isVaultApiConfigured()
-        ? 'Vault media API connected · secure upload/retrieval uses your signed-in account (R2 must be enabled on the Worker for live storage).'
-        : 'Demo · membership preview in this browser only. Secure Vault uploads require the API + R2 storage.'}</p>
+      <h2>Vault ${vaultOk ? '<span class="chip" style="border-color:var(--line);color:var(--tx)">Unlocked · ' + esc(tierLabel(membership)) + '</span>' : '<span class="chip">Locked</span>'}</h2>
+      <p class="muted" style="font-size:12px;margin:6px 0 0" id="vaultApiStatus">Demo · membership preview. Upload UI not built yet.${isVaultApiConfigured() ? ' Checking storage readiness…' : ''}</p>
       <p class="muted">Exclusive unreleased tracks &amp; previews for members. Nested under Music — not a bottom-nav tab.</p>
 
       <div class="vault-grid" style="margin:12px 0">
@@ -454,6 +452,20 @@ export function renderMusicUploadDrafts(items=[]) {
 }
 
 export function bindMusic(root) {
+  const statusEl = document.getElementById('vaultApiStatus');
+  if (statusEl && isVaultApiConfigured()) {
+    fetchVaultMediaStorageReady().then((r) => {
+      if (!statusEl.isConnected) return;
+      if (r.mediaStorage) {
+        statusEl.textContent = 'Worker reports media storage ready · upload UI not built yet (library only).';
+      } else {
+        statusEl.textContent = 'API base set · media storage not ready (R2 unbound) · upload UI not built yet.';
+      }
+    }).catch(() => {
+      if (statusEl.isConnected) statusEl.textContent = 'API base set · could not read /health · upload UI not built yet.';
+    });
+  }
+
   const uploadForm=root.querySelector('#pikkMusicUploadForm');
   const uploadList=root.querySelector('#pikkMusicUploadList');
   const uploadStatus=root.querySelector('#musicUploadStatus');

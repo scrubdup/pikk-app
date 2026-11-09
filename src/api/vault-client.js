@@ -1,11 +1,33 @@
 /**
- * PIKK Vault media client (Worker /media + /vault routes).
- * Authoritative when VITE_PIKK_API_BASE / window.__PIKK_API_BASE__ is set.
- * Uploads are API-only (no browser-store fallback). Demo Vault UI stays membership-preview only.
+ * PIKK Vault media API client library (Worker /media + /vault routes).
+ * Not a complete Vault product UI — no upload/list/retrieve screens call this yet.
+ * API base alone is NOT storage readiness; use fetchVaultMediaStorageReady() (/health.media_storage).
  */
 import { getPikkApiBase, isPikkApiConfigured } from './auth-client.js';
 
-export { isPikkApiConfigured as isVaultApiConfigured, getPikkApiBase };
+export { getPikkApiBase };
+
+/** True only when an API origin is configured (does not imply R2 or an upload UI). */
+export function isVaultApiConfigured() {
+  return isPikkApiConfigured();
+}
+
+/** Live Worker capability: R2 MEDIA binding present. Never infer from API base alone. */
+export async function fetchVaultMediaStorageReady() {
+  if (!isPikkApiConfigured()) return { apiConfigured: false, mediaStorage: false };
+  try {
+    const base = getPikkApiBase();
+    const res = await fetch(base + '/health', { credentials: 'include' });
+    const data = await res.json().catch(() => null);
+    return {
+      apiConfigured: true,
+      mediaStorage: !!(data && data.capabilities && data.capabilities.media_storage),
+      healthOk: !!(data && data.ok),
+    };
+  } catch {
+    return { apiConfigured: true, mediaStorage: false, healthOk: false };
+  }
+}
 
 async function request(path, { method = 'GET', body, headers } = {}) {
   const base = getPikkApiBase();

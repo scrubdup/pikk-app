@@ -100,7 +100,14 @@ async function putUpload(env, req, ctx, id) {
     throw new ApiError(422, 'size_mismatch', 'Stored size mismatch');
   }
   const t = now();
-  await env.DB.prepare(`UPDATE media SET state='uploaded', uploaded_at=?, updated_at=? WHERE id=?`).bind(t, t, id).run();
+  const claimed = await env.DB.prepare(
+    `UPDATE media SET state='uploaded', uploaded_at=?, updated_at=? WHERE id=? AND state='pending_upload' AND deleted_at IS NULL`
+  ).bind(t, t, id).run();
+  if ((claimed?.meta?.changes ?? 0) !== 1) {
+    // Lost race with cleanup/cancel — remove orphan object; do not resurrect the row.
+    await vaultDeleteFor(storage(env), r.object_key, r);
+    throw new ApiError(409, 'invalid_state', 'Upload is no longer accepting data');
+  }
   return json(200, { media: { id, state: 'uploaded' } });
 }
 
@@ -126,12 +133,14 @@ async function complete(env, req, ctx, id) {
   await full.body.pipeTo(digest);
   const checksum = hex(await digest.digest);
   const t = now();
-  const job = enqueueStmts(env, id);
-  await env.DB.batch([
-    env.DB.prepare(`UPDATE media SET checksum_sha256=?, detected_content_type=?, updated_at=? WHERE id=?`).bind(checksum, found.contentType, t, id),
+  const job = enqueueStmts(env, id, { checksum, contentType: found.contentType });
+  const results = await env.DB.batch([
     ...job.stmts,
     auditStmt(env, { actor: s.user.id, action: 'media.processing', target: id, ip: clientIp(req), meta: { sha256: checksum, job: job.id } }),
   ]);
+  if ((results[0]?.meta?.changes ?? 0) !== 1) {
+    throw new ApiError(409, 'invalid_state', 'Upload is no longer completable');
+  }
   getProcessor().enqueue(env, job.id, ctx); // in-Worker: ctx.waitUntil; never blocks the response
   // Not playable until the job marks it ready (content routes require state 'ready').
   return json(202, { media: view({ ...r, state: 'processing', checksum_sha256: checksum, detected_content_type: found.contentType }), job: { id: job.id, state: 'queued' } });

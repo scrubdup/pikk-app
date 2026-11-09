@@ -42,10 +42,14 @@ export function setProcessor(p) { processor = p || inWorkerProcessor; }
 export function getProcessor() { return processor; }
 
 /** Called from POST /media/:id/complete. Returns the statement batch to atomically move media -> processing + create job. */
-export function enqueueStmts(env, mediaId) {
+/** CAS: only transition uploaded → processing when still live. Caller must check meta.changes === 1. */
+export function enqueueStmts(env, mediaId, { checksum = null, contentType = null } = {}) {
   const id = newId('job'); const t = now();
   return { id, stmts: [
-    env.DB.prepare(`UPDATE media SET state='processing', updated_at=?, last_error=NULL WHERE id=?`).bind(t, mediaId),
+    env.DB.prepare(
+      `UPDATE media SET state='processing', checksum_sha256=COALESCE(?, checksum_sha256), detected_content_type=COALESCE(?, detected_content_type), updated_at=?, last_error=NULL
+        WHERE id=? AND state='uploaded' AND deleted_at IS NULL`
+    ).bind(checksum, contentType, t, mediaId),
     env.DB.prepare(`INSERT INTO processing_jobs(id,media_id,job_type,state,attempts,max_attempts,run_after,created_at,updated_at) VALUES (?,?,'probe','queued',0,?,?,?,?)`)
       .bind(id, mediaId, PROCESSING.maxAttempts, t, t, t),
   ] };
@@ -134,35 +138,97 @@ async function reclaimStuck(env) {
 }
 
 
-/** Soft-delete abandoned unfinished uploads (pending_upload / uploaded) older than PENDING_UPLOAD_TTL_HOURS.
- * Frees quota reservations and removes any partial R2 object. Does not touch ready/processing media.
- * Bound to vault keys only via vaultDeleteFor.
+const R2_PENDING_ERR = 'abandoned cleanup: r2 delete pending';
+const R2_DONE_ERR = 'abandoned upload cleanup';
+
+function isNoSuchUpload(err) {
+  const msg = String(err && (err.message || err) || '');
+  return /no such upload|nosuchupload|not.?found|does not exist|404/i.test(msg);
+}
+
+async function abortMultipartSafe(env, r) {
+  const ses = await env.DB.prepare(`SELECT r2_upload_id, state FROM media_multipart WHERE media_id=?`).bind(r.id).first();
+  if (!ses || ses.state !== 'active' || !env.MEDIA) return { aborted: false, session: ses };
+  try {
+    await env.MEDIA.resumeMultipartUpload(r.object_key, ses.r2_upload_id).abort();
+    return { aborted: true, session: ses };
+  } catch (e) {
+    if (isNoSuchUpload(e)) return { aborted: true, session: ses, gone: true };
+    throw e;
+  }
+}
+
+async function finishAbandonedR2(env, r, t) {
+  if (env.MEDIA) await vaultDeleteFor(env.MEDIA, r.object_key, r);
+  const mp = await abortMultipartSafe(env, r);
+  if (mp.session && mp.session.state === 'active') {
+    await env.DB.prepare(`UPDATE media_multipart SET state='aborted', updated_at=? WHERE media_id=? AND state='active'`).bind(t, r.id).run();
+  }
+  await env.DB.prepare(`UPDATE media SET last_error=? WHERE id=? AND state='deleted'`).bind(R2_DONE_ERR, r.id).run();
+  await audit(env, { action: 'media.upload_abandoned', target: r.id, meta: { owner: r.owner_id, prior_state: r.prior_state || null, object_deleted: !!env.MEDIA } });
+}
+
+/**
+ * Soft-delete abandoned unfinished uploads. CLAIM (conditional UPDATE) before any R2 delete,
+ * so a concurrent complete/put cannot lose a ready object's bytes. R2 failures leave a retryable
+ * last_error marker and are never audited as success.
  */
 export async function cleanupAbandonedUploads(env, { limit = PROCESSING.sweepLimit, nowMs = Date.now() } = {}) {
   const cutoff = new Date(nowMs - PENDING_UPLOAD_TTL_HOURS * 3600e3).toISOString();
   const t = now();
-  const rows = (await env.DB.prepare(
+  let deleted = 0; let errors = 0; let retried = 0; let scanned = 0;
+
+  // Retry prior R2 failures (row already claimed deleted).
+  const pendingR2 = (await env.DB.prepare(
+    `SELECT id, object_key, owner_id, media_type FROM media
+      WHERE state='deleted' AND deleted_at IS NOT NULL AND last_error LIKE 'abandoned cleanup: r2%'
+      ORDER BY updated_at ASC LIMIT ?`
+  ).bind(limit).all()).results;
+  for (const r of pendingR2) {
+    scanned++;
+    try {
+      await finishAbandonedR2(env, r, t);
+      deleted++; retried++;
+    } catch (e) {
+      errors++;
+      console.error('abandoned r2 retry failed', r.id, e && e.message);
+      await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=?`).bind(R2_PENDING_ERR, t, r.id).run().catch(() => {});
+    }
+  }
+
+  const remain = Math.max(0, limit - scanned);
+  const rows = remain === 0 ? [] : (await env.DB.prepare(
     `SELECT id, object_key, owner_id, media_type, state FROM media
       WHERE deleted_at IS NULL AND state IN ('pending_upload','uploaded') AND created_at < ?
       ORDER BY created_at ASC LIMIT ?`
-  ).bind(cutoff, limit).all()).results;
-  let deleted = 0; let errors = 0;
+  ).bind(cutoff, remain).all()).results;
+  scanned += rows.length;
+
   for (const r of rows) {
     try {
-      if (env.MEDIA) await vaultDeleteFor(env.MEDIA, r.object_key, r);
-      const ses = await env.DB.prepare(`SELECT r2_upload_id, state FROM media_multipart WHERE media_id=?`).bind(r.id).first();
-      if (ses && ses.state === 'active' && env.MEDIA) {
-        try { await env.MEDIA.resumeMultipartUpload(r.object_key, ses.r2_upload_id).abort(); } catch { /* already gone */ }
+      // Claim first — never delete R2 for a row that already advanced (ready/processing) or was cancelled.
+      const claim = await env.DB.prepare(
+        `UPDATE media SET state='deleted', deleted_at=?, last_error=?, updated_at=?
+          WHERE id=? AND deleted_at IS NULL AND state IN ('pending_upload','uploaded') AND created_at < ?`
+      ).bind(t, R2_PENDING_ERR, t, r.id, cutoff).run();
+      if ((claim?.meta?.changes ?? 0) !== 1) continue;
+
+      try {
+        await finishAbandonedR2(env, { ...r, prior_state: r.state }, t);
+        deleted++;
+      } catch (e) {
+        errors++;
+        console.error('abandoned r2 cleanup failed', r.id, e && e.message);
+        await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
+          .bind(R2_PENDING_ERR, t, r.id).run();
+        // Do NOT mark multipart aborted or write success audit.
       }
-      await env.DB.batch([
-        env.DB.prepare(`UPDATE media SET state='deleted', deleted_at=?, last_error='abandoned upload cleanup', updated_at=? WHERE id=? AND deleted_at IS NULL AND state IN ('pending_upload','uploaded')`).bind(t, t, r.id),
-        env.DB.prepare(`UPDATE media_multipart SET state='aborted', updated_at=? WHERE media_id=? AND state='active'`).bind(t, r.id),
-        auditStmt(env, { action: 'media.upload_abandoned', target: r.id, meta: { owner: r.owner_id, prior_state: r.state, object_deleted: !!env.MEDIA } }),
-      ]);
-      deleted++;
-    } catch (e) { errors++; console.error('abandoned upload cleanup failed', r.id, e && e.message); }
+    } catch (e) {
+      errors++;
+      console.error('abandoned upload cleanup failed', r.id, e && e.message);
+    }
   }
-  return { at: t, scanned: rows.length, deleted, errors, cutoff };
+  return { at: t, scanned, deleted, errors, retried, cutoff };
 }
 
 // ---- Story expiry sweeper (cron) ----
