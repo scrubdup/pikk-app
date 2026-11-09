@@ -22,6 +22,13 @@ jobs:
           node-version: '20'
           cache: npm
       - run: npm ci
+      # Production Pages must not ship with an empty Worker API base (that forces
+      # localStorage-only demo auth). Owner sets repository variable PIKK_API_BASE
+      # to the Worker origin only — never commit the URL as a workflow default.
+      - name: Require Worker API base for production Pages
+        env:
+          PIKK_API_BASE: ${{ vars.PIKK_API_BASE }}
+        run: node scripts/assert-pikk-api-base.mjs --required
       - name: Verify preserved PIKK features
         run: npm test
       - name: Build
