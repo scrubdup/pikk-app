@@ -8,7 +8,7 @@ import { auditStmt, audit } from './audit.js';
 import { newId } from './crypto.js';
 import { sniff } from './magic.js';
 import { probe } from './probe.js';
-import { MEDIA_LIMITS, PROCESSING, PENDING_UPLOAD_TTL_HOURS, R2_PENDING_ERR, CANCEL_R2_PENDING_ERR } from './media-config.js';
+import { MEDIA_LIMITS, PROCESSING, PENDING_UPLOAD_TTL_HOURS, R2_PENDING_ERR, CANCEL_R2_PENDING_ERR, DELETE_R2_PENDING_ERR } from './media-config.js';
 
 const now = () => new Date().toISOString();
 export const JOB_STATES = ['queued', 'running', 'succeeded', 'failed'];
@@ -154,13 +154,21 @@ function parseR2RetryCount(lastError) {
 function isCancelProvenance(lastError) {
   return /cancel/i.test(String(lastError || ''));
 }
-/** Preserve cancel vs abandoned prefix across retries (B1 / REPORT-61d4c43). */
+function isOwnerDeleteProvenance(lastError) {
+  const s = String(lastError || '');
+  return /owner delete/i.test(s) || /^deleted by owner/i.test(s);
+}
+/** Preserve cancel vs owner-delete vs abandoned prefix across retries. */
 function r2PendingMarker(lastError, n = 0) {
-  const base = isCancelProvenance(lastError) ? CANCEL_R2_PENDING_ERR : R2_PENDING_ERR;
+  let base = R2_PENDING_ERR;
+  if (isCancelProvenance(lastError)) base = CANCEL_R2_PENDING_ERR;
+  else if (isOwnerDeleteProvenance(lastError)) base = DELETE_R2_PENDING_ERR;
   return n > 0 ? `${base};n=${n}` : base;
 }
 function r2Quarantine(reason, lastError) {
-  const src = isCancelProvenance(lastError) ? 'cancel: ' : '';
+  let src = '';
+  if (isCancelProvenance(lastError)) src = 'cancel: ';
+  else if (isOwnerDeleteProvenance(lastError)) src = 'delete: ';
   return `${R2_QUARANTINE_PREFIX}${src}${String(reason || 'permanent').slice(0, 100)}`;
 }
 
@@ -182,12 +190,16 @@ async function finishAbandonedR2(env, r, t) {
   if (mp.session && mp.session.state === 'active') {
     await env.DB.prepare(`UPDATE media_multipart SET state='aborted', updated_at=? WHERE media_id=? AND state='active'`).bind(t, r.id).run();
   }
-  const fromCancel = /cancel/i.test(String(r.last_error || ''));
-  const doneErr = fromCancel ? 'cancelled by owner' : R2_DONE_ERR;
+  const err = String(r.last_error || '');
+  const fromCancel = /cancel/i.test(err);
+  const fromOwnerDelete = /owner delete/i.test(err) || /^deleted by owner/i.test(err);
+  let doneErr = R2_DONE_ERR;
+  if (fromCancel) doneErr = 'cancelled by owner';
+  else if (fromOwnerDelete) doneErr = 'deleted by owner';
   await env.DB.prepare(`UPDATE media SET last_error=? WHERE id=? AND state='deleted'`).bind(doneErr, r.id).run();
-  // Owner cancel already wrote media.upload_cancelled at soft-delete time (incl. 202 cleanup_pending).
-  // Do not double-audit on successful R2 retry — keep exact 1 cancelled, 0 abandoned (B1).
-  if (fromCancel) return;
+  // Cancel / owner-delete already audited at soft-delete time (incl. 202 cleanup_pending).
+  // Do not double-audit on successful R2 retry — keep exact 1 owner audit, 0 abandoned.
+  if (fromCancel || fromOwnerDelete) return;
   await audit(env, {
     action: 'media.upload_abandoned',
     target: r.id,

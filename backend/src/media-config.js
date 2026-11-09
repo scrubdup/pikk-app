@@ -15,6 +15,8 @@ export const PENDING_UPLOAD_TTL_HOURS = 24;
 export const R2_PENDING_ERR = 'abandoned cleanup: r2 delete pending';
 /** Cancel path uses a distinct prefix so healed retries audit as cancelled, not abandoned. Still matches '%r2 delete pending%'. */
 export const CANCEL_R2_PENDING_ERR = 'cancel cleanup: r2 delete pending';
+/** Owner delete of ready media: distinct prefix; still matches '%r2 delete pending%'. */
+export const DELETE_R2_PENDING_ERR = 'owner delete cleanup: r2 delete pending';
 // Signed playback/download URLs (slice 2). Key comes from env secret VAULT_SIGNING_KEY, never source.
 export const ACCESS_URL_TTL_SEC = 300;
 export const PUBLIC_CACHE_CONTROL = 'private, max-age=300'; // public media is still per-user (blocks), so never shared caches

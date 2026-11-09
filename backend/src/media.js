@@ -6,7 +6,7 @@ import { auditStmt, audit } from './audit.js';
 import { newId, hex } from './crypto.js';
 import { contentRoute } from './media-content.js';
 import { NOT_BLOCKED_SQL } from './blocks.js';
-import { MEDIA_LIMITS, STORY_TTL_HOURS, ACCESS_POLICIES, UPLOAD_RATE, VAULT_VERSION } from './media-config.js';
+import { MEDIA_LIMITS, STORY_TTL_HOURS, ACCESS_POLICIES, UPLOAD_RATE, VAULT_VERSION, DELETE_R2_PENDING_ERR } from './media-config.js';
 import { sniff } from './magic.js';
 import { assertQuota, userUsage, storageRoute, stats } from './storage.js';
 import { startMultipart, multipartRoute } from './multipart.js';
@@ -179,17 +179,111 @@ async function getMedia(env, ctx, id) {
   return json(200, { media: pub });
 }
 
+/** Opaque cursor: base64url("created_at\\nid"). Tie-break on id for identical timestamps. */
+function encodeMediaCursor(row) {
+  const raw = `${row.created_at}\n${row.id}`;
+  const b64 = btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return b64;
+}
+function decodeMediaCursor(raw) {
+  if (raw == null || raw === '') return null;
+  const s = String(raw);
+  if (s.length > 256 || /[^A-Za-z0-9_-]/.test(s)) throw new ApiError(400, 'invalid_cursor', 'Invalid cursor');
+  let decoded;
+  try {
+    const pad = '='.repeat((4 - (s.length % 4)) % 4);
+    decoded = atob(s.replace(/-/g, '+').replace(/_/g, '/') + pad);
+  } catch {
+    throw new ApiError(400, 'invalid_cursor', 'Invalid cursor');
+  }
+  const i = decoded.indexOf('\n');
+  if (i <= 0) throw new ApiError(400, 'invalid_cursor', 'Invalid cursor');
+  const created_at = decoded.slice(0, i);
+  const id = decoded.slice(i + 1);
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(created_at) || !/^med_/.test(id)) {
+    throw new ApiError(400, 'invalid_cursor', 'Invalid cursor');
+  }
+  return { created_at, id };
+}
+
 async function listMine(env, req, ctx) {
   const s = requireVerified(ctx);
   const url = new URL(req.url);
   let limit = Number(url.searchParams.get('limit') || 50);
   if (!Number.isSafeInteger(limit) || limit < 1) limit = 50;
   if (limit > 100) limit = 100;
-  const rows = (await env.DB.prepare(
-    `SELECT * FROM media WHERE owner_id=? AND deleted_at IS NULL
-      ORDER BY created_at DESC LIMIT ?`
-  ).bind(s.user.id, limit).all()).results;
-  return json(200, { media: rows.map(view), count: rows.length });
+  // Ignore foreign owner_id query params — session owner only.
+  const cursor = decodeMediaCursor(url.searchParams.get('cursor') || url.searchParams.get('before'));
+  let rows;
+  if (cursor) {
+    rows = (await env.DB.prepare(
+      `SELECT * FROM media WHERE owner_id=? AND deleted_at IS NULL
+        AND (created_at < ? OR (created_at = ? AND id < ?))
+        ORDER BY created_at DESC, id DESC LIMIT ?`
+    ).bind(s.user.id, cursor.created_at, cursor.created_at, cursor.id, limit + 1).all()).results;
+  } else {
+    rows = (await env.DB.prepare(
+      `SELECT * FROM media WHERE owner_id=? AND deleted_at IS NULL
+        ORDER BY created_at DESC, id DESC LIMIT ?`
+    ).bind(s.user.id, limit + 1).all()).results;
+  }
+  let next_cursor = null;
+  if (rows.length > limit) {
+    const last = rows[limit - 1];
+    rows = rows.slice(0, limit);
+    next_cursor = encodeMediaCursor(last);
+  }
+  return json(200, { media: rows.map(view), count: rows.length, next_cursor });
+}
+
+/**
+ * Owner-only delete of READY media. Claim (CAS) before R2 delete.
+ * Soft-delete succeeds even if R2 fails → 202 cleanup_pending with shared sweeper marker.
+ * Unfinished uploads use DELETE /media/uploads/:id (cancel), not this route.
+ */
+async function deleteReady(env, req, ctx, id) {
+  const s = requireVerified(ctx);
+  const r = await env.DB.prepare(
+    `SELECT * FROM media WHERE id=? AND owner_id=? AND deleted_at IS NULL`
+  ).bind(id, s.user.id).first();
+  if (!r) throw notFound();
+  if (r.state !== 'ready') {
+    throw new ApiError(409, 'invalid_state', 'Only ready media can be deleted here; cancel unfinished uploads instead');
+  }
+  const t = now();
+  const claim = await env.DB.prepare(
+    `UPDATE media SET state='deleted', deleted_at=?, last_error='deleted by owner', updated_at=?
+      WHERE id=? AND owner_id=? AND deleted_at IS NULL AND state='ready'`
+  ).bind(t, t, id, s.user.id).run();
+  if ((claim?.meta?.changes ?? 0) !== 1) {
+    throw new ApiError(409, 'invalid_state', 'Only ready media can be deleted here');
+  }
+  // Fail in-flight processing jobs if any race left one (ready normally has none).
+  await env.DB.prepare(
+    `UPDATE processing_jobs SET state='failed', last_error='media deleted', finished_at=?, updated_at=?
+      WHERE media_id=? AND state IN ('queued','running')`
+  ).bind(t, t, id).run();
+
+  let cleanupPending = false;
+  if (env.MEDIA) {
+    try { await vaultDeleteFor(env.MEDIA, r.object_key, r); }
+    catch (e) {
+      await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
+        .bind(DELETE_R2_PENDING_ERR, t, id).run();
+      cleanupPending = true;
+    }
+  }
+  await audit(env, {
+    actor: s.user.id,
+    action: 'media.deleted',
+    target: id,
+    ip: clientIp(req),
+    meta: { prior_state: 'ready', cleanup_pending: cleanupPending, size_bytes: r.size_bytes },
+  });
+  if (cleanupPending) {
+    return json(202, { media: { id, state: 'deleted', deleted: true, cleanup_pending: true } });
+  }
+  return json(200, { media: { id, state: 'deleted', deleted: true, cleanup_pending: false } });
 }
 
 async function usersOverAlert(env) {
@@ -249,6 +343,7 @@ export async function mediaRoute(env, req, ctx, m, p) {
   let mm;
   if (m === 'GET' && p === '/vault/health') return health(env, ctx);
   if (m === 'GET' && p === '/media') return listMine(env, req, ctx);
+  if (m === 'DELETE' && (mm = p.match(new RegExp(`^/media/${ID}$`)))) return deleteReady(env, req, ctx, mm[1]);
   if (m === 'POST' && p === '/media/uploads') return createUpload(env, req, ctx);
   if (m === 'PUT' && (mm = p.match(new RegExp(`^/media/uploads/${ID}$`)))) return putUpload(env, req, ctx, mm[1]);
   if (m === 'POST' && (mm = p.match(new RegExp(`^/media/${ID}/complete$`)))) return complete(env, req, ctx, mm[1]);
