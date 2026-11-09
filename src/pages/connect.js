@@ -34,8 +34,8 @@ function renderMultiPlatform() {
     .map((p) => {
       const on = selected.includes(p.id);
       const status = p.connected
-        ? `<span class="chip">Linked${p.handle ? ' · ' + esc(p.handle) : ''}</span>`
-        : `<span class="chip muted-chip">Not linked</span>`;
+        ? `<span class="chip">Demo selected${p.handle ? ' · ' + esc(p.handle) : ''}</span>`
+        : `<span class="chip muted-chip">Not selected</span>`;
       return `
       <div class="connect-mp-plat ${p.connected ? 'on' : ''}" data-plat="${esc(p.id)}">
         <div class="row wrap" style="justify-content:space-between;gap:8px;align-items:center">
@@ -48,12 +48,12 @@ function renderMultiPlatform() {
         <div class="row wrap" style="gap:6px;margin-top:8px;align-items:center">
           ${
             p.connected
-              ? `<button type="button" class="btn ghost connect-mp-disconnect" data-id="${esc(p.id)}">Unlink</button>
+              ? `<button type="button" class="btn ghost connect-mp-disconnect" data-id="${esc(p.id)}">Remove demo</button>
                  <label class="connect-mp-select">
                    <input type="checkbox" class="connect-mp-dest" data-id="${esc(p.id)}" ${on ? 'checked' : ''} ${live ? 'disabled' : ''} />
                    Include
                  </label>`
-              : `<button type="button" class="btn primary connect-mp-connect" data-id="${esc(p.id)}">Link</button>`
+              : `<button type="button" class="btn primary connect-mp-connect" data-id="${esc(p.id)}">Add demo</button>`
           }
         </div>
       </div>`;
@@ -62,9 +62,9 @@ function renderMultiPlatform() {
 
   const selectedCount = selected.length;
   const goLiveBtn = live
-    ? `<button type="button" class="btn danger" id="connectMpEnd">End multi-platform session</button>
-       <span class="chip">LIVE · ${esc(String(session?.destinations?.length || selectedCount))} dest · TEST MODE</span>`
-    : `<button type="button" class="btn primary" id="connectMpGoLive" ${selectedCount ? '' : 'disabled'}>Go live to selected</button>
+    ? `<button type="button" class="btn danger" id="connectMpEnd">End simulation</button>
+       <span class="chip">SIMULATED · ${esc(String(session?.destinations?.length || selectedCount))} destinations · no broadcast</span>`
+    : `<button type="button" class="btn primary" id="connectMpGoLive" ${selectedCount ? '' : 'disabled'}>Simulate multi-platform live</button>
        <span class="chip">${selectedCount}/${cap} selected · cap ${cap}</span>`;
 
   return `
@@ -73,8 +73,8 @@ function renderMultiPlatform() {
         <div>
           <h3 style="margin:0 0 6px">Multi-platform go-live</h3>
           <p class="muted" style="margin:0;max-width:40rem;font-size:13px">
-            Link destinations and go live to more than one platform from PIKK.
-            DEMO · TEST MODE · no real RTMP / OAuth relay yet. Platform account policies still apply.
+            Preview destinations and simulate a multi-platform session from PIKK.
+            TEST MODE · No accounts are linked, no real broadcast is sent, and no OAuth or RTMP relay exists.
           </p>
         </div>
         <span class="chip">TEST MODE</span>
@@ -226,14 +226,14 @@ function bindMultiPlatform(root) {
       const id = btn.dataset.id;
       const res = connectRestreamPlatform(id, '');
       if (res?.error) return toast(String(res.error));
-      toast(`Linked ${id} · TEST MODE`);
+      toast(`Added ${id} to demo · no account linked`);
       refreshConnect();
     });
   });
   root.querySelectorAll('.connect-mp-disconnect').forEach((btn) => {
     btn.addEventListener('click', () => {
       disconnectRestreamPlatform(btn.dataset.id);
-      toast('Unlinked · TEST MODE');
+      toast('Removed from demo · TEST MODE');
       refreshConnect();
     });
   });
@@ -248,12 +248,12 @@ function bindMultiPlatform(root) {
     if (res?.error === 'signin') return toast('Sign in first');
     if (res?.error === 'none_selected') return toast('Select at least one destination');
     if (res?.error) return toast(String(res.error));
-    toast('Multi-platform session started · TEST MODE');
+    toast('Simulation started · no live broadcast sent');
     refreshConnect();
   });
   root.querySelector('#connectMpEnd')?.addEventListener('click', () => {
     endRestreamGoLive();
-    toast('Session ended');
+    toast('Simulation ended');
     refreshConnect();
   });
 }
