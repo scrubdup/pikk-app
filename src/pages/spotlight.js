@@ -58,8 +58,8 @@ function isFollowing(targetId) {
 }
 
 function canMod() {
-  // Prefer isAdmin(); demo always exposes moderator controls for signed-in users (TEST MODE).
-  return !!getState().user;
+  // Demo admin only; ordinary fans keep their own leave/end-set controls.
+  return isAdmin();
 }
 
 function renderSignIn() {
@@ -251,7 +251,7 @@ function renderQueue(queue, nowPlaying, user) {
           }
           ${
             canMod()
-              ? `<button class="btn ghost sp-remove-q" data-qid="${esc(q.id)}" title="Demo moderator">Remove</button>`
+              ? `<button class="btn ghost sp-remove-q" data-qid="${esc(q.id)}" title="Admin · TEST MODE">Remove</button>`
               : ''
           }
         </div>
@@ -295,7 +295,7 @@ function renderQueue(queue, nowPlaying, user) {
 
 function renderMod(np) {
   if (!canMod()) return '';
-  const adminChip = isAdmin() ? 'Admin' : 'Demo moderator · TEST MODE';
+  const adminChip = 'Admin · TEST MODE';
   const real = np && !np.house;
   return `
     <div class="card sp-mod">
@@ -454,15 +454,17 @@ export function bindSpotlight(root) {
 
   root.querySelectorAll('.sp-remove-q').forEach((btn) => {
     btn.addEventListener('click', () => {
-      removeFromSpotlightQueue(btn.getAttribute('data-qid'));
-      toast('Removed from queue (demo mod)');
+      const res = removeFromSpotlightQueue(btn.getAttribute('data-qid'));
+      if (res.error) return toast('Cannot remove: ' + res.error);
+      toast('Removed from queue (admin demo)');
       refresh();
     });
   });
 
   const doSkip = () => {
     const before = getSpotlightState().nowPlaying;
-    skipSpotlight();
+    const result = skipSpotlight();
+    if (result.error) return toast('Cannot skip: ' + result.error);
     const after = getSpotlightState().nowPlaying;
     if (after && after.house) toast('Next house · ' + (after.chipLabel || 'House'));
     else if (after) toast('Skipped · ' + (after.username || 'next') + ' on stage');

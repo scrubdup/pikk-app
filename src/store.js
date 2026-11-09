@@ -4277,6 +4277,8 @@ export function getSpotlightHouseTrack() {
 
 /** Advance house rotation index; returns next track metadata. */
 export function advanceSpotlightHouseTrack() {
+  // Only the demo admin may manually override the house rotation.
+  if (!isAdmin()) return { error: 'forbidden' };
   const sp = spBucket();
   const len = houseCatalogLen();
   const nextIdx = ((typeof sp.houseIndex === 'number' ? sp.houseIndex : 0) + 1) % len;
@@ -4352,7 +4354,8 @@ export function leaveSpotlightQueue() {
 export function removeFromSpotlightQueue(queueId) {
   const user = state.user;
   if (!user) return { error: 'signin' };
-  // Demo moderator: any signed-in user may remove (TEST MODE), or admin
+  // Removing someone else's queue entry is a moderator-only action.
+  if (!isAdmin()) return { error: 'forbidden' };
   const sp = tickSpotlight();
   const queue = (sp.queue || []).filter((q) => q.id !== queueId);
   saveSpotlight({ ...sp, queue });
@@ -4364,6 +4367,10 @@ export function advanceSpotlight(reason = 'advance') {
   if (!user) return { error: 'signin' };
   const sp = tickSpotlight();
   const np = sp.nowPlaying;
+  // Manual skips require admin. A performer may advance only when their
+  // own upload reaches its maximum Play Another streak.
+  const ownMaxStreak = reason === 'max_streak' && np && !np.house && np.userId === user.id;
+  if (!isAdmin() && !ownMaxStreak) return { error: 'forbidden' };
   const wasHouse = !!(np && np.house);
   const hist = np && !wasHouse
     ? [finalizeSpotlightSlot(np, reason), ...(sp.history || [])].slice(0, 30)
@@ -4398,11 +4405,9 @@ export function endSpotlightSet() {
   if (np.house) return { error: 'house_use_skip' };
   if (np.type === 'freestyle') return { error: 'freestyle_use_timer' };
   if (np.awaitingPlayAnother) return { error: 'already_voting' };
-  // Performer or demo mod
+  // A performer may end only their own set; admin can moderate any set.
   const isPerf = np.userId === user.id;
-  if (!isPerf && !isAdmin()) {
-    // Still allow as Demo moderator (TEST MODE)
-  }
+  if (!isPerf && !isAdmin()) return { error: 'forbidden' };
   const streak = np.playCount || 1;
   if (streak >= SP_MAX_UPLOAD_STREAK) {
     return advanceSpotlight('max_streak');
