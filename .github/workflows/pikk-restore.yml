@@ -1,13 +1,16 @@
 name: Restore latest PIKK app to preview
+
+# Manual recovery only: pushing to a branch must not publish to Pages.
 on:
-  push:
-    branches: [pikk-restoration-from-main]
   workflow_dispatch:
+
 permissions:
   contents: write
+
 concurrency:
   group: pikk-pages-deploy
   cancel-in-progress: false
+
 jobs:
   verify-and-publish:
     runs-on: ubuntu-latest

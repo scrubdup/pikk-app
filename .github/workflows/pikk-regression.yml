@@ -2,7 +2,7 @@ name: PIKK Regression Guard (no deploy)
 
 on:
   push:
-    branches: [pikk-build-regression-guards]
+    branches: [main, pikk-build-regression-guards]
   pull_request:
     branches: [main, pikk-restoration-from-main]
 
