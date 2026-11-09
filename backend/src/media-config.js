@@ -13,6 +13,8 @@ export const UPLOAD_RATE = { limit: 30, windowSec: 3600 };
 export const PENDING_UPLOAD_TTL_HOURS = 24;
 // Shared retry marker for abandoned cleanup AND owner-cancel R2 delete/abort failures (sweeper matches '%r2 delete pending%').
 export const R2_PENDING_ERR = 'abandoned cleanup: r2 delete pending';
+/** Cancel path uses a distinct prefix so healed retries audit as cancelled, not abandoned. Still matches '%r2 delete pending%'. */
+export const CANCEL_R2_PENDING_ERR = 'cancel cleanup: r2 delete pending';
 // Signed playback/download URLs (slice 2). Key comes from env secret VAULT_SIGNING_KEY, never source.
 export const ACCESS_URL_TTL_SEC = 300;
 export const PUBLIC_CACHE_CONTROL = 'private, max-age=300'; // public media is still per-user (blocks), so never shared caches

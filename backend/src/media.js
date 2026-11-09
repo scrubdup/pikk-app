@@ -170,6 +170,19 @@ async function getMedia(env, ctx, id) {
   return json(200, { media: pub });
 }
 
+async function listMine(env, req, ctx) {
+  const s = requireVerified(ctx);
+  const url = new URL(req.url);
+  let limit = Number(url.searchParams.get('limit') || 50);
+  if (!Number.isSafeInteger(limit) || limit < 1) limit = 50;
+  if (limit > 100) limit = 100;
+  const rows = (await env.DB.prepare(
+    `SELECT * FROM media WHERE owner_id=? AND deleted_at IS NULL
+      ORDER BY created_at DESC LIMIT ?`
+  ).bind(s.user.id, limit).all()).results;
+  return json(200, { media: rows.map(view), count: rows.length });
+}
+
 async function usersOverAlert(env) {
   const r = await env.DB.prepare(
     `SELECT COUNT(*) AS n FROM (SELECT m.owner_id, SUM(m.size_bytes) AS b, COALESCE(o.max_bytes, ?1) AS q FROM media m LEFT JOIN vault_quota_overrides o ON o.user_id=m.owner_id
@@ -187,12 +200,31 @@ async function health(env, ctx) {
   const by = { pending_upload: 0, uploaded: 0, processing: 0, ready: 0, rejected: 0, failed: 0, deleted: 0 };
   for (const c of counts.results) by[c.state] = c.n;
   const last = await env.DB.prepare(`SELECT id, state, last_error, updated_at FROM media WHERE last_error IS NOT NULL ORDER BY updated_at DESC LIMIT 1`).first();
+  const quarantined = (await env.DB.prepare(
+    `SELECT id, owner_id, state, last_error, updated_at, object_key FROM media
+      WHERE state='deleted' AND last_error LIKE 'cleanup: quarantined:%'
+      ORDER BY updated_at DESC LIMIT 25`
+  ).all()).results;
+  const pendingR2 = (await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM media WHERE state='deleted' AND last_error LIKE '%r2 delete pending%'`
+  ).first()).n;
   return json(200, {
     status: reachable ? 'ok' : 'degraded',
     version: VAULT_VERSION,
     checked_at: now(),
     storage: { binding: 'MEDIA', configured, reachable, error: storageError },
     counts_by_state: by,
+    cleanup: {
+      r2_pending: pendingR2,
+      quarantined_count: quarantined.length >= 25
+        ? (await env.DB.prepare(`SELECT COUNT(*) AS n FROM media WHERE state='deleted' AND last_error LIKE 'cleanup: quarantined:%'`).first()).n
+        : quarantined.length,
+      quarantined_sample: quarantined.map((q) => ({
+        id: q.id, owner_id: q.owner_id, last_error: q.last_error, updated_at: q.updated_at,
+        // object_key for operator local tooling only — admin.access required for this route
+        object_key: q.object_key,
+      })),
+    },
     last_error: last ? { media_id: last.id, state: last.state, message: last.last_error, at: last.updated_at } : null,
     ...(await processingHealth(env)), // slice 3, additive
     // slice 4, additive
@@ -207,6 +239,7 @@ async function health(env, ctx) {
 export async function mediaRoute(env, req, ctx, m, p) {
   let mm;
   if (m === 'GET' && p === '/vault/health') return health(env, ctx);
+  if (m === 'GET' && p === '/media') return listMine(env, req, ctx);
   if (m === 'POST' && p === '/media/uploads') return createUpload(env, req, ctx);
   if (m === 'PUT' && (mm = p.match(new RegExp(`^/media/uploads/${ID}$`)))) return putUpload(env, req, ctx, mm[1]);
   if (m === 'POST' && (mm = p.match(new RegExp(`^/media/${ID}/complete$`)))) return complete(env, req, ctx, mm[1]);

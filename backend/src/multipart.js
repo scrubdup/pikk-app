@@ -3,7 +3,7 @@ import { vaultDeleteFor, assertVaultKeyFor, isNoSuchUpload } from './vault-keys.
 import { ApiError, json, clientIp } from './http.js';
 import { requireVerified } from './auth.js';
 import { auditStmt, audit } from './audit.js';
-import { MULTIPART, R2_PENDING_ERR } from './media-config.js';
+import { MULTIPART, CANCEL_R2_PENDING_ERR } from './media-config.js';
 
 const now = () => new Date().toISOString();
 const notFound = () => new ApiError(404, 'not_found', 'Not found');
@@ -153,13 +153,13 @@ async function cancel(env, req, ctx, id) {
     catch (e) {
       // Same retry marker as abandoned cleanup so the next sweep finishes delete/abort.
       await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
-        .bind(R2_PENDING_ERR, t, id).run();
+        .bind(CANCEL_R2_PENDING_ERR, t, id).run();
       throw e;
     }
   }
   if (r2RetryNeeded) {
     await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
-      .bind(R2_PENDING_ERR, t, id).run();
+      .bind(CANCEL_R2_PENDING_ERR, t, id).run();
   }
   if (multipartAborted) {
     await env.DB.prepare(`UPDATE media_multipart SET state='aborted', updated_at=? WHERE media_id=? AND state='active'`).bind(t, id).run();

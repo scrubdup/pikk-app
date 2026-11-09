@@ -9,6 +9,7 @@ import { newId } from './crypto.js';
 import { sniff } from './magic.js';
 import { probe } from './probe.js';
 import { MEDIA_LIMITS, PROCESSING, PENDING_UPLOAD_TTL_HOURS, R2_PENDING_ERR } from './media-config.js';
+// CANCEL_R2_PENDING_ERR shares '%r2 delete pending%' with R2_PENDING_ERR for the sweeper SELECT.
 
 const now = () => new Date().toISOString();
 export const JOB_STATES = ['queued', 'running', 'succeeded', 'failed'];
@@ -176,8 +177,21 @@ async function finishAbandonedR2(env, r, t) {
   if (mp.session && mp.session.state === 'active') {
     await env.DB.prepare(`UPDATE media_multipart SET state='aborted', updated_at=? WHERE media_id=? AND state='active'`).bind(t, r.id).run();
   }
-  await env.DB.prepare(`UPDATE media SET last_error=? WHERE id=? AND state='deleted'`).bind(R2_DONE_ERR, r.id).run();
-  await audit(env, { action: 'media.upload_abandoned', target: r.id, meta: { owner: r.owner_id, prior_state: r.prior_state || null, object_deleted: !!env.MEDIA } });
+  const fromCancel = /cancel/i.test(String(r.last_error || ''));
+  const doneErr = fromCancel ? 'cancelled by owner' : R2_DONE_ERR;
+  const action = fromCancel ? 'media.upload_cancelled' : 'media.upload_abandoned';
+  await env.DB.prepare(`UPDATE media SET last_error=? WHERE id=? AND state='deleted'`).bind(doneErr, r.id).run();
+  await audit(env, {
+    action,
+    target: r.id,
+    meta: {
+      owner: r.owner_id,
+      prior_state: r.prior_state || null,
+      object_deleted: !!env.MEDIA,
+      from_r2_retry: true,
+      source: fromCancel ? 'cancel' : 'abandoned',
+    },
+  });
 }
 
 async function markR2RetryOrQuarantine(env, r, t, err) {
@@ -203,6 +217,21 @@ async function markR2RetryOrQuarantine(env, r, t, err) {
  * last_error marker (shared with owner cancel) and are never audited as success.
  * Permanent failures (VaultKeyError / retry cap) quarantine via last_error without new schema.
  */
+
+/** Local/operator quarantine listing (admin tooling / CLI). Not a user-facing API. */
+export async function quarantineReport(env, { limit = 100 } = {}) {
+  const lim = Math.min(Math.max(1, Number(limit) || 100), 500);
+  const rows = (await env.DB.prepare(
+    `SELECT id, owner_id, media_type, object_key, last_error, deleted_at, updated_at FROM media
+      WHERE state='deleted' AND last_error LIKE 'cleanup: quarantined:%'
+      ORDER BY updated_at DESC LIMIT ?`
+  ).bind(lim).all()).results;
+  const pending = (await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM media WHERE state='deleted' AND last_error LIKE '%r2 delete pending%'`
+  ).first()).n;
+  return { at: now(), quarantined: rows, quarantined_count: rows.length, r2_pending: pending };
+}
+
 export async function cleanupAbandonedUploads(env, { limit = PROCESSING.sweepLimit, nowMs = Date.now() } = {}) {
   const cutoff = new Date(nowMs - PENDING_UPLOAD_TTL_HOURS * 3600e3).toISOString();
   const t = now();

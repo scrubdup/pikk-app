@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { SELF, env } from 'cloudflare:test';
 import { call, newUser, freshIp, ORIGIN, settle } from './helpers.js';
 import { cleanupAbandonedUploads } from '../src/processing.js';
-import { R2_PENDING_ERR } from '../src/media-config.js';
+import { CANCEL_R2_PENDING_ERR } from '../src/media-config.js';
 import { isNoSuchUpload } from '../src/vault-keys.js';
 import worker from '../src/index.js';
 
@@ -127,8 +127,9 @@ describe('vault re-review fixes (B1/B2/B6 + quarantine + NoSuchUpload)', () => {
     expect(c.retried).toBeGreaterThanOrEqual(1);
     expect(await env.MEDIA.head(key)).toBeNull();
     const r2 = await row(s.id);
-    expect(r2.last_error).toBe('abandoned upload cleanup');
-    expect(await audits(s.id)).toBe(1);
+    expect(r2.last_error).toBe('cancelled by owner');
+    expect(await audits(s.id, 'media.upload_cancelled')).toBe(1);
+    expect(await audits(s.id, 'media.upload_abandoned')).toBe(0);
   });
 
   it('B6b: cancel multipart abort failure sets shared marker; sweeper aborts', async () => {
@@ -152,7 +153,7 @@ describe('vault re-review fixes (B1/B2/B6 + quarantine + NoSuchUpload)', () => {
     expect(body.media.multipart_aborted).toBe(false);
     expect(body.media.r2_retry_pending).toBe(true);
     const r1 = await row(id);
-    expect(r1.last_error).toBe(R2_PENDING_ERR);
+    expect(r1.last_error).toBe(CANCEL_R2_PENDING_ERR);
     const db1 = (await env.DB.prepare('SELECT state FROM media_multipart WHERE media_id=?').bind(id).first()).state;
     expect(db1).toBe('active');
     // Object delete succeeded; multipart still active until sweeper
