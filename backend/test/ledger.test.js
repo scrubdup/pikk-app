@@ -129,3 +129,43 @@ describe('ledger invariants', () => {
     expect(await bal(u)).toBe(50);
   });
 });
+
+describe('payments webhook concurrency and ownership', () => {
+  it('two concurrent distinct events for one pending order credit exactly once', async () => {
+    const u = await newUser();
+    const ord = await createOrder(u.id, 700);
+    const e1 = event(ord, 700, { id: `evt_race_a_${Date.now()}` });
+    const e2 = event(ord, 700, { id: `evt_race_b_${Date.now()}` });
+    const [r1, r2] = await Promise.all([deliver(e1), deliver(e2)]);
+    expect(r1.status).toBe(200);
+    expect(r2.status).toBe(200);
+    const outcomes = [r1.json.outcome, r2.json.outcome].sort();
+    expect(outcomes).toEqual(['credited', 'rejected_order_not_pending']);
+    expect(await bal(u)).toBe(700);
+    expect(await unbalancedTxns()).toBe(0);
+    expect(await globalSum()).toBe(0);
+    const paid = await env.DB.prepare('SELECT status FROM payment_orders WHERE id=?').bind(ord).first();
+    expect(paid.status).toBe('paid');
+  });
+
+  it('does not credit coins for subscription-kind orders (no invented membership grant)', async () => {
+    const u = await newUser();
+    const ord = await createOrder(u.id, 499, 'subscription');
+    const r = await deliver(event(ord, 499));
+    expect(r.status).toBe(200);
+    expect(r.json.outcome).toBe('ignored_unsupported_kind');
+    expect(await bal(u)).toBe(0);
+    const order = await env.DB.prepare('SELECT status FROM payment_orders WHERE id=?').bind(ord).first();
+    expect(order.status).toBe('pending');
+  });
+
+  it('rejects unauthenticated balance and client payment-confirm paths', async () => {
+    expect((await call('GET', '/ledger/balance')).status).toBe(401);
+    const u = await newUser();
+    for (const path of ['/payments/confirm', '/memberships/join', '/memberships/activate', '/memberships/grant']) {
+      const r = await call('POST', path, { cookie: u.cookie, body: { plan: 'skeet', tier: 'inner' } });
+      expect([403, 404]).toContain(r.status);
+      if (r.status === 403) expect(r.json.error.code).toBe('forbidden');
+    }
+  });
+});

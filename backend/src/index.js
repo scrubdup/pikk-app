@@ -10,6 +10,7 @@ import { requireString, requirePositiveInt, validateSignupRoles } from './valida
 import { rateLimit } from './ratelimit.js';
 import { balance, transfer } from './ledger.js';
 import { stripeWebhook } from './webhook.js';
+import { membershipMe, rejectClientMembershipGrant } from './memberships.js';
 import { newId } from './crypto.js';
 import { audit, auditStmt } from './audit.js';
 import { mediaRoute } from './media.js';
@@ -66,6 +67,8 @@ async function route(req, env, ctx) {
       email_verification: !!env.DB,
       email_delivery: !!(env.RESEND_API_KEY && env.EMAIL_FROM),
       media_storage: !!env.MEDIA,
+      payments_webhook: !!env.STRIPE_WEBHOOK_SECRET,
+      membership_status: !!env.DB,
     },
   });
 
@@ -249,6 +252,14 @@ async function route(req, env, ctx) {
     return json(200, { user: { handle: u.handle, display_name: u.display_name, bio: u.bio || '', avatar_url: u.avatar_url || '', created_at: u.created_at } });
   }
 
+  if (m === 'GET' && p === '/memberships/me') {
+    const s = requireAuth(ctx);
+    return json(200, { membership: await membershipMe(env, s) });
+  }
+  if (m === 'POST' && (p === '/memberships/join' || p === '/memberships/activate' || p === '/memberships/grant')) {
+    requireAuth(ctx);
+    rejectClientMembershipGrant();
+  }
   if (m === 'GET' && p === '/ledger/balance') { const s = requireAuth(ctx); return json(200, { balance: await balance(env, s.user.id), currency: 'pikk_coin' }); }
   if (m === 'POST' && p === '/ledger/transfer') {
     const s = requireVerified(ctx); const b = await readJson(req);
