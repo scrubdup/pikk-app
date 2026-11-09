@@ -62,3 +62,14 @@ export async function vaultList(bucket, { prefix = VAULT_PREFIX, ...opts } = {})
   const res = await bucket.list({ ...opts, prefix });
   return { ...res, objects: (res.objects || []).filter(o => isVaultKey(o.key)) };
 }
+
+/** True only for provider NoSuchUpload (err.code / err.name), not arbitrary "404"/"not found" text. */
+export function isNoSuchUpload(err) {
+  if (!err || typeof err !== 'object') return false;
+  const code = String(err.code || err.name || err.Code || '');
+  if (/^NoSuchUpload$/i.test(code)) return true;
+  // Some runtimes put the code only in the message prefix.
+  if (typeof err.message === 'string' && /^NoSuchUpload\b/i.test(err.message)) return true;
+  return false;
+}
+

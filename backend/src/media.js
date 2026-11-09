@@ -31,7 +31,7 @@ function storage(env) {
 }
 
 async function setState(env, id, state, err = null) {
-  await env.DB.prepare(`UPDATE media SET state=?, last_error=?, updated_at=? WHERE id=?`).bind(state, err, now(), id).run();
+  await env.DB.prepare(`UPDATE media SET state=?, last_error=?, updated_at=? WHERE id=? AND deleted_at IS NULL`).bind(state, err, now(), id).run();
 }
 
 function view(r) {
@@ -134,13 +134,12 @@ async function complete(env, req, ctx, id) {
   const checksum = hex(await digest.digest);
   const t = now();
   const job = enqueueStmts(env, id, { checksum, contentType: found.contentType });
-  const results = await env.DB.batch([
-    ...job.stmts,
-    auditStmt(env, { actor: s.user.id, action: 'media.processing', target: id, ip: clientIp(req), meta: { sha256: checksum, job: job.id } }),
-  ]);
-  if ((results[0]?.meta?.changes ?? 0) !== 1) {
+  // CAS first; job INSERT is EXISTS-gated inside enqueueStmts. Audit only if CAS won.
+  const results = await env.DB.batch(job.stmts);
+  if ((results[0]?.meta?.changes ?? 0) !== 1 || (results[1]?.meta?.changes ?? 0) !== 1) {
     throw new ApiError(409, 'invalid_state', 'Upload is no longer completable');
   }
+  await audit(env, { actor: s.user.id, action: 'media.processing', target: id, ip: clientIp(req), meta: { sha256: checksum, job: job.id } });
   getProcessor().enqueue(env, job.id, ctx); // in-Worker: ctx.waitUntil; never blocks the response
   // Not playable until the job marks it ready (content routes require state 'ready').
   return json(202, { media: view({ ...r, state: 'processing', checksum_sha256: checksum, detected_content_type: found.contentType }), job: { id: job.id, state: 'queued' } });

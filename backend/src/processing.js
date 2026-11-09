@@ -1,4 +1,4 @@
-import { vaultDeleteFor, assertVaultKeyFor } from './vault-keys.js';
+import { vaultDeleteFor, assertVaultKeyFor, isNoSuchUpload, VaultKeyError } from './vault-keys.js';
 // PIKK Vault slice 3: processing pipeline, Story expiry sweeper, admin controls.
 // Processor runs in-Worker via ctx.waitUntil behind a pluggable interface so Cloudflare Queues can replace it later
 // (owner approval + paid plan required for Queues; not used here).
@@ -8,7 +8,7 @@ import { auditStmt, audit } from './audit.js';
 import { newId } from './crypto.js';
 import { sniff } from './magic.js';
 import { probe } from './probe.js';
-import { MEDIA_LIMITS, PROCESSING, PENDING_UPLOAD_TTL_HOURS } from './media-config.js';
+import { MEDIA_LIMITS, PROCESSING, PENDING_UPLOAD_TTL_HOURS, R2_PENDING_ERR } from './media-config.js';
 
 const now = () => new Date().toISOString();
 export const JOB_STATES = ['queued', 'running', 'succeeded', 'failed'];
@@ -45,13 +45,18 @@ export function getProcessor() { return processor; }
 /** CAS: only transition uploaded → processing when still live. Caller must check meta.changes === 1. */
 export function enqueueStmts(env, mediaId, { checksum = null, contentType = null } = {}) {
   const id = newId('job'); const t = now();
+  // Job row is inserted only if the CAS UPDATE actually moved the media row (EXISTS state=processing).
   return { id, stmts: [
     env.DB.prepare(
       `UPDATE media SET state='processing', checksum_sha256=COALESCE(?, checksum_sha256), detected_content_type=COALESCE(?, detected_content_type), updated_at=?, last_error=NULL
         WHERE id=? AND state='uploaded' AND deleted_at IS NULL`
     ).bind(checksum, contentType, t, mediaId),
-    env.DB.prepare(`INSERT INTO processing_jobs(id,media_id,job_type,state,attempts,max_attempts,run_after,created_at,updated_at) VALUES (?,?,'probe','queued',0,?,?,?,?)`)
-      .bind(id, mediaId, PROCESSING.maxAttempts, t, t, t),
+    env.DB.prepare(
+      `INSERT INTO processing_jobs(id,media_id,job_type,state,attempts,max_attempts,run_after,created_at,updated_at)
+       SELECT ?,?,'probe','queued',0,?,?,?,? WHERE EXISTS (
+         SELECT 1 FROM media WHERE id=? AND state='processing' AND deleted_at IS NULL
+       )`
+    ).bind(id, mediaId, PROCESSING.maxAttempts, t, t, t, mediaId),
   ] };
 }
 
@@ -138,12 +143,19 @@ async function reclaimStuck(env) {
 }
 
 
-const R2_PENDING_ERR = 'abandoned cleanup: r2 delete pending';
 const R2_DONE_ERR = 'abandoned upload cleanup';
+const R2_QUARANTINE_PREFIX = 'cleanup: quarantined:';
+const R2_RETRY_MAX = 5;
 
-function isNoSuchUpload(err) {
-  const msg = String(err && (err.message || err) || '');
-  return /no such upload|nosuchupload|not.?found|does not exist|404/i.test(msg);
+function parseR2RetryCount(lastError) {
+  const m = String(lastError || '').match(/;n=(\d+)\s*$/);
+  return m ? Number(m[1]) : 0;
+}
+function r2PendingMarker(n = 0) {
+  return n > 0 ? `${R2_PENDING_ERR};n=${n}` : R2_PENDING_ERR;
+}
+function r2Quarantine(reason) {
+  return `${R2_QUARANTINE_PREFIX}${String(reason || 'permanent').slice(0, 120)}`;
 }
 
 async function abortMultipartSafe(env, r) {
@@ -168,22 +180,42 @@ async function finishAbandonedR2(env, r, t) {
   await audit(env, { action: 'media.upload_abandoned', target: r.id, meta: { owner: r.owner_id, prior_state: r.prior_state || null, object_deleted: !!env.MEDIA } });
 }
 
+async function markR2RetryOrQuarantine(env, r, t, err) {
+  if (err instanceof VaultKeyError || (err && err.name === 'VaultKeyError')) {
+    await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
+      .bind(r2Quarantine('vault key refused'), t, r.id).run();
+    return 'quarantined';
+  }
+  const n = parseR2RetryCount(r.last_error) + 1;
+  if (n >= R2_RETRY_MAX) {
+    await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
+      .bind(r2Quarantine('r2 retries exhausted'), t, r.id).run();
+    return 'quarantined';
+  }
+  await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
+    .bind(r2PendingMarker(n), t, r.id).run();
+  return 'pending';
+}
+
 /**
  * Soft-delete abandoned unfinished uploads. CLAIM (conditional UPDATE) before any R2 delete,
  * so a concurrent complete/put cannot lose a ready object's bytes. R2 failures leave a retryable
- * last_error marker and are never audited as success.
+ * last_error marker (shared with owner cancel) and are never audited as success.
+ * Permanent failures (VaultKeyError / retry cap) quarantine via last_error without new schema.
  */
 export async function cleanupAbandonedUploads(env, { limit = PROCESSING.sweepLimit, nowMs = Date.now() } = {}) {
   const cutoff = new Date(nowMs - PENDING_UPLOAD_TTL_HOURS * 3600e3).toISOString();
   const t = now();
-  let deleted = 0; let errors = 0; let retried = 0; let scanned = 0;
+  let deleted = 0; let errors = 0; let retried = 0; let scanned = 0; let quarantined = 0;
 
-  // Retry prior R2 failures (row already claimed deleted).
+  // Cap retry share so permanent/retry backlog cannot starve new claims.
+  const retryLimit = Math.min(limit, Math.max(1, Math.floor(limit / 2)));
+  // Shared marker with cancel: any last_error containing "r2 delete pending".
   const pendingR2 = (await env.DB.prepare(
-    `SELECT id, object_key, owner_id, media_type FROM media
-      WHERE state='deleted' AND deleted_at IS NOT NULL AND last_error LIKE 'abandoned cleanup: r2%'
+    `SELECT id, object_key, owner_id, media_type, last_error FROM media
+      WHERE state='deleted' AND deleted_at IS NOT NULL AND last_error LIKE '%r2 delete pending%'
       ORDER BY updated_at ASC LIMIT ?`
-  ).bind(limit).all()).results;
+  ).bind(retryLimit).all()).results;
   for (const r of pendingR2) {
     scanned++;
     try {
@@ -192,7 +224,8 @@ export async function cleanupAbandonedUploads(env, { limit = PROCESSING.sweepLim
     } catch (e) {
       errors++;
       console.error('abandoned r2 retry failed', r.id, e && e.message);
-      await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=?`).bind(R2_PENDING_ERR, t, r.id).run().catch(() => {});
+      const outcome = await markR2RetryOrQuarantine(env, r, t, e).catch(() => 'pending');
+      if (outcome === 'quarantined') quarantined++;
     }
   }
 
@@ -214,13 +247,13 @@ export async function cleanupAbandonedUploads(env, { limit = PROCESSING.sweepLim
       if ((claim?.meta?.changes ?? 0) !== 1) continue;
 
       try {
-        await finishAbandonedR2(env, { ...r, prior_state: r.state }, t);
+        await finishAbandonedR2(env, { ...r, prior_state: r.state, last_error: R2_PENDING_ERR }, t);
         deleted++;
       } catch (e) {
         errors++;
         console.error('abandoned r2 cleanup failed', r.id, e && e.message);
-        await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
-          .bind(R2_PENDING_ERR, t, r.id).run();
+        const outcome = await markR2RetryOrQuarantine(env, { ...r, last_error: R2_PENDING_ERR }, t, e);
+        if (outcome === 'quarantined') quarantined++;
         // Do NOT mark multipart aborted or write success audit.
       }
     } catch (e) {
@@ -228,7 +261,7 @@ export async function cleanupAbandonedUploads(env, { limit = PROCESSING.sweepLim
       console.error('abandoned upload cleanup failed', r.id, e && e.message);
     }
   }
-  return { at: t, scanned, deleted, errors, retried, cutoff };
+  return { at: t, scanned, deleted, errors, retried, quarantined, cutoff };
 }
 
 // ---- Story expiry sweeper (cron) ----
