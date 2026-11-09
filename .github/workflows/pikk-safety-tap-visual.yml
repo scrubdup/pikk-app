@@ -1,0 +1,31 @@
+name: PIKK Safety Tap Target Review
+on:
+  pull_request:
+    paths:
+      - 'src/pages/messages.js'
+      - 'src/pages/user.js'
+      - 'src/safety-actions.js'
+      - 'src/main.js'
+      - 'src/*.css'
+      - 'src/**/*.css'
+      - 'scripts/measure-safety-tap-targets.mjs'
+      - '.github/workflows/pikk-safety-tap-visual.yml'
+permissions:
+  contents: read
+jobs:
+  measure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies and Chromium
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Measure rendered Block/Report/category picker heights at 360/390/430
+        run: node scripts/measure-safety-tap-targets.mjs
