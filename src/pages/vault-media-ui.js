@@ -216,6 +216,8 @@ export function bindVaultMediaPanel(root) {
   let listItems = [];
   let nextCursor = null;
   let loadingMore = false;
+  /** Bumped on every full refresh so in-flight load-more appends are ignored (H5). */
+  let listRequestGen = 0;
 
   function paintList() {
     if (!listEl) return;
@@ -227,22 +229,43 @@ export function bindVaultMediaPanel(root) {
     }
   }
 
+  function dedupeById(items) {
+    const seen = new Set();
+    const out = [];
+    for (const m of items || []) {
+      if (!m?.id || seen.has(m.id)) continue;
+      seen.add(m.id);
+      out.push(m);
+    }
+    return out;
+  }
+
   async function refreshList({ append = false, cursor = null } = {}) {
     if (!listEl) return;
     const gen = bindGen;
     const userId = boundUserId;
+    let reqGen;
+    if (append) {
+      reqGen = listRequestGen;
+    } else {
+      listRequestGen += 1;
+      reqGen = listRequestGen;
+      loadingMore = false; // invalidate in-flight load-more
+    }
     try {
       const data = await vaultApi.listMine(50, { cursor: cursor || undefined });
       if (gen !== bindGeneration || !listEl.isConnected) return;
       if (String(userId) !== String(currentBoundUserId() || '')) return;
+      if (reqGen !== listRequestGen) return; // stale load-more after full refresh
       const page = data.media || [];
-      if (append) listItems = listItems.concat(page);
-      else listItems = page;
+      if (append) listItems = dedupeById(listItems.concat(page));
+      else listItems = dedupeById(page);
       nextCursor = data.next_cursor || null;
       paintList();
     } catch (err) {
       if (gen !== bindGeneration || !listEl.isConnected) return;
       if (String(userId) !== String(currentBoundUserId() || '')) return;
+      if (reqGen !== listRequestGen) return;
       if (!append) {
         if (err?.status === 401 || err?.code === 'unauthenticated') {
           listEl.innerHTML = '<p class="muted">Sign in from <a href="#/profile">Profile</a> to see your Vault media.</p>';
@@ -263,8 +286,12 @@ export function bindVaultMediaPanel(root) {
     loadingMore = true;
     if (loadMoreBtn) { loadMoreBtn.disabled = true; loadMoreBtn.textContent = 'Loading…'; }
     const cursor = nextCursor;
-    try { await refreshList({ append: true, cursor }); }
-    finally { loadingMore = false; }
+    const reqGenAtClick = listRequestGen;
+    try {
+      await refreshList({ append: true, cursor });
+    } finally {
+      if (reqGenAtClick === listRequestGen) loadingMore = false;
+    }
   });
 
   fetchVaultMediaStorageReady().then(async (r) => {
@@ -463,7 +490,7 @@ export function bindVaultMediaPanel(root) {
       const id = deleteItem.getAttribute('data-id');
       if (!id) return;
       const ok = typeof window.confirm === 'function'
-        ? window.confirm('Delete this ready media permanently from your Vault? Signed links will stop working.')
+        ? window.confirm('Remove this ready media from your Vault library? Signed links will stop working. Storage cleanup may finish in the background if needed.')
         : false;
       if (!ok) return;
       deleteItem.disabled = true;
@@ -471,8 +498,8 @@ export function bindVaultMediaPanel(root) {
         const data = await vaultApi.delete(id);
         if (!stillThisBind() || !sameUser()) return;
         if (data?.media?.cleanup_pending) {
-          toast('Deleted · storage cleanup pending');
-          setProgress(progressEl, 'Deleted · storage cleanup pending');
+          toast('Removed from library · storage cleanup pending');
+          setProgress(progressEl, 'Removed from library · storage cleanup pending (bytes may still be queued)');
         } else {
           toast('Media deleted');
         }

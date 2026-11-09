@@ -357,3 +357,57 @@ test('DOM: load more uses next_cursor', async () => {
   assert.ok(calls.some((c) => c.method === 'GET' && /cursor=/.test(c.u)));
   globalThis.fetch = prev;
 });
+
+test('H5 full refresh vs in-flight load-more does not duplicate rows', async () => {
+  healthMode = 'ok';
+  mediaStorage = true;
+  mediaStore.clear();
+  for (let i = 0; i < 5; i++) {
+    mediaStore.set('med_h5_' + i, {
+      id: 'med_h5_' + i, type: 'photo', filename: 'h5' + i + '.jpg', size: 10,
+      access: 'private', state: 'ready',
+    });
+  }
+  const root = document.getElementById('app');
+  root.innerHTML = renderVaultMediaPanelHtml();
+
+  let releaseLoadMore;
+  const gate = new Promise((r) => { releaseLoadMore = r; });
+  const prev = globalThis.fetch;
+  let loadMoreSeen = false;
+  globalThis.fetch = async (url, opts = {}) => {
+    const u = String(url);
+    if ((u.includes('/media?') || /\/media(\?|$)/.test(u)) && (opts.method || 'GET').toUpperCase() === 'GET') {
+      const urlObj = new URL(u, 'https://api.test');
+      urlObj.searchParams.set('limit', '2');
+      if (urlObj.searchParams.get('cursor')) {
+        loadMoreSeen = true;
+        await gate;
+      }
+      return prev(urlObj.toString(), opts);
+    }
+    return prev(url, opts);
+  };
+
+  bindVaultMediaPanel(root);
+  await new Promise((r) => setTimeout(r, 50));
+  const more = root.querySelector('#vaultMediaLoadMore');
+  assert.equal(more.hidden, false);
+
+  // Start load-more (held), then full refresh via delete confirm
+  more.dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(loadMoreSeen, true);
+
+  window.confirm = () => true;
+  const delBtn = root.querySelector('.vault-media-delete');
+  delBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 40));
+
+  releaseLoadMore();
+  await new Promise((r) => setTimeout(r, 60));
+
+  const ids = [...root.querySelectorAll('[data-vault-media-id]')].map((el) => el.getAttribute('data-vault-media-id'));
+  assert.equal(ids.length, new Set(ids).size, 'no duplicate ids after stale load-more');
+  globalThis.fetch = prev;
+});
