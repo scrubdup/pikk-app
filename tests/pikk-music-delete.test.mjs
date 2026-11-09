@@ -15,9 +15,13 @@ test('music draft client deletes through authenticated backend', () => {
 test('My draft uploads expose delete and cleanup-retry recovery', () => {
   assert.match(page, /music-draft-delete/);
   assert.match(page, /music-draft-cleanup-retry/);
-  assert.match(page, /pikk_music_cleanup_pending/);
+  assert.match(page, /pikk_music_cleanup_pending:/);
+  assert.match(page, /getLiveAuthMeUserId/);
+  assert.match(page, /MUSIC_DRAFT_ID_RE|\^[\\\w-]\{1,80\}\$/);
   assert.match(page, /retry_required|cleanup_pending/);
   assert.match(page, /no automatic cleanup/i);
+  assert.match(page, /err\?\.status===404|err\?\.status === 404/);
+  assert.match(page, /musicBindGen|listRequestGen/);
 });
 
 test('DELETE handler: draft-only claim, deleted-row cleanup retry, honest 202, key refuse', () => {
