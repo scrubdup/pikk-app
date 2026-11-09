@@ -148,24 +148,30 @@ async function cancel(env, req, ctx, id) {
       }
     }
   }
+  let cleanupPending = false;
   if (env.MEDIA) {
     try { await vaultDeleteFor(env.MEDIA, r.object_key, r); }
     catch (e) {
-      // Same retry marker as abandoned cleanup so the next sweep finishes delete/abort.
+      // Soft-delete already claimed; queue R2 cleanup. Return 202 cleanup_pending (not 500).
       await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
         .bind(CANCEL_R2_PENDING_ERR, t, id).run();
-      throw e;
+      cleanupPending = true;
+      r2RetryNeeded = true;
     }
   }
-  if (r2RetryNeeded) {
+  if (r2RetryNeeded && !cleanupPending) {
     await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
       .bind(CANCEL_R2_PENDING_ERR, t, id).run();
+    cleanupPending = true;
   }
   if (multipartAborted) {
     await env.DB.prepare(`UPDATE media_multipart SET state='aborted', updated_at=? WHERE media_id=? AND state='active'`).bind(t, id).run();
   }
-  await audit(env, { actor: s.user.id, action: 'media.upload_cancelled', target: id, ip: clientIp(req), meta: { multipart_aborted: multipartAborted, r2_retry_pending: r2RetryNeeded } });
-  return json(200, { media: { id, state: 'deleted', cancelled: true, multipart_aborted: multipartAborted, r2_retry_pending: r2RetryNeeded } });
+  await audit(env, { actor: s.user.id, action: 'media.upload_cancelled', target: id, ip: clientIp(req), meta: { multipart_aborted: multipartAborted, cleanup_pending: cleanupPending } });
+  if (cleanupPending) {
+    return json(202, { media: { id, state: 'deleted', cancelled: true, multipart_aborted: multipartAborted, cleanup_pending: true } });
+  }
+  return json(200, { media: { id, state: 'deleted', cancelled: true, multipart_aborted: multipartAborted, cleanup_pending: false } });
 }
 
 export async function multipartRoute(env, req, ctx, m, p, ID) {

@@ -34,13 +34,22 @@ async function setState(env, id, state, err = null) {
   await env.DB.prepare(`UPDATE media SET state=?, last_error=?, updated_at=? WHERE id=? AND deleted_at IS NULL`).bind(state, err, now(), id).run();
 }
 
+/** Map internal last_error to a safe owner-facing message (no paths/keys/stacks). */
+function safeOwnerError(lastError) {
+  const msg = String(lastError || '');
+  if (/size mismatch/i.test(msg)) return 'Stored size did not match';
+  if (/content does not match/i.test(msg)) return 'File type did not match';
+  if (/object missing/i.test(msg)) return 'Upload incomplete';
+  return 'Processing failed';
+}
+
 function view(r) {
   return { id: r.id, type: r.media_type, story: r.is_story === 1, filename: r.filename, content_type: r.detected_content_type || r.declared_content_type,
     size: r.size_bytes, checksum_sha256: r.checksum_sha256, access: r.access_policy, state: r.state, expires_at: r.expires_at,
     created_at: r.created_at, ready_at: r.ready_at,
     width: r.width ?? null, height: r.height ?? null, duration_ms: r.duration_ms ?? null,
     thumbnail: r.thumbnail_state || 'unavailable_pending_provider', variants: r.variants_state || 'unavailable_pending_provider',
-    error: r.state === 'failed' ? r.last_error : undefined };
+    error: r.state === 'failed' ? safeOwnerError(r.last_error) : undefined };
 }
 
 async function createUpload(env, req, ctx) {

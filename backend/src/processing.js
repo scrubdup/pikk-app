@@ -8,8 +8,7 @@ import { auditStmt, audit } from './audit.js';
 import { newId } from './crypto.js';
 import { sniff } from './magic.js';
 import { probe } from './probe.js';
-import { MEDIA_LIMITS, PROCESSING, PENDING_UPLOAD_TTL_HOURS, R2_PENDING_ERR } from './media-config.js';
-// CANCEL_R2_PENDING_ERR shares '%r2 delete pending%' with R2_PENDING_ERR for the sweeper SELECT.
+import { MEDIA_LIMITS, PROCESSING, PENDING_UPLOAD_TTL_HOURS, R2_PENDING_ERR, CANCEL_R2_PENDING_ERR } from './media-config.js';
 
 const now = () => new Date().toISOString();
 export const JOB_STATES = ['queued', 'running', 'succeeded', 'failed'];
@@ -152,11 +151,17 @@ function parseR2RetryCount(lastError) {
   const m = String(lastError || '').match(/;n=(\d+)\s*$/);
   return m ? Number(m[1]) : 0;
 }
-function r2PendingMarker(n = 0) {
-  return n > 0 ? `${R2_PENDING_ERR};n=${n}` : R2_PENDING_ERR;
+function isCancelProvenance(lastError) {
+  return /cancel/i.test(String(lastError || ''));
 }
-function r2Quarantine(reason) {
-  return `${R2_QUARANTINE_PREFIX}${String(reason || 'permanent').slice(0, 120)}`;
+/** Preserve cancel vs abandoned prefix across retries (B1 / REPORT-61d4c43). */
+function r2PendingMarker(lastError, n = 0) {
+  const base = isCancelProvenance(lastError) ? CANCEL_R2_PENDING_ERR : R2_PENDING_ERR;
+  return n > 0 ? `${base};n=${n}` : base;
+}
+function r2Quarantine(reason, lastError) {
+  const src = isCancelProvenance(lastError) ? 'cancel: ' : '';
+  return `${R2_QUARANTINE_PREFIX}${src}${String(reason || 'permanent').slice(0, 100)}`;
 }
 
 async function abortMultipartSafe(env, r) {
@@ -179,17 +184,19 @@ async function finishAbandonedR2(env, r, t) {
   }
   const fromCancel = /cancel/i.test(String(r.last_error || ''));
   const doneErr = fromCancel ? 'cancelled by owner' : R2_DONE_ERR;
-  const action = fromCancel ? 'media.upload_cancelled' : 'media.upload_abandoned';
   await env.DB.prepare(`UPDATE media SET last_error=? WHERE id=? AND state='deleted'`).bind(doneErr, r.id).run();
+  // Owner cancel already wrote media.upload_cancelled at soft-delete time (incl. 202 cleanup_pending).
+  // Do not double-audit on successful R2 retry — keep exact 1 cancelled, 0 abandoned (B1).
+  if (fromCancel) return;
   await audit(env, {
-    action,
+    action: 'media.upload_abandoned',
     target: r.id,
     meta: {
       owner: r.owner_id,
       prior_state: r.prior_state || null,
       object_deleted: !!env.MEDIA,
       from_r2_retry: true,
-      source: fromCancel ? 'cancel' : 'abandoned',
+      source: 'abandoned',
     },
   });
 }
@@ -197,17 +204,17 @@ async function finishAbandonedR2(env, r, t) {
 async function markR2RetryOrQuarantine(env, r, t, err) {
   if (err instanceof VaultKeyError || (err && err.name === 'VaultKeyError')) {
     await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
-      .bind(r2Quarantine('vault key refused'), t, r.id).run();
+      .bind(r2Quarantine('vault key refused', r.last_error), t, r.id).run();
     return 'quarantined';
   }
   const n = parseR2RetryCount(r.last_error) + 1;
   if (n >= R2_RETRY_MAX) {
     await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
-      .bind(r2Quarantine('r2 retries exhausted'), t, r.id).run();
+      .bind(r2Quarantine('r2 retries exhausted', r.last_error), t, r.id).run();
     return 'quarantined';
   }
   await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
-    .bind(r2PendingMarker(n), t, r.id).run();
+    .bind(r2PendingMarker(r.last_error, n), t, r.id).run();
   return 'pending';
 }
 

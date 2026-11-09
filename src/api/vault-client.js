@@ -13,20 +13,32 @@ export function isVaultApiConfigured() {
   return isPikkApiConfigured();
 }
 
-/** Live Worker capability: R2 MEDIA binding present. Never infer from API base alone. */
+/**
+ * Live Worker capability: R2 MEDIA binding present. Never infer from API base alone.
+ * Distinguishes unreachable API (reachable:false) from storage disabled (reachable:true, mediaStorage:false).
+ */
 export async function fetchVaultMediaStorageReady() {
-  if (!isPikkApiConfigured()) return { apiConfigured: false, mediaStorage: false };
+  if (!isPikkApiConfigured()) {
+    return { apiConfigured: false, mediaStorage: false, reachable: false, healthOk: false };
+  }
   try {
     const base = getPikkApiBase();
     const res = await fetch(base + '/health', { credentials: 'include' });
+    if (!res.ok) {
+      return { apiConfigured: true, mediaStorage: false, reachable: false, healthOk: false };
+    }
     const data = await res.json().catch(() => null);
+    if (!data) {
+      return { apiConfigured: true, mediaStorage: false, reachable: false, healthOk: false };
+    }
     return {
       apiConfigured: true,
-      mediaStorage: !!(data && data.capabilities && data.capabilities.media_storage),
-      healthOk: !!(data && data.ok),
+      mediaStorage: !!(data.capabilities && data.capabilities.media_storage),
+      healthOk: !!data.ok,
+      reachable: true,
     };
   } catch {
-    return { apiConfigured: true, mediaStorage: false, healthOk: false };
+    return { apiConfigured: true, mediaStorage: false, reachable: false, healthOk: false };
   }
 }
 
@@ -120,7 +132,7 @@ export function inferVaultMediaType(file) {
   const ct = String(file?.type || '').toLowerCase();
   for (const [type, lim] of Object.entries(VAULT_CLIENT_LIMITS)) {
     if (type === 'multipartMinBytes' || type === 'multipartPartBytes') continue;
-    if (lim.contentTypes.includes(ct)) return type;
+    if (lim.contentTypes && lim.contentTypes.includes(ct)) return type;
   }
   return null;
 }
@@ -135,7 +147,7 @@ export const vaultApi = {
   completeParts: (id) =>
     request(`/media/uploads/${encodeURIComponent(id)}/parts/complete`, { method: 'POST' }),
   complete: (id) => request(`/media/${encodeURIComponent(id)}/complete`, { method: 'POST' }),
-  /** Cancel unfinished upload only (pending_upload / uploaded). */
+  /** Cancel unfinished upload only (pending_upload / uploaded). May return cleanup_pending. */
   cancel: (id) => request(`/media/uploads/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   get: (id) => request(`/media/${encodeURIComponent(id)}`),
   /**
@@ -148,7 +160,7 @@ export const vaultApi = {
 };
 
 /**
- * Full single/multipart upload pipeline with progress callbacks.
+ * Full single/multipart upload pipeline with honest stage callbacks (not fake percentages).
  * Does not claim thumbnails/transcoding; processing is probe-only until ready/failed.
  */
 export async function uploadVaultFile(file, {
@@ -169,7 +181,7 @@ export async function uploadVaultFile(file, {
     throw err;
   }
   const useMultipart = file.size >= VAULT_CLIENT_LIMITS.multipartMinBytes;
-  onProgress?.({ phase: 'create', pct: 0 });
+  onProgress?.({ phase: 'create' });
   const created = await vaultApi.createUpload({
     type,
     content_type: file.type,
@@ -197,13 +209,14 @@ export async function uploadVaultFile(file, {
       }
       const start = (n - 1) * partSize;
       const end = Math.min(file.size, start + partSize);
+      // Genuine slice — do not mock away in tests of part boundaries.
       await vaultApi.putPart(upload.id, n, file.slice(start, end));
-      onProgress?.({ phase: 'upload', pct: Math.round((n / partCount) * 80), part: n, partCount });
+      onProgress?.({ phase: 'upload', part: n, partCount });
     }
-    onProgress?.({ phase: 'assemble', pct: 85 });
+    onProgress?.({ phase: 'assemble' });
     await vaultApi.completeParts(upload.id);
   } else {
-    onProgress?.({ phase: 'upload', pct: 40 });
+    onProgress?.({ phase: 'upload' });
     await vaultApi.putBytes(upload.id, file);
   }
   if (signal?.aborted) {
@@ -212,9 +225,9 @@ export async function uploadVaultFile(file, {
     err.code = 'cancelled';
     throw err;
   }
-  onProgress?.({ phase: 'finalize', pct: 90 });
+  onProgress?.({ phase: 'finalize' });
   const done = await vaultApi.complete(upload.id);
-  onProgress?.({ phase: 'processing', pct: 95, media: done.media });
+  onProgress?.({ phase: 'processing', media: done.media });
   return done;
 }
 

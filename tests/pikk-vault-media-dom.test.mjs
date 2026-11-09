@@ -13,36 +13,57 @@ const { document, window } = parseHTML('<!doctype html><html><body><main id="app
 globalThis.document = document;
 globalThis.window = window;
 globalThis.CustomEvent = window.CustomEvent;
-globalThis.Blob = class Blob {
-  constructor(parts = [], opts = {}) {
-    this.parts = parts;
-    this.type = opts.type || '';
-    this.size = parts.reduce((n, p) => n + (p?.byteLength || p?.size || String(p).length), 0);
-  }
-  slice(start, end) {
-    return new Blob(this.parts, { type: this.type });
-  }
-};
-globalThis.File = class File extends globalThis.Blob {
-  constructor(parts, name, opts = {}) {
-    super(parts, opts);
-    this.name = name;
-    this.lastModified = Date.now();
-  }
-};
 
-// Stub API base before importing modules that read import.meta env
+// Prefer real Blob/File (Node undici) so slice is genuine. Fallback only if missing.
+if (typeof globalThis.Blob !== 'function' || typeof globalThis.File !== 'function') {
+  globalThis.Blob = class Blob {
+    constructor(parts = [], opts = {}) {
+      const chunks = [];
+      for (const p of parts) {
+        if (p instanceof Uint8Array) chunks.push(p);
+        else if (p instanceof ArrayBuffer) chunks.push(new Uint8Array(p));
+        else if (typeof p === 'string') chunks.push(new TextEncoder().encode(p));
+        else if (p?.buffer) chunks.push(new Uint8Array(p.buffer, p.byteOffset || 0, p.byteLength || p.length));
+        else chunks.push(new TextEncoder().encode(String(p)));
+      }
+      const size = chunks.reduce((n, c) => n + c.byteLength, 0);
+      this._buf = new Uint8Array(size);
+      let o = 0;
+      for (const c of chunks) { this._buf.set(c, o); o += c.byteLength; }
+      this.type = opts.type || '';
+      this.size = size;
+    }
+    slice(start = 0, end = this.size, contentType = '') {
+      const s = Math.max(0, start | 0);
+      const e = Math.min(this.size, end == null ? this.size : end | 0);
+      const out = this._buf.slice(s, Math.max(s, e));
+      const b = new Blob([out], { type: contentType || this.type });
+      return b;
+    }
+    arrayBuffer() { return Promise.resolve(this._buf.buffer.slice(this._buf.byteOffset, this._buf.byteOffset + this._buf.byteLength)); }
+  };
+  globalThis.File = class File extends globalThis.Blob {
+    constructor(parts, name, opts = {}) {
+      super(parts, opts);
+      this.name = name;
+      this.lastModified = Date.now();
+    }
+  };
+}
+
 window.__PIKK_API_BASE__ = 'https://api.test';
 globalThis.window = window;
 
 const calls = [];
 let mediaStorage = true;
+let healthMode = 'ok'; // ok | unbound | unreachable | throw
 const mediaStore = new Map();
+const putBodies = [];
 
 globalThis.fetch = async (url, opts = {}) => {
   const u = String(url);
   const method = (opts.method || 'GET').toUpperCase();
-  calls.push({ u, method });
+  calls.push({ u, method, body: opts.body });
   const json = (status, body) => ({
     ok: status >= 200 && status < 300,
     status,
@@ -52,6 +73,9 @@ globalThis.fetch = async (url, opts = {}) => {
   });
 
   if (u.endsWith('/health') && method === 'GET') {
+    if (healthMode === 'throw') throw new TypeError('network');
+    if (healthMode === 'unreachable') return json(502, { error: 'bad gateway' });
+    if (healthMode === 'unbound') return json(200, { ok: true, capabilities: { media_storage: false } });
     return json(200, { ok: true, capabilities: { media_storage: mediaStorage } });
   }
   if (u.includes('/media?') && method === 'GET') {
@@ -78,9 +102,11 @@ globalThis.fetch = async (url, opts = {}) => {
     const id = u.split('/').pop();
     const row = mediaStore.get(id);
     if (row) row.state = 'uploaded';
+    putBodies.push(opts.body);
     return json(200, { media: { id, state: 'uploaded' } });
   }
   if (/\/media\/uploads\/[^/]+\/parts\/\d+$/.test(u) && method === 'PUT') {
+    putBodies.push(opts.body);
     return json(200, { ok: true });
   }
   if (/\/parts\/complete$/.test(u) && method === 'POST') {
@@ -102,7 +128,7 @@ globalThis.fetch = async (url, opts = {}) => {
   if (/\/media\/uploads\/[^/]+$/.test(u) && method === 'DELETE') {
     const id = u.split('/').pop();
     mediaStore.delete(id);
-    return json(200, { media: { id, state: 'deleted', cancelled: true } });
+    return json(202, { media: { id, state: 'deleted', cancelled: true, cleanup_pending: true } });
   }
   if (/\/media\/med_/.test(u) && method === 'GET') {
     const id = u.split('/').pop().split('?')[0];
@@ -113,21 +139,23 @@ globalThis.fetch = async (url, opts = {}) => {
   return json(404, { error: { code: 'not_found', message: u } });
 };
 
-const { noteLiveAuthMe } = await import('../src/auth/readiness.js');
+const { noteLiveAuthMe, clearLiveAuthMe } = await import('../src/auth/readiness.js');
+const { clearAuthenticatedUser, syncRemoteAuthUser } = await import('../src/store.js');
 noteLiveAuthMe({ id: 'usr_dom_test' });
+syncRemoteAuthUser({ id: 'usr_dom_test', email: 'dom@example.com', email_verified: true });
 
-const { renderVaultMediaPanelHtml, bindVaultMediaPanel } = await import('../src/pages/vault-media-ui.js');
-const { isVaultApiConfigured } = await import('../src/api/vault-client.js');
+const { renderVaultMediaPanelHtml, bindVaultMediaPanel, __vaultMediaTest } = await import('../src/pages/vault-media-ui.js');
+const { isVaultApiConfigured, uploadVaultFile, VAULT_CLIENT_LIMITS } = await import('../src/api/vault-client.js');
 
 test('DOM: storage ready enables form, upload + list refresh via real event handlers', async () => {
   assert.equal(isVaultApiConfigured(), true);
   mediaStorage = true;
+  healthMode = 'ok';
   mediaStore.clear();
   calls.length = 0;
   const root = document.getElementById('app');
   root.innerHTML = renderVaultMediaPanelHtml();
   bindVaultMediaPanel(root);
-  // Allow health promise
   await new Promise((r) => setTimeout(r, 20));
   const form = root.querySelector('#vaultMediaUploadForm');
   assert.ok(form, 'form present');
@@ -137,7 +165,6 @@ test('DOM: storage ready enables form, upload + list refresh via real event hand
   const fileInput = root.querySelector('#vaultMediaFile');
   const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, ...Array(200).fill(1)]);
   const file = new File([jpeg], 'shot.jpg', { type: 'image/jpeg' });
-  // linkedom file input: assign via defineProperty
   Object.defineProperty(fileInput, 'files', { configurable: true, get: () => [file] });
 
   form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
@@ -150,7 +177,8 @@ test('DOM: storage ready enables form, upload + list refresh via real event hand
   assert.match(root.querySelector('#vaultMediaList').innerHTML, /shot\.jpg|ready|med_test/);
 });
 
-test('DOM: media_storage false disables mutations and explains no local fallback', async () => {
+test('DOM: media_storage false disables mutations (distinct from unreachable)', async () => {
+  healthMode = 'unbound';
   mediaStorage = false;
   mediaStore.clear();
   const root = document.getElementById('app');
@@ -160,9 +188,21 @@ test('DOM: media_storage false disables mutations and explains no local fallback
   assert.equal(root.querySelector('#vaultMediaUploadForm').hidden, true);
   assert.match(root.querySelector('#vaultMediaFormBlocked').textContent, /unavailable|disabled/i);
   assert.match(root.querySelector('#vaultMediaReadyStatus').textContent, /not ready|unbound|false/i);
+  assert.doesNotMatch(root.querySelector('#vaultMediaReadyStatus').textContent, /Could not reach/i);
 });
 
-test('DOM: cancel unfinished item calls DELETE and refreshes list', async () => {
+test('DOM: /health unreachable disables mutations with distinct messaging', async () => {
+  healthMode = 'throw';
+  const root = document.getElementById('app');
+  root.innerHTML = renderVaultMediaPanelHtml();
+  bindVaultMediaPanel(root);
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(root.querySelector('#vaultMediaUploadForm').hidden, true);
+  assert.match(root.querySelector('#vaultMediaReadyStatus').textContent, /Could not reach/i);
+});
+
+test('DOM: cancel unfinished item calls DELETE; cleanup_pending toast path', async () => {
+  healthMode = 'ok';
   mediaStorage = true;
   mediaStore.clear();
   mediaStore.set('med_pending1', {
@@ -180,4 +220,54 @@ test('DOM: cancel unfinished item calls DELETE and refreshes list', async () => 
   await new Promise((r) => setTimeout(r, 40));
   assert.ok(calls.some((c) => c.method === 'DELETE' && c.u.includes('/media/uploads/med_pending1')));
   assert.equal(mediaStore.has('med_pending1'), false);
+  assert.match(root.querySelector('#vaultMediaProgress').textContent, /cleanup pending/i);
+});
+
+test('multipart uses genuine Blob.slice (part bodies are truncated)', async () => {
+  healthMode = 'ok';
+  mediaStorage = true;
+  mediaStore.clear();
+  putBodies.length = 0;
+  calls.length = 0;
+  const partSize = VAULT_CLIENT_LIMITS.multipartPartBytes;
+  const size = partSize + 1234;
+  const buf = new Uint8Array(size);
+  for (let i = 0; i < size; i++) buf[i] = i & 0xff;
+  const file = new File([buf], 'big.mp4', { type: 'video/mp4' });
+  // Ensure slice is genuine
+  const sliced = file.slice(0, 10);
+  assert.equal(sliced.size, 10, 'Blob.slice must return truncated size, not whole blob');
+
+  await uploadVaultFile(file, { access: 'private' });
+  const partPuts = calls.filter((c) => /\/parts\/\d+$/.test(c.u) && c.method === 'PUT');
+  assert.equal(partPuts.length, 2, 'two parts uploaded');
+  // First part body should be partSize bytes (Blob/File)
+  const b0 = partPuts[0].body;
+  const size0 = b0?.size ?? b0?.byteLength ?? b0?.length;
+  assert.equal(size0, partSize, `part1 size ${size0} === partSize ${partSize}`);
+  const b1 = partPuts[1].body;
+  const size1 = b1?.size ?? b1?.byteLength ?? b1?.length;
+  assert.equal(size1, 1234, `part2 size ${size1} === remainder 1234`);
+});
+
+test('resolveSafeMediaUrl rejects cross-origin and non-/media/ paths', () => {
+  const base = 'https://api.test';
+  assert.equal(__vaultMediaTest.resolveSafeMediaUrl('/media/x/content?sig=1', base), 'https://api.test/media/x/content?sig=1');
+  assert.equal(__vaultMediaTest.resolveSafeMediaUrl('https://evil.example/media/x', base), null);
+  assert.equal(__vaultMediaTest.resolveSafeMediaUrl('javascript:alert(1)', base), null);
+  assert.equal(__vaultMediaTest.resolveSafeMediaUrl('/auth/me', base), null);
+  assert.equal(__vaultMediaTest.resolveSafeMediaUrl('https://api.test/auth/me', base), null);
+});
+
+test('progressLabel is stage text without fake percentages', () => {
+  assert.equal(__vaultMediaTest.progressLabel({ phase: 'create' }), 'Creating upload…');
+  assert.equal(__vaultMediaTest.progressLabel({ phase: 'upload', part: 1, partCount: 2 }), 'Uploading part 1 of 2…');
+  assert.equal(__vaultMediaTest.progressLabel({ phase: 'finalize' }), 'Finalizing…');
+  assert.doesNotMatch(__vaultMediaTest.progressLabel({ phase: 'upload' }), /\d+%/);
+});
+
+test('safeOwnerError maps internal last_error', () => {
+  assert.equal(__vaultMediaTest.safeOwnerError('size mismatch at /tmp/x'), 'Stored size did not match');
+  assert.equal(__vaultMediaTest.safeOwnerError('object missing key=vault/…'), 'Upload incomplete');
+  assert.equal(__vaultMediaTest.safeOwnerError('stack at /srv'), 'Processing failed');
 });

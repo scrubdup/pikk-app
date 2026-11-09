@@ -90,7 +90,9 @@ describe('vault list + two-identity isolation + cancel audit', () => {
       headers: { Origin: ORIGIN, Cookie: a.cookie, 'CF-Connecting-IP': freshIp() },
     });
     const res = await worker.fetch(req, { ...env, MEDIA: bad }, { waitUntil() {} });
-    expect(res.status).toBe(500);
+    expect([202, 200]).toContain(res.status);
+    const cancelBody = await res.json();
+    expect(cancelBody.media.cleanup_pending).toBe(true);
     const mid = await env.DB.prepare('SELECT last_error FROM media WHERE id=?').bind(id).first();
     expect(mid.last_error).toBe(CANCEL_R2_PENDING_ERR);
     await cleanupAbandonedUploads(env);

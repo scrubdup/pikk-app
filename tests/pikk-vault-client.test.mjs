@@ -31,3 +31,14 @@ test('Music Vault retains entry and wires real media panel (not library-only cla
   assert.doesNotMatch(music, /upload UI not built yet/i);
   assert.doesNotMatch(ui, /localStorage\.(get|set)Item/);
 });
+
+test('vault client distinguishes unreachable vs media_storage false; honest stages; genuine slice', () => {
+  assert.match(client, /reachable:\s*false/);
+  assert.match(client, /reachable:\s*true/);
+  assert.match(client, /Genuine slice|file\.slice\(start, end\)/);
+  assert.doesNotMatch(client, /pct:\s*\d+/);
+  assert.match(ui, /resolveSafeMediaUrl/);
+  assert.match(ui, /cleanup_pending/);
+  assert.match(ui, /bindGeneration|stillThisBind|sameUser/);
+  assert.match(ui, /Could not reach API/);
+});

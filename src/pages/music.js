@@ -459,13 +459,15 @@ export function bindMusic(root) {
   if (statusEl && isVaultApiConfigured()) {
     fetchVaultMediaStorageReady().then((r) => {
       if (!statusEl.isConnected) return;
-      if (r.mediaStorage) {
+      if (!r.reachable) {
+        statusEl.textContent = 'API base set · could not reach /health · My Vault media mutations disabled.';
+      } else if (r.mediaStorage) {
         statusEl.textContent = 'Worker reports media storage ready · use My Vault media panel for private uploads (no thumbnails/transcoding yet).';
       } else {
-        statusEl.textContent = 'API base set · media storage not ready (R2 unbound) · My Vault media mutations disabled.';
+        statusEl.textContent = 'API base set · media storage not ready (R2 unbound / media_storage:false) · My Vault media mutations disabled.';
       }
     }).catch(() => {
-      if (statusEl.isConnected) statusEl.textContent = 'API base set · could not read /health · My Vault media mutations disabled.';
+      if (statusEl.isConnected) statusEl.textContent = 'API base set · could not reach /health · My Vault media mutations disabled.';
     });
   }
   bindVaultMediaPanel(root);

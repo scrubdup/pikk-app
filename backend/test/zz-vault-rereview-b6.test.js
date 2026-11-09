@@ -118,7 +118,9 @@ describe('vault re-review fixes (B1/B2/B6 + quarantine + NoSuchUpload)', () => {
     const key = (await row(s.id)).object_key;
     const bad = proxyWith(env.MEDIA, 'delete', () => async () => { throw new Error('R2 503'); });
     const res = await worker.fetch(req(a, `/media/uploads/${s.id}`, 'DELETE'), { ...env, MEDIA: bad }, { waitUntil() {} });
-    expect(res.status).toBe(500);
+    expect([202, 200]).toContain(res.status);
+    const bodyCancel = await res.json();
+    expect(bodyCancel.media.cleanup_pending).toBe(true);
     const r1 = await row(s.id);
     expect(r1.state).toBe('deleted');
     expect(r1.last_error).toContain('r2 delete pending');
@@ -148,10 +150,10 @@ describe('vault re-review fixes (B1/B2/B6 + quarantine + NoSuchUpload)', () => {
       return { uploadId: u.uploadId, abort: async () => { throw new Error('R2 500 on abort'); } };
     });
     const res = await worker.fetch(req(a, `/media/uploads/${id}`, 'DELETE'), { ...env, MEDIA: bad }, { waitUntil() {} });
-    expect(res.status).toBe(200);
+    expect([202, 200]).toContain(res.status);
     const body = await res.json();
     expect(body.media.multipart_aborted).toBe(false);
-    expect(body.media.r2_retry_pending).toBe(true);
+    expect(body.media.cleanup_pending).toBe(true);
     const r1 = await row(id);
     expect(r1.last_error).toBe(CANCEL_R2_PENDING_ERR);
     const db1 = (await env.DB.prepare('SELECT state FROM media_multipart WHERE media_id=?').bind(id).first()).state;
