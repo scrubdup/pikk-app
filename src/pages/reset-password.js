@@ -4,6 +4,17 @@ import { clearLiveAuthMe } from '../auth/readiness.js';
 import { shellPage, esc, toast } from '../ui.js';
 import { navigate } from '../router.js';
 
+function stripResetTokenFromHistory() {
+  try {
+    const hash = String(location.hash || '');
+    if (!hash.includes('token=')) return;
+    // Keep the reset route; drop query so the raw token is not kept in history.
+    history.replaceState(null, '', `${location.pathname}${location.search}#/reset-password`);
+  } catch {
+    /* history may be unavailable in some test hosts */
+  }
+}
+
 export function renderResetPassword(route) {
   const token = route?.query?.token || '';
   if (!token) {
@@ -34,11 +45,14 @@ export function renderResetPassword(route) {
 export function bindResetPassword(root) {
   const card = root.querySelector('#resetPasswordCard');
   if (!card) return;
+  const token = card.dataset.token || '';
+  card.removeAttribute('data-token');
+  stripResetTokenFromHistory();
   root.querySelector('#resetSubmit')?.addEventListener('click', async () => {
     const password = root.querySelector('#resetPasswordInput')?.value || '';
     const status = root.querySelector('#resetStatus');
     try {
-      const r = await authApi.resetPassword({ token: card.dataset.token || '', password });
+      const r = await authApi.resetPassword({ token, password });
       clearLiveAuthMe();
       clearAuthenticatedUser();
       if (status) {

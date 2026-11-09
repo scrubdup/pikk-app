@@ -10,20 +10,21 @@ describe('verification email delivery', () => {
   });
 
   it('exposes the token only in local test mode', async () => {
-    const r = await sendVerificationEmail({ EXPOSE_VERIFY_TOKEN: 'true' }, { to: 'a@example.com', token: 'secret-token', userId: 'usr_1' });
+    const r = await sendVerificationEmail({ EXPOSE_VERIFY_TOKEN: 'true' }, { to: 'a@example.com', token: 'secret-token', userId: 'usr_1', tokenHash: 'abc' });
     expect(r).toEqual({ delivery: 'exposed_for_local_testing', token: 'secret-token' });
   });
 
   it('reports provider-not-configured without exposing the token', async () => {
-    const r = await sendVerificationEmail({ EXPOSE_VERIFY_TOKEN: 'false' }, { to: 'a@example.com', token: 'secret-token', userId: 'usr_1' });
+    const r = await sendVerificationEmail({ EXPOSE_VERIFY_TOKEN: 'false' }, { to: 'a@example.com', token: 'secret-token', userId: 'usr_1', tokenHash: 'abc' });
     expect(r).toEqual({ delivery: 'email_provider_not_configured' });
     expect(JSON.stringify(r)).not.toContain('secret-token');
   });
 
-  it('sends through Resend when secrets and sender are configured', async () => {
+  it('sends through Resend with per-token Idempotency-Key', async () => {
     const fetchMock = vi.fn(async (_url, init) => {
       expect(init.headers.Authorization).toBe('Bearer re_test');
-      expect(init.headers['Idempotency-Key']).toBe('pikk-verify-usr_1');
+      expect(init.headers['Idempotency-Key']).toBe('pikk-verify/hash_tok_1');
+      expect(init.signal).toBeTruthy();
       const body = JSON.parse(init.body);
       expect(body.to).toEqual(['a@example.com']);
       expect(body.from).toBe('PIKK <verify@example.com>');
@@ -36,7 +37,7 @@ describe('verification email delivery', () => {
       RESEND_API_KEY: 're_test',
       EMAIL_FROM: 'PIKK <verify@example.com>',
       PUBLIC_APP_URL: 'https://scrubdup.github.io/pikk-app/',
-    }, { to: 'a@example.com', token: 'secret-token', userId: 'usr_1' });
+    }, { to: 'a@example.com', token: 'secret-token', userId: 'usr_1', tokenHash: 'hash_tok_1' });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(r).toEqual({ delivery: 'email_sent', provider: 'resend', message_id: 'email_123' });
   });
@@ -47,7 +48,17 @@ describe('verification email delivery', () => {
       EXPOSE_VERIFY_TOKEN: 'false',
       RESEND_API_KEY: 're_test',
       EMAIL_FROM: 'PIKK <verify@example.com>',
-    }, { to: 'a@example.com', token: 'secret-token', userId: 'usr_1' });
+    }, { to: 'a@example.com', token: 'secret-token', userId: 'usr_1', tokenHash: 'h1' });
+    expect(r).toEqual({ delivery: 'email_send_failed', status: 500 });
+  });
+
+  it('maps provider timeout/throw to email_send_failed', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('timeout'); }));
+    const r = await sendVerificationEmail({
+      EXPOSE_VERIFY_TOKEN: 'false',
+      RESEND_API_KEY: 're_test',
+      EMAIL_FROM: 'PIKK <verify@example.com>',
+    }, { to: 'a@example.com', token: 'secret-token', userId: 'usr_1', tokenHash: 'h2' });
     expect(r).toEqual({ delivery: 'email_send_failed' });
   });
 });
@@ -60,12 +71,43 @@ describe('password reset email delivery', () => {
   });
 
   it('exposes token only when EXPOSE_VERIFY_TOKEN is true', async () => {
-    const r = await sendPasswordResetEmail({ EXPOSE_VERIFY_TOKEN: 'true' }, { to: 'a@example.com', token: 'reset-secret-token', userId: 'usr_1' });
+    const r = await sendPasswordResetEmail({ EXPOSE_VERIFY_TOKEN: 'true' }, { to: 'a@example.com', token: 'reset-secret-token', tokenHash: 'th' });
     expect(r).toEqual({ delivery: 'exposed_for_local_testing', token: 'reset-secret-token' });
   });
 
   it('reports provider not configured without leaking the token', async () => {
-    const r = await sendPasswordResetEmail({ EXPOSE_VERIFY_TOKEN: 'false' }, { to: 'a@example.com', token: 'reset-secret-token', userId: 'usr_1' });
+    const r = await sendPasswordResetEmail({ EXPOSE_VERIFY_TOKEN: 'false' }, { to: 'a@example.com', token: 'reset-secret-token', tokenHash: 'th' });
     expect(r).toEqual({ delivery: 'email_provider_not_configured' });
+  });
+
+  it('uses unique per-token Idempotency-Key and times out via AbortSignal', async () => {
+    const keys = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+      keys.push(init.headers['Idempotency-Key']);
+      expect(init.signal).toBeTruthy();
+      return new Response(JSON.stringify({ id: 'm1' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }));
+    const env = {
+      EXPOSE_VERIFY_TOKEN: 'false',
+      RESEND_API_KEY: 're_test',
+      EMAIL_FROM: 'PIKK <x@example.com>',
+      PUBLIC_APP_URL: 'https://scrubdup.github.io/pikk-app/',
+    };
+    await sendPasswordResetEmail(env, { to: 'a@example.com', token: 't1', tokenHash: 'hashA' });
+    await sendPasswordResetEmail(env, { to: 'a@example.com', token: 't2', tokenHash: 'hashB' });
+    expect(keys).toEqual(['pikk-pwreset/hashA', 'pikk-pwreset/hashB']);
+  });
+
+  it('maps Resend 409 and network throw to email_send_failed', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"name":"invalid_idempotent_request"}', { status: 409 })));
+    const r409 = await sendPasswordResetEmail({
+      EXPOSE_VERIFY_TOKEN: 'false', RESEND_API_KEY: 're_test', EMAIL_FROM: 'PIKK <x@example.com>',
+    }, { to: 'a@example.com', token: 't', tokenHash: 'h' });
+    expect(r409.delivery).toBe('email_send_failed');
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network'); }));
+    const rThrow = await sendPasswordResetEmail({
+      EXPOSE_VERIFY_TOKEN: 'false', RESEND_API_KEY: 're_test', EMAIL_FROM: 'PIKK <x@example.com>',
+    }, { to: 'a@example.com', token: 't', tokenHash: 'h2' });
+    expect(rThrow.delivery).toBe('email_send_failed');
   });
 });

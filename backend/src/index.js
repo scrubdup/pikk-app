@@ -88,9 +88,8 @@ async function route(req, env, ctx) {
   if (m === 'POST' && p === '/auth/forgot-password') {
     await rateLimit(env, `pwreset-ip:${ip}`, 5, 3600);
     const b = await readJson(req);
-    const emailKey = typeof b?.email === 'string' ? b.email.trim().toLowerCase().slice(0, 260) : '';
-    if (emailKey) await rateLimit(env, `pwreset-email:${emailKey}`, 3, 3600);
-    return json(200, (await requestPasswordReset(env, req, b)).body);
+    // Per-email bucket removed: it let third parties suppress a victim's resets (sec review A7).
+    return json(200, (await requestPasswordReset(env, req, b, ctx)).body);
   }
   if (m === 'POST' && p === '/auth/reset-password') {
     await rateLimit(env, `pwreset-consume:${ip}`, 10, 3600);

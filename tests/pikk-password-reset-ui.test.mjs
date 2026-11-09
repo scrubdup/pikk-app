@@ -28,3 +28,10 @@ test('readiness enables password reset only when API is configured', () => {
   assert.match(readiness, /passwordResetEnabled:\s*!!apiConfigured/);
   assert.match(readiness, /Apply password-reset migration 0015/);
 });
+
+test('reset page strips token from history and DOM after capture', () => {
+  assert.match(reset, /history\.replaceState/);
+  assert.match(reset, /#\/reset-password/);
+  assert.match(reset, /removeAttribute\('data-token'\)/);
+  assert.match(reset, /stripResetTokenFromHistory/);
+});

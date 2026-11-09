@@ -22,10 +22,12 @@ describe('password recovery', () => {
     });
     expect(known.status).toBe(200);
     expect(known.json.message).toBe(unknown.json.message);
-    // Local tests expose token via EXPOSE_VERIFY_TOKEN
-    expect(known.json.recovery.delivery).toBe('exposed_for_local_testing');
+    // Local tests expose token via EXPOSE_VERIFY_TOKEN — never include a delivery discriminator.
+    expect(known.json.recovery?.delivery).toBeUndefined();
     expect(typeof known.json.recovery.token).toBe('string');
     expect(known.json.recovery.token.length).toBeGreaterThan(20);
+    // Unknown must not gain a recovery object; known may only add recovery.token
+    expect(unknown.json.recovery).toBeUndefined();
   });
 
   it('stores only a hash of the reset token', async () => {
@@ -131,3 +133,30 @@ describe('password recovery', () => {
     expect(last.status).toBe(429);
   });
 });
+
+  it('refuses reset when the account is disabled', async () => {
+    const u = await newUser();
+    const forgot = await call('POST', '/auth/forgot-password', { body: { email: u.email }, ip: freshIp() });
+    await env.DB.prepare('UPDATE users SET disabled_at=? WHERE id=?').bind(new Date().toISOString(), u.id).run();
+    const r = await call('POST', '/auth/reset-password', {
+      body: { token: forgot.json.recovery.token, password: 'disabled pass 1' },
+      ip: freshIp(),
+    });
+    expect(r.status).toBe(400);
+    expect(r.json.error.code).toBe('invalid_token');
+  });
+
+  it('a failed provider send keeps the previous live token usable', async () => {
+    const u = await newUser();
+    const first = await call('POST', '/auth/forgot-password', { body: { email: u.email }, ip: freshIp() });
+    const prior = first.json.recovery.token;
+    // Simulate production delivery path with failing provider after a prior expose-mode token
+    const { requestPasswordReset } = await import('../src/auth.js');
+    const { vi } = await import('vitest');
+    vi.stubGlobal('fetch', async () => new Response('nope', { status: 500 }));
+    const prod = { ...env, EXPOSE_VERIFY_TOKEN: 'false', RESEND_API_KEY: 're_test', EMAIL_FROM: 'PIKK <x@example.com>' };
+    await requestPasswordReset(prod, new Request('https://api.test/', { headers: { 'CF-Connecting-IP': freshIp() } }), { email: u.email }, { waitUntil() {} });
+    vi.unstubAllGlobals();
+    const still = await call('POST', '/auth/reset-password', { body: { token: prior, password: 'still works 42' }, ip: freshIp() });
+    expect(still.status).toBe(200);
+  });

@@ -106,6 +106,7 @@ export async function signup(env, req, body) {
   const id = newId('usr');
   const pw = await hashPassword(v.password);
   const verifyToken = randomToken(32);
+  const verifyTokenHash = await sha256Hex(verifyToken);
   const t = nowIso();
   try {
     await env.DB.batch([
@@ -114,7 +115,7 @@ export async function signup(env, req, body) {
       env.DB.prepare(`INSERT INTO user_roles(user_id,role,granted_at) VALUES (?, 'user', ?)`).bind(id, t),
       ...signupRoles.map(r => env.DB.prepare(`INSERT INTO user_signup_roles(user_id,role,declared_at) VALUES (?,?,?)`).bind(id, r, t)),
       env.DB.prepare(`INSERT INTO ledger_accounts(id,kind,user_id,created_at) VALUES (?, 'user', ?, ?)`).bind(`acct_${id}`, id, t),
-      env.DB.prepare(`INSERT INTO email_verifications(token_hash,user_id,expires_at) VALUES (?,?,?)`).bind(await sha256Hex(verifyToken), id, new Date(Date.now() + 86400_000).toISOString()),
+      env.DB.prepare(`INSERT INTO email_verifications(token_hash,user_id,expires_at) VALUES (?,?,?)`).bind(verifyTokenHash, id, new Date(Date.now() + 86400_000).toISOString()),
     ]);
   } catch (e) {
     if (String(e.message).includes('UNIQUE')) throw new ApiError(409, 'account_exists', 'Email or handle already registered');
@@ -122,7 +123,7 @@ export async function signup(env, req, body) {
   }
   await audit(env, { actor: id, action: 'auth.signup', target: id, ip: clientIp(req) });
   const cookie = await createSession(env, req, id);
-  const verification = await sendVerificationEmail(env, { to: v.email, token: verifyToken, userId: id });
+  const verification = await sendVerificationEmail(env, { to: v.email, token: verifyToken, userId: id, tokenHash: verifyTokenHash });
   return { status: 201, cookie, body: { user: { id, handle: v.handle, display_name: v.display_name, email: v.email, email_verified: false }, roles: ['user'], signup_roles: signupRoles, gender, verification } };
 }
 
@@ -179,6 +180,7 @@ export async function resendVerification(env, req, session) {
     to: session.user.email,
     token,
     userId: session.user.id,
+    tokenHash,
   });
   await audit(env, {
     actor: session.user.id,
@@ -193,82 +195,150 @@ export async function resendVerification(env, req, session) {
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
 const GENERIC_RESET_MSG = 'If an account exists for that email, password reset instructions were sent.';
 
-/**
- * Always returns the same generic body (no account enumeration).
- * Creates a hashed, short-lived, single-use token when the email matches a credential.
- */
-export async function requestPasswordReset(env, req, body) {
-  const { email } = validatePasswordResetRequest(body);
-  const ip = clientIp(req);
-  const generic = { ok: true, message: GENERIC_RESET_MSG };
+function genericForgotBody() {
+  return { ok: true, message: GENERIC_RESET_MSG };
+}
 
-  // Constant-ish work for unknown emails (dummy password hash path already used at login).
+async function hashRequestedIp(env, ip) {
+  const salt = env.IP_HASH_SALT || 'pikk-reset-ip';
+  return sha256Hex(`${salt}:${ip || ''}`);
+}
+
+function isMissingResetTable(err) {
+  const msg = String(err && (err.message || err) || '');
+  return /no such table/i.test(msg) && /password_reset_tokens/i.test(msg);
+}
+
+/**
+ * Deliver a reset email without invalidating prior working links until send succeeds.
+ * On failure, delete the newly inserted unused token so older links remain valid.
+ */
+async function deliverPasswordReset(env, { email, ip }) {
   const rec = await env.DB.prepare(`SELECT user_id, email FROM credentials WHERE email = ?`).bind(email).first();
   if (!rec) {
     await verifyPassword('timing-pad-not-a-password', DUMMY).catch(() => {});
     await audit(env, { actor: null, action: 'auth.password_reset_requested', ip, meta: { found: false } });
-    return { status: 200, body: { ...generic, recovery: { delivery: 'accepted' } } };
+    return null;
   }
-
   const user = await env.DB.prepare(`SELECT id, banned_at, disabled_at FROM users WHERE id = ?`).bind(rec.user_id).first();
   if (!user || user.banned_at || user.disabled_at) {
     await audit(env, { actor: rec.user_id, action: 'auth.password_reset_requested', ip, meta: { found: true, blocked: true } });
-    return { status: 200, body: { ...generic, recovery: { delivery: 'accepted' } } };
+    return null;
   }
 
   const token = randomToken(32);
   const tokenHash = await sha256Hex(token);
   const t = nowIso();
   const expires = new Date(Date.now() + RESET_TTL_MS).toISOString();
-  await env.DB.batch([
-    env.DB.prepare(`UPDATE password_reset_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL`).bind(t, rec.user_id),
-    env.DB.prepare(
-      `INSERT INTO password_reset_tokens(token_hash,user_id,created_at,expires_at,requested_ip) VALUES (?,?,?,?,?)`
-    ).bind(tokenHash, rec.user_id, t, expires, ip),
-  ]);
+  const ipHash = await hashRequestedIp(env, ip);
+  // Insert ONLY — do not invalidate prior tokens until delivery succeeds.
+  await env.DB.prepare(
+    `INSERT INTO password_reset_tokens(token_hash,user_id,created_at,expires_at,requested_ip) VALUES (?,?,?,?,?)`
+  ).bind(tokenHash, rec.user_id, t, expires, ipHash).run();
 
-  const recovery = await sendPasswordResetEmail(env, { to: rec.email, token, userId: rec.user_id });
+  const recovery = await sendPasswordResetEmail(env, { to: rec.email, token, tokenHash });
+  if (recovery.delivery === 'email_sent' || recovery.delivery === 'exposed_for_local_testing') {
+    await env.DB.prepare(
+      `UPDATE password_reset_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL AND token_hash != ?`
+    ).bind(t, rec.user_id, tokenHash).run();
+    await audit(env, {
+      actor: rec.user_id,
+      action: 'auth.password_reset_requested',
+      target: rec.user_id,
+      ip,
+      meta: { found: true, delivery: recovery.delivery },
+    });
+    return { token, tokenHash, delivery: recovery.delivery };
+  }
+
+  // Failed / not configured: remove the unused new row; keep any prior live link.
+  await env.DB.prepare(
+    `DELETE FROM password_reset_tokens WHERE token_hash = ? AND used_at IS NULL`
+  ).bind(tokenHash).run();
   await audit(env, {
     actor: rec.user_id,
     action: 'auth.password_reset_requested',
     target: rec.user_id,
     ip,
-    meta: { found: true, delivery: recovery.delivery },
+    meta: { found: true, delivery: recovery.delivery, kept_prior_tokens: true },
   });
-
-  // Never include raw token unless local test exposure is explicitly enabled (same as verify email).
-  const bodyOut = { ...generic, recovery: { delivery: recovery.delivery } };
-  if (recovery.delivery === 'exposed_for_local_testing' && recovery.token) {
-    bodyOut.recovery = { delivery: recovery.delivery, token: recovery.token };
-  }
-  return { status: 200, body: bodyOut };
+  return null;
 }
 
-/** Consume a reset token, set a new password, revoke all sessions, invalidate tokens. */
+/**
+ * Always returns the same generic JSON body (no account enumeration).
+ * Provider work runs in the background via waitUntil when available; response timing
+ * does not await Resend. EXPOSE_VERIFY_TOKEN=true runs sync and may include recovery.token only.
+ */
+export async function requestPasswordReset(env, req, body, ctx) {
+  const { email } = validatePasswordResetRequest(body);
+  const ip = clientIp(req);
+  const expose = env.EXPOSE_VERIFY_TOKEN === 'true';
+
+  const run = async () => {
+    try {
+      return await deliverPasswordReset(env, { email, ip });
+    } catch (err) {
+      if (isMissingResetTable(err)) {
+        await audit(env, { actor: null, action: 'auth.password_reset_requested', ip, meta: { found: null, migration_missing: true } }).catch(() => {});
+        return null;
+      }
+      await audit(env, { actor: null, action: 'auth.password_reset_requested', ip, meta: { error: 'delivery_failed' } }).catch(() => {});
+      return null;
+    }
+  };
+
+  if (expose) {
+    const result = await run();
+    const out = genericForgotBody();
+    if (result?.token) out.recovery = { token: result.token };
+    return { status: 200, body: out };
+  }
+
+  const bg = run().catch(() => null);
+  if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(bg);
+  // Do not await provider; response is immediate and identical for known/unknown.
+  return { status: 200, body: genericForgotBody() };
+}
+
+/**
+ * Atomically claim a reset token (UPDATE…RETURNING), then update password and revoke sessions.
+ * Concurrent consumers of the same token: exactly one succeeds.
+ */
 export async function resetPassword(env, req, body) {
   const { token, password } = validatePasswordReset(body);
   const h = await sha256Hex(token);
-  const row = await env.DB.prepare(`SELECT * FROM password_reset_tokens WHERE token_hash = ?`).bind(h).first();
-  if (!row || row.used_at || row.expires_at <= nowIso()) {
+  const pw = await hashPassword(password);
+  const t = nowIso();
+
+  let claimed;
+  try {
+    claimed = await env.DB.prepare(
+      `UPDATE password_reset_tokens SET used_at = ?1
+         WHERE token_hash = ?2 AND used_at IS NULL AND expires_at > ?1
+           AND user_id IN (SELECT id FROM users WHERE banned_at IS NULL AND disabled_at IS NULL)
+       RETURNING user_id`
+    ).bind(t, h).first();
+  } catch (err) {
+    if (isMissingResetTable(err)) throw new ApiError(400, 'invalid_token', 'Reset link is invalid or expired');
+    throw err;
+  }
+  if (!claimed?.user_id) {
     throw new ApiError(400, 'invalid_token', 'Reset link is invalid or expired');
   }
 
-  const pw = await hashPassword(password);
-  const t = nowIso();
   await env.DB.batch([
     env.DB.prepare(
       `UPDATE credentials SET password_hash=?, password_salt=?, password_iterations=?, updated_at=? WHERE user_id=?`
-    ).bind(pw.hash, pw.salt, pw.iterations, t, row.user_id),
-    env.DB.prepare(`UPDATE password_reset_tokens SET used_at = ? WHERE token_hash = ? AND used_at IS NULL`).bind(t, h),
-    env.DB.prepare(`UPDATE password_reset_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL`).bind(t, row.user_id),
-    env.DB.prepare(`UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`).bind(t, row.user_id),
+    ).bind(pw.hash, pw.salt, pw.iterations, t, claimed.user_id),
+    env.DB.prepare(`UPDATE password_reset_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL`).bind(t, claimed.user_id),
+    env.DB.prepare(`UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL`).bind(t, claimed.user_id),
   ]);
   await audit(env, {
-    actor: row.user_id,
+    actor: claimed.user_id,
     action: 'auth.password_reset_completed',
-    target: row.user_id,
+    target: claimed.user_id,
     ip: clientIp(req),
   });
-  // Clear any browser session cookie; caller must sign in with the new password.
   return { status: 200, cookie: sessionCookie(env, '', 0), body: { ok: true, message: 'Password updated. Sign in with your new password.' } };
 }
