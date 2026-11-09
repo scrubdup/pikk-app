@@ -10,6 +10,11 @@ async function decode(res){
   return data;
 }
 export const musicUploadApi={
+  deleteDraft:async(id)=>{
+    const base=apiBase();if(!base){const e=new Error('PIKK API is not configured');e.code='api_not_configured';throw e;}
+    const res=await fetch(base+'/media/music/'+encodeURIComponent(id),{method:'DELETE',credentials:'include'});
+    return decode(res);
+  },
   list:async()=>{
     const res=await fetch(apiBase()+'/media/music',{credentials:'include'});
     return decode(res);

@@ -30,8 +30,8 @@ function safeName(name) {
   return String(name || 'audio').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120) || 'audio';
 }
 
-function requireMediaStorage(env) {
-  if (!env.MEDIA || typeof env.MEDIA.put !== 'function') {
+function requireMediaStorage(env, operation = 'put') {
+  if (!env.MEDIA || typeof env.MEDIA[operation] !== 'function') {
     throw new ApiError(503, 'media_storage_not_configured', 'PIKK media storage is not configured yet');
   }
   return env.MEDIA;
@@ -145,10 +145,36 @@ export async function musicUploadRoute(env, req, ctx, method, path) {
     return { status: 200, body: { uploads: r.results } };
   }
 
+  let deleteMatch = path.match(/^\/media\/music\/([\w-]{1,80})$/);
+  if (method === 'DELETE' && deleteMatch) {
+    const s = requireVerified(ctx);
+    const storage = requireMediaStorage(env, 'delete');
+    const row = await env.DB.prepare(
+      `SELECT id,storage_key,status FROM media_assets
+        WHERE id=? AND owner_id=? AND kind='music' AND status<>'deleted'`
+    ).bind(deleteMatch[1], s.user.id).first();
+    if (!row) throw new ApiError(404, 'not_found', 'Music upload not found');
+    try {
+      await storage.delete(row.storage_key);
+    } catch {
+      throw new ApiError(502, 'media_storage_failed', 'PIKK could not remove the stored audio file');
+    }
+    const deletedAt = new Date().toISOString();
+    await env.DB.prepare(`UPDATE media_assets SET status='deleted',deleted_at=? WHERE id=? AND owner_id=?`)
+      .bind(deletedAt, row.id, s.user.id).run();
+    await audit(env, {
+      actor: s.user.id,
+      action: 'music.upload_deleted',
+      target: row.id,
+      ip: clientIp(req),
+    });
+    return { status: 200, body: { ok: true, id: row.id, status: 'deleted' } };
+  }
+
   const match = path.match(/^\/media\/music\/([\w-]{1,80})\/file$/);
   if (method === 'GET' && match) {
     const s = requireVerified(ctx);
-    const storage = requireMediaStorage(env);
+    const storage = requireMediaStorage(env, 'get');
     const row = await env.DB.prepare(
       `SELECT id,storage_key,original_name,mime_type FROM media_assets
         WHERE id=? AND owner_id=? AND kind='music' AND status<>'deleted'`
