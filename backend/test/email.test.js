@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { sendVerificationEmail, verificationUrl } from '../src/email.js';
+import { sendVerificationEmail, verificationUrl, sendPasswordResetEmail, passwordResetUrl } from '../src/email.js';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -49,5 +49,23 @@ describe('verification email delivery', () => {
       EMAIL_FROM: 'PIKK <verify@example.com>',
     }, { to: 'a@example.com', token: 'secret-token', userId: 'usr_1' });
     expect(r).toEqual({ delivery: 'email_send_failed' });
+  });
+});
+
+describe('password reset email delivery', () => {
+  it('builds a reset hash URL without logging', () => {
+    expect(passwordResetUrl({ PUBLIC_APP_URL: 'https://scrubdup.github.io/pikk-app/' }, 'tok+/=')).toBe(
+      'https://scrubdup.github.io/pikk-app/#/reset-password?token=tok%2B%2F%3D'
+    );
+  });
+
+  it('exposes token only when EXPOSE_VERIFY_TOKEN is true', async () => {
+    const r = await sendPasswordResetEmail({ EXPOSE_VERIFY_TOKEN: 'true' }, { to: 'a@example.com', token: 'reset-secret-token', userId: 'usr_1' });
+    expect(r).toEqual({ delivery: 'exposed_for_local_testing', token: 'reset-secret-token' });
+  });
+
+  it('reports provider not configured without leaking the token', async () => {
+    const r = await sendPasswordResetEmail({ EXPOSE_VERIFY_TOKEN: 'false' }, { to: 'a@example.com', token: 'reset-secret-token', userId: 'usr_1' });
+    expect(r).toEqual({ delivery: 'email_provider_not_configured' });
   });
 });

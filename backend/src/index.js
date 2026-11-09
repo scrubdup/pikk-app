@@ -1,5 +1,5 @@
 import { ApiError, json, errorResponse, corsHeaders, readJson, clientIp } from './http.js';
-import { signup, login, logout, verifyEmail, resendVerification, loadSession, requireAuth, requireVerified, requireActive } from './auth.js';
+import { signup, login, logout, verifyEmail, resendVerification, requestPasswordReset, resetPassword, loadSession, requireAuth, requireVerified, requireActive } from './auth.js';
 import { requirePermission, GRANTABLE_ROLES, OWNER_ROLE } from './permissions.js';
 import { opsSummary } from './ops.js';
 import { bootstrapOwner } from './bootstrap.js';
@@ -84,6 +84,17 @@ async function route(req, env, ctx) {
     const s = requireActive(ctx);
     await rateLimit(env, `verify-email:${s.user.id}`, 3, 3600);
     return json(200, await resendVerification(env, req, s));
+  }
+  if (m === 'POST' && p === '/auth/forgot-password') {
+    await rateLimit(env, `pwreset-ip:${ip}`, 5, 3600);
+    const b = await readJson(req);
+    const emailKey = typeof b?.email === 'string' ? b.email.trim().toLowerCase().slice(0, 260) : '';
+    if (emailKey) await rateLimit(env, `pwreset-email:${emailKey}`, 3, 3600);
+    return json(200, (await requestPasswordReset(env, req, b)).body);
+  }
+  if (m === 'POST' && p === '/auth/reset-password') {
+    await rateLimit(env, `pwreset-consume:${ip}`, 10, 3600);
+    return withCookie(await resetPassword(env, req, await readJson(req)));
   }
   if (m === 'GET' && p === '/auth/me') { const s = requireAuth(ctx); return json(200, { user: s.user, roles: s.roles, signup_roles: s.signupRoles }); }
   if (m === 'POST' && p === '/account/profile') {

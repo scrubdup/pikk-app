@@ -46,3 +46,23 @@ export function validateSignupRoles(v, { required = false } = {}) {
     throw new ApiError(422, 'validation_failed', 'Invalid input', { signup_roles: `subset of ${SIGNUP_ROLES.join(', ')}` });
   return [...new Set(['member', ...v])];
 }
+
+export function validatePassword(pw) {
+  const errs = {};
+  if (typeof pw !== 'string' || pw.length < 10 || pw.length > 256) errs.password = '10-256 characters';
+  else if (!/[a-zA-Z]/.test(pw) || !/[0-9]/.test(pw)) errs.password = 'must include a letter and a digit';
+  if (Object.keys(errs).length) throw new ApiError(422, 'validation_failed', 'Invalid input', errs);
+  return pw;
+}
+
+export function validatePasswordResetRequest(b) {
+  if (typeof b.email !== 'string' || b.email.length > 260)
+    throw new ApiError(422, 'validation_failed', 'email required');
+  return { email: b.email.trim().toLowerCase() };
+}
+
+export function validatePasswordReset(b) {
+  const token = requireString(b, 'token', { min: 20, max: 100 });
+  const password = validatePassword(typeof b.password === 'string' ? b.password : '');
+  return { token, password };
+}
