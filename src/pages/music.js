@@ -19,6 +19,7 @@ import {
 import { esc, shellPage, toast, ytEmbedSrc } from '../ui.js';
 import { navigate } from '../router.js';
 import { resolveMediaSrc } from '../media-db.js';
+import { isVaultApiConfigured } from '../api/vault-client.js';
 import { bindPageYoutubeEmbeds } from '../player.js';
 import { musicUploadApi, isMusicUploadApiConfigured } from '../api/music-upload-client.js';
 
@@ -415,6 +416,9 @@ export function renderMusic(route = {}) {
 
     <div class="card" id="vault">
       <h2>Vault ${vaultOk ? '<span class="chip" style="border-color:#2a4a3a;color:#8dffb0">Unlocked · ' + esc(tierLabel(membership)) + '</span>' : '<span class="chip">Locked</span>'}</h2>
+      <p class="muted" style="font-size:12px;margin:6px 0 0" id="vaultApiStatus">${isVaultApiConfigured()
+        ? 'Vault media API connected · secure upload/retrieval uses your signed-in account (R2 must be enabled on the Worker for live storage).'
+        : 'Demo · membership preview in this browser only. Secure Vault uploads require the API + R2 storage.'}</p>
       <p class="muted">Exclusive unreleased tracks &amp; previews for members. Nested under Music — not a bottom-nav tab.</p>
 
       <div class="vault-grid" style="margin:12px 0">
