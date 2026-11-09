@@ -451,7 +451,7 @@ export function renderMusic(route = {}) {
 
 export function renderMusicUploadDrafts(items=[]) {
   if(!items.length)return '<p class="muted">No backend music drafts yet.</p>';
-  return `<div class="support-history">${items.map(item=>`<article class="card" style="margin:0 0 8px"><div class="row wrap"><strong>${esc(item.title)}</strong><span class="chip">${esc(item.status)}</span></div><p class="muted" style="margin:5px 0">${esc(item.artist_name)}${item.album_title?' · '+esc(item.album_title):''}</p><small class="muted">${esc(item.original_name)} · ${Math.max(1,Math.round((Number(item.size_bytes)||0)/1024/1024*10)/10)} MB${item.explicit_content?' · Explicit':''}</small></article>`).join('')}</div>`;
+  return `<div class="support-history">${items.map(item=>`<article class="card" style="margin:0 0 8px"><div class="row wrap"><strong>${esc(item.title)}</strong><span class="chip">${esc(item.status)}</span></div><p class="muted" style="margin:5px 0">${esc(item.artist_name)}${item.album_title?' · '+esc(item.album_title):''}</p><small class="muted">${esc(item.original_name)} · ${Math.max(1,Math.round((Number(item.size_bytes)||0)/1024/1024*10)/10)} MB${item.explicit_content?' · Explicit':''}</small><div style="margin-top:8px"><button type="button" class="btn ghost music-draft-delete" data-id="${esc(item.id)}">Delete draft</button></div></article>`).join('')}</div>`;
 }
 
 export function bindMusic(root) {
@@ -484,6 +484,20 @@ export function bindMusic(root) {
       uploadList.innerHTML=err?.status===401?'<p class="muted">Sign in from <a href="#/profile">Profile</a> to view your music drafts.</p>':`<p class="muted">Could not load drafts: ${esc(err?.message||'Unknown error')}</p>`;
     }
   };
+  uploadList?.addEventListener('click',async event=>{
+    const button=event.target.closest('.music-draft-delete');if(!button)return;
+    if(!confirm('Delete this private music draft?'))return;
+    button.disabled=true;
+    try{
+      await musicUploadApi.deleteDraft(button.dataset.id);
+      toast('Music draft deleted');
+      await loadUploads();
+    }catch(err){
+      toast(err?.message||'Could not delete music draft');
+      button.disabled=false;
+    }
+  });
+
   uploadForm?.addEventListener('submit',async event=>{
     event.preventDefault();
     const file=root.querySelector('#musicUploadFile')?.files?.[0];

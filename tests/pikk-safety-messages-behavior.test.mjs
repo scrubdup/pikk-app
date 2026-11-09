@@ -218,7 +218,9 @@ test('Report requires a backend-allowed category: none selected sends nothing', 
 test('Block, Report and the category picker are 44px tap targets', async () => {
   const fs = await import('node:fs');
   const css = fs.readFileSync(new URL('../src/pikk-pages.css', import.meta.url), 'utf8');
-  assert.match(css, /\.pikk-safety-tap\{[^}]*min-height:44px/);
+  // Picker is a <select>, not .btn — require the non-btn rule (must not match only the .btn rule).
+  assert.match(css, /html body \.pikk-safety-tap\{[^}]*min-height:44px/);
+  assert.match(css, /html body \.page \.btn\.pikk-safety-tap\{[^}]*min-height:44px/);
   const { renderReportCategorySelect } = await import('../src/safety-actions.js');
   const { document: doc } = parseHTML('<!doctype html><html><body>' + renderReportCategorySelect('data-report-category') + '</body></html>');
   assert.ok(doc.querySelector('select').classList.contains('pikk-safety-tap'));
@@ -230,9 +232,10 @@ test('Block, Report and the category picker are 44px tap targets', async () => {
   }
 });
 
-test('.btn.pikk-safety-tap rule out-specifies `.page .btn{min-height:37px}`', async () => {
+test('.btn.pikk-safety-tap rule out-specifies `.page .btn{min-height:37px}` and no !important override', async () => {
   const fs = await import('node:fs');
   const css = fs.readFileSync(new URL('../src/pikk-pages.css', import.meta.url), 'utf8');
+  const styles = fs.readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
   assert.match(css, /html body \.page \.btn\.pikk-safety-tap\{[^}]*min-height:44px/);
   // specificity (ids, classes, types): .page .btn = (0,2,0); html body .page .btn.pikk-safety-tap = (0,3,2)
   const spec = (sel) => [0, (sel.match(/\.[\w-]+/g) || []).length, (sel.replace(/\.[\w-]+/g, '').match(/\b[a-z]+\b/g) || []).length];
@@ -240,4 +243,21 @@ test('.btn.pikk-safety-tap rule out-specifies `.page .btn{min-height:37px}`', as
   const a = spec('html body .page .btn.pikk-safety-tap'), b = spec('.page .btn');
   const i = cmp(a, b);
   assert.ok(i >= 0 && a[i] > b[i], JSON.stringify({ a, b }));
+  // !important on .page .btn min-height beats our higher-specificity rule — forbid it in app CSS.
+  const adverse = /\.page\s+\.btn[^{]*\{[^}]*min-height\s*:\s*[^;}]+!important/;
+  assert.doesNotMatch(css, adverse);
+  assert.doesNotMatch(styles, adverse);
+});
+
+test('rendered 44px safety taps at 360/390/430 are checked in CI', async () => {
+  const fs = await import('node:fs');
+  const sc = fs.readFileSync(new URL('../scripts/measure-safety-tap-targets.mjs', import.meta.url), 'utf8');
+  const wf = fs.readFileSync(new URL('../.github/workflows/pikk-safety-tap-visual.yml', import.meta.url), 'utf8');
+  assert.match(sc, /getBoundingClientRect/);
+  assert.match(sc, /\[360, 390, 430\]/);
+  assert.match(sc, /h >= 44/);
+  assert.match(sc, /picker|SELECT/);
+  assert.match(wf, /measure-safety-tap-targets\.mjs/);
+  assert.match(wf, /src\/\*\.css/);
+  assert.match(wf, /playwright@1\.56\.1/);
 });

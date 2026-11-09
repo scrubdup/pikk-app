@@ -1,6 +1,6 @@
 {
   "ledger_version": 1,
-  "as_of": "2026-11-09T14:21:00-06:00",
+  "as_of": "2026-11-09T14:40:00-06:00",
   "as_of_tz": "America/Chicago",
   "scope": "PIKK Phase 1 batches only (auth, social, password recovery, Vault). Not all open repo PRs.",
   "origin_main": "f42b2487935831e25cd02d567032ecad0d9a47c3",
@@ -20,7 +20,7 @@
       "local_pass": true,
       "local_pass_evidence": "security-review/REPORT.md (PASS code+local only)",
       "saved_remote": true,
-      "saved_remote_evidence": "git ls-remote refs/heads/phase1/auth-api-wiring-20261109 = 9e34a69 (2026-11-09 14:21 CT); PR #392 OPEN, checks green",
+      "saved_remote_evidence": "tag phase1-reviewed-local-auth-9e34a69 peeled 9e34a69; PR392 OPEN superseded by 393",
       "merged": false,
       "deployed": false,
       "live_tested": false
@@ -31,10 +31,11 @@
       "sha": "06b187ecf6ad7f776c112f813f1452950ff87cad",
       "local_pass": true,
       "local_pass_evidence": "security-review/REPORT.md (PASS code+local only, non-blocking notes)",
-      "saved_remote": false,
+      "saved_remote": true,
       "merged": false,
       "deployed": false,
-      "live_tested": false
+      "live_tested": false,
+      "saved_remote_evidence": "tag phase1-reviewed-local-social-06b187e peeled 06b187e"
     },
     {
       "id": "password",
@@ -42,11 +43,12 @@
       "sha": "63fb16be0e24eb6351b0791c0cff7ff9e0c09094",
       "local_pass": true,
       "local_pass_evidence": "security-review/REPORT-63fb16b.md",
-      "saved_remote": false,
+      "saved_remote": true,
       "merged": false,
       "deployed": false,
       "live_tested": false,
-      "notes": "Migration 0015 applied to prod D1 2026-11-09 18:36:02 UTC (owner-approved; d1_migrations id 18). Worker code not deployed."
+      "notes": "Migration 0015 applied to prod D1 2026-11-09 18:36:02 UTC (owner-approved; d1_migrations id 18). Worker code not deployed.",
+      "saved_remote_evidence": "tag phase1-reviewed-local-password-63fb16b peeled 63fb16b"
     },
     {
       "id": "vault",
@@ -54,20 +56,22 @@
       "sha": "bf1bb2ee463f761e0cea7400923885eaec45bda8",
       "local_pass": true,
       "local_pass_evidence": "security-review/vault/REPORT-bf1bb2e.md (PASS local; S1-S3 should-fix restore limits)",
-      "saved_remote": false,
+      "saved_remote": true,
       "merged": false,
       "deployed": false,
       "live_tested": false,
-      "notes": "Uncommitted restore fix in builder worktree is NOT reviewed and NOT counted."
+      "notes": "bf1bb2e PASS tag remote. Restore 9d45755 local PASS with R1 limitation. Not launch.",
+      "saved_remote_evidence": "tag phase1-reviewed-local-vault-bf1bb2e peeled bf1bb2e"
     }
   ],
   "meter_phase1_batches": {
     "denominator": 4,
     "local_pass": 4,
-    "saved_remote": 1,
+    "saved_remote": 4,
     "merged": 0,
     "deployed": 0,
-    "live_tested": 0
+    "live_tested": 0,
+    "note": "PASS tags verified remote. Membership d304286 REJECT not counted as PASS. Integrate forward tip pending payment atomic + exact-head review. 0 merged / 0 live."
   },
   "documented_requirements": {
     "source": "docs/PIKK_MASTER_DEVELOPMENT_BACKLOG.md @ f42b248 (sections 'Shop, memberships and advertising' item 3 and 'Backend, security and launch' items 1-7)",
@@ -149,5 +153,35 @@
     "Vault restore S1-S3: disaster restore can resurrect while backup purge pending/quarantined; restore-into-live TOCTOU; dangling media_backups row",
     "No main branch protection",
     "Main merge publishes Pages wired to prod Worker; backend changes likely auto-deploy Worker"
-  ]
+  ],
+  "additional_current_updates": {
+    "membership_d304286": {
+      "status": "REJECT_PAY1_PAY2",
+      "saved_remote": true,
+      "branch": "phase1/membership-payment-security-20261109"
+    },
+    "vault_restore_9d45755": {
+      "status": "LOCAL_PASS_WITH_R1_LIMITATION",
+      "saved_remote": true,
+      "branch": "phase1/vault-local-20261109"
+    },
+    "pr394_safety_tap_ci": {
+      "status": "CODE_PASS_NOT_LIVE",
+      "head": "8e451d12f9d01d3227c21b9cd4471f3af2679c38",
+      "scope": "synthetic fixture heights only"
+    },
+    "pr323_music_draft_delete": {
+      "status": "PORTED_INTO_INTEGRATE_TIP",
+      "note": "claim-before-delete"
+    },
+    "pr385_admin_guard": {
+      "status": "PORTED_ONE_LINE",
+      "note": "hot-feed already in main"
+    },
+    "pr324": {
+      "status": "SUPERSEDED_DO_NOT_MERGE"
+    },
+    "merged_to_main": 0,
+    "live_tested": 0
+  }
 }

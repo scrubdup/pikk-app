@@ -1,4 +1,5 @@
 // Measures rendered Block / Report / category picker heights at 360/390/430px with the app's real CSS (main.js import order).
+// CI: .github/workflows/pikk-safety-tap-visual.yml runs this on PRs that touch safety UI/CSS.
 // Usage: node scripts/measure-safety-tap-targets.mjs   (set PLAYWRIGHT_FROM=/dir/with/node_modules if playwright isn't installed here)
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';

@@ -6873,6 +6873,7 @@ export function listEngagementAlerts({ openOnly = true } = {}) {
 }
 
 export function markEngagementAlertHandled(id, note) {
+  if (!isAdmin()) return { error: 'admin' };
   const aid = String(id || '');
   if (!aid) return { error: 'missing' };
   const alerts = Array.isArray(state.engagementAlerts) ? state.engagementAlerts : [];

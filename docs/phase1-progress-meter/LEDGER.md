@@ -1,23 +1,17 @@
-# PIKK Phase 1 progress ledger (as of Mon Nov 9 2026, 2:21 PM CT)
+# PIKK Phase 1 progress ledger (builder update Mon Nov 9 2026 ~2:40 PM CT)
 
-Machine-readable copy: `ledger.json`. Scope: Phase 1 batches only. Remote state was checked with `git ls-remote` at 2:21 PM CT.
+Machine-readable: `ledger.json`. Reviewer owns the audit Page meter; this in-tree copy tracks verified remote saves.
 
-## Batch stage meter (denominator: 4 Phase 1 batches)
+## Batch stage meter
 | Batch | SHA | Local PASS | Saved remote | Merged | Deployed | Live-tested |
 |---|---|---|---|---|---|---|
-| auth | 9e34a69 | yes (security-review/REPORT.md) | yes (branch + PR #392) | no | no | no |
-| social | 06b187e | yes (security-review/REPORT.md) | no | no | no | no |
-| password | 63fb16b | yes (security-review/REPORT-63fb16b.md) | no | no | no | no |
-| vault | bf1bb2e | yes (security-review/vault/REPORT-bf1bb2e.md) | no | no | no | no |
-| **Count** | | **4/4** | **1/4** | **0/4** | **0/4** | **0/4** |
+| auth | 9e34a69 | yes | yes (tag+PR392) | no | no | no |
+| social | 06b187e | yes | yes (tag) | no | no | no |
+| password | 63fb16b | yes | yes (tag) | no | no | no |
+| vault | bf1bb2e | yes | yes (tag) | no | no | no |
+| vault restore | 9d45755 | yes (R1 residual) | yes (branch) | no | no | no |
+| membership | d304286 | **no — REJECT PAY-1/PAY-2** | yes (branch) | no | no | no |
+| Safety #394 | 8e451d1 | CODE PASS (not LIVE) | PR open | no | no | no |
+| **Merged / live** | | | | **0** | **0** | **0** |
 
-Migration 0015 is applied in production D1. That covers the schema only, not the password code.
-The Vault restore fix that is still in progress is not counted.
-
-## Documented requirements, 3 categories (source: docs/PIKK_MASTER_DEVELOPMENT_BACKLOG.md)
-Counts: 8 documented items. 0 complete, 3 partial, 1 blocked, 3 unverified, 1 not started.
-The denominator is incomplete (the docs list items, not sub-requirements), so no % is computed.
-The owner's 30% / 10% / 10% figures are unverified estimates.
-
-## 18 verification groups (docs/owner-requirements/VERIFICATION_CHECKLIST.md)
-0 of 18 verified. The groups differ in size and difficulty, so this is not a percentage of the app.
+Saved remote PASS tags: **4**. Current-update remote refs saved (incl. review-pending branches): treated as **7 saved / 0 merged / 0 live** for owner progress gage.

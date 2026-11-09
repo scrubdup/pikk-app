@@ -30,8 +30,8 @@ function safeName(name) {
   return String(name || 'audio').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120) || 'audio';
 }
 
-function requireMediaStorage(env) {
-  if (!env.MEDIA || typeof env.MEDIA.put !== 'function') {
+function requireMediaStorage(env, operation = 'put') {
+  if (!env.MEDIA || typeof env.MEDIA[operation] !== 'function') {
     throw new ApiError(503, 'media_storage_not_configured', 'PIKK media storage is not configured yet');
   }
   return env.MEDIA;
@@ -145,10 +145,55 @@ export async function musicUploadRoute(env, req, ctx, method, path) {
     return { status: 200, body: { uploads: r.results } };
   }
 
+
+  // Owner-only private draft delete. Soft-delete claim (CAS) before storage delete —
+  // matches Vault ownership/retry safety (do not erase bytes before durable tombstone).
+  const deleteMatch = path.match(/^\/media\/music\/([\w-]{1,80})$/);
+  if (method === 'DELETE' && deleteMatch) {
+    const s = requireVerified(ctx);
+    const storage = requireMediaStorage(env, 'delete');
+    const row = await env.DB.prepare(
+      `SELECT id, storage_key, status FROM media_assets
+        WHERE id=? AND owner_id=? AND kind='music' AND status<>'deleted'`
+    ).bind(deleteMatch[1], s.user.id).first();
+    if (!row) throw new ApiError(404, 'not_found', 'Music upload not found');
+    const deletedAt = new Date().toISOString();
+    const claim = await env.DB.prepare(
+      `UPDATE media_assets SET status='deleted', deleted_at=?
+        WHERE id=? AND owner_id=? AND status<>'deleted'`
+    ).bind(deletedAt, row.id, s.user.id).run();
+    if ((claim?.meta?.changes ?? 0) !== 1) {
+      throw new ApiError(404, 'not_found', 'Music upload not found');
+    }
+    let cleanupPending = false;
+    try {
+      await musicDelete(storage, row.storage_key, s.user.id);
+    } catch {
+      cleanupPending = true;
+    }
+    await audit(env, {
+      actor: s.user.id,
+      action: 'music.upload_deleted',
+      target: row.id,
+      ip: clientIp(req),
+      meta: { cleanup_pending: cleanupPending, prior_status: row.status },
+    });
+    if (cleanupPending) {
+      return {
+        status: 202,
+        body: {
+          ok: true, id: row.id, status: 'deleted', cleanup_pending: true,
+          message: 'Draft removed from your library; storage cleanup is still pending',
+        },
+      };
+    }
+    return { status: 200, body: { ok: true, id: row.id, status: 'deleted', cleanup_pending: false } };
+  }
+
   const match = path.match(/^\/media\/music\/([\w-]{1,80})\/file$/);
   if (method === 'GET' && match) {
     const s = requireVerified(ctx);
-    const storage = requireMediaStorage(env);
+    const storage = requireMediaStorage(env, 'get');
     const row = await env.DB.prepare(
       `SELECT id,storage_key,original_name,mime_type FROM media_assets
         WHERE id=? AND owner_id=? AND kind='music' AND status<>'deleted'`
