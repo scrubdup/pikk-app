@@ -2,7 +2,7 @@
 
 **Integrate branch:** `phase1/integrate-current-updates-20261109`  
 **PR:** https://github.com/scrubdup/pikk-app/pull/393  
-**Status:** Forward-only feature work after c24da90 REJECT. **Not** main-merged. **Not** LIVE PASS.
+**Status:** Tip includes payment atomic `384a4cb` cherry-pick onto 48169e4. **REVIEW PENDING** exact-head. **Not** main-merged. **Not** LIVE/PASS claim.
 
 ## Meter (verified remote saves only)
 | Stage | Count |
@@ -13,7 +13,7 @@
 | Merged to main | **0** |
 | Deployed / live-tested | **0** |
 
-True status note for progress: **7 saved remote refs of current-update material / 0 merged / 0 live**. Membership `d304286` = **REJECT (PAY-1/PAY-2), not PASS**. Vault restore `9d45755` = **local PASS with residual R1 limitation** (older manifest + failed deletes/ marker under outage). Integrate c24da90 REJECT (payments + CI-1); this forward tip fixes CI-1 and adds #323/#385/#394 ports while payment atomic fix lands in separate worker.
+True status note for progress: **7 saved remote refs of current-update material / 0 merged / 0 live**. Membership `d304286` = **REJECT (PAY-1/PAY-2), not PASS**. Vault restore `9d45755` = **local PASS with residual R1 limitation** (older manifest + failed deletes/ marker under outage). c24da90 REJECT addressed in tip: CI-1 fixed; #323/#385/#394 ports; payment atomic `384a4cb` cherry-picked. Exact integrated head **REVIEW PENDING**. 0 merged / 0 live.
 
 ## Automatic publish effects (acknowledged)
 - Feature/PR push → Cloudflare Workers **preview** upload (may share prod D1). Do **not** hit signup/write on preview until bindings proven isolated.
@@ -28,7 +28,7 @@ True status note for progress: **7 saved remote refs of current-update material 
 | password | 63fb16b | tag `phase1-reviewed-local-password-63fb16b` | Local PASS; 0015 byte-identical |
 | vault limited PASS | bf1bb2e | tag `phase1-reviewed-local-vault-bf1bb2e` | Local PASS (G7/H5) |
 | vault restore-authority | 9d45755 | `phase1/vault-local-20261109` | **Local PASS** with documented R1 limitation |
-| membership/payment security | d304286 | `phase1/membership-payment-security-20261109` | **REJECT** PAY-1/PAY-2 — payment atomic fix in separate worker; do not treat as PASS |
+| membership/payment security | d304286 + atomic `384a4cb` cherry-picked | branch + integrate tip | Membership routes unchanged; **PAY-1/PAY-2 fix in tip — REVIEW PENDING (not PASS)** |
 | music private-draft delete | port of [#323](https://github.com/scrubdup/pikk-app/pull/323) | in integrate tip | Claim-before-delete + ownership tests; code only (no user-data deletion) |
 | engagement admin handle guard | port of [#385](https://github.com/scrubdup/pikk-app/pull/385) one-line | in integrate tip | Client demo admin gate + negative test; hot-feed already in main |
 | Safety tap-target CI | [#394](https://github.com/scrubdup/pikk-app/pull/394) `8e451d1` | CODE PASS, CI green | Synthetic stitched markup + real CSS height ×27; **not** full routes/occlusion/signin; **not** LIVE PASS; CI-only Playwright (no box browser) |

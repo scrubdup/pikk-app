@@ -1,6 +1,6 @@
 {
   "ledger_version": 1,
-  "as_of": "2026-11-09T14:40:00-06:00",
+  "as_of": "2026-11-09T14:45:00-06:00",
   "as_of_tz": "America/Chicago",
   "scope": "PIKK Phase 1 batches only (auth, social, password recovery, Vault). Not all open repo PRs.",
   "origin_main": "f42b2487935831e25cd02d567032ecad0d9a47c3",
@@ -156,7 +156,7 @@
   ],
   "additional_current_updates": {
     "membership_d304286": {
-      "status": "REJECT_PAY1_PAY2",
+      "status": "BASE_INCLUDED_PAY_FIX_REVIEW_PENDING",
       "saved_remote": true,
       "branch": "phase1/membership-payment-security-20261109"
     },
@@ -182,6 +182,12 @@
       "status": "SUPERSEDED_DO_NOT_MERGE"
     },
     "merged_to_main": 0,
-    "live_tested": 0
+    "live_tested": 0,
+    "payment_atomic_384a4cb": {
+      "status": "REVIEW_PENDING",
+      "sha": "384a4cb657210380463f613906fec3c356dbad37",
+      "cherry_picked_onto": "48169e4154317dc1e677ebe68b500fd91242cd66",
+      "note": "PAY-1/PAY-2 atomic D1 batch; not launch PASS; await independent exact-head review"
+    }
   }
 }
