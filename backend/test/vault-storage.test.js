@@ -137,7 +137,7 @@ describe('slice 4: backup and isolated restore', () => {
     const usr = await env.DB.prepare('SELECT * FROM users WHERE id=?').bind(u.id).first();
     await env.RESTORE_DB.prepare('INSERT OR IGNORE INTO users(id,auth_subject,handle,display_name,account_type,created_at) VALUES (?,?,?,?,?,?)')
       .bind(usr.id, usr.auth_subject, usr.handle, usr.display_name, usr.account_type, usr.created_at).run();
-    const rep = await restoreBackup({ sourceBucket: env.MEDIA_BACKUP, targetDb: env.RESTORE_DB, targetBucket: env.RESTORE_MEDIA });
+    const rep = await restoreBackup({ sourceBucket: env.MEDIA_BACKUP, targetDb: env.RESTORE_DB, targetBucket: env.RESTORE_MEDIA, confirmIsolatedTarget: true });
     expect(rep.errors).toEqual([]);
     expect(rep.verified).toBeGreaterThanOrEqual(1);
     const orig = await env.DB.prepare('SELECT checksum_sha256,size_bytes,object_key,access_policy FROM media WHERE id=?').bind(id).first();
@@ -150,6 +150,7 @@ describe('slice 4: backup and isolated restore', () => {
     const r = await runBackup({ ...env, MEDIA_BACKUP: undefined }, 'admin');
     expect(r.state).toBe('skipped');
     await expect(restoreBackup({ sourceBucket: env.MEDIA_BACKUP })).rejects.toThrow(/explicit/);
+    await expect(restoreBackup({ sourceBucket: env.MEDIA_BACKUP, targetDb: env.RESTORE_DB, targetBucket: env.RESTORE_MEDIA })).rejects.toThrow(/confirmIsolatedTarget/);
   });
   it('admin can trigger and list backup runs; non-admin cannot', async () => {
     const u = await newUser(); const adm = await newUser(); await makeAdmin(adm.id);

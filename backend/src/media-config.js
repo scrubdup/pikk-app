@@ -9,6 +9,14 @@ export const MEDIA_LIMITS = Object.freeze({
 export const STORY_TTL_HOURS = 24;
 export const ACCESS_POLICIES = ['private', 'followers', 'public', 'entitled'];
 export const UPLOAD_RATE = { limit: 30, windowSec: 3600 };
+// Abandoned single/multipart uploads (never completed) are soft-deleted by the vault cron after this age.
+export const PENDING_UPLOAD_TTL_HOURS = 24;
+// Shared retry marker for abandoned cleanup AND owner-cancel R2 delete/abort failures (sweeper matches '%r2 delete pending%').
+export const R2_PENDING_ERR = 'abandoned cleanup: r2 delete pending';
+/** Cancel path uses a distinct prefix so healed retries audit as cancelled, not abandoned. Still matches '%r2 delete pending%'. */
+export const CANCEL_R2_PENDING_ERR = 'cancel cleanup: r2 delete pending';
+/** Owner delete of ready media: distinct prefix; still matches '%r2 delete pending%'. */
+export const DELETE_R2_PENDING_ERR = 'owner delete cleanup: r2 delete pending';
 // Signed playback/download URLs (slice 2). Key comes from env secret VAULT_SIGNING_KEY, never source.
 export const ACCESS_URL_TTL_SEC = 300;
 export const PUBLIC_CACHE_CONTROL = 'private, max-age=300'; // public media is still per-user (blocks), so never shared caches
@@ -41,6 +49,7 @@ export const BACKUP = Object.freeze({
   batchLimit: 200,              // objects copied per run (cron catches up on later runs)
   manifestPrefix: 'manifests/',
   objectPrefix: 'objects/',
-  retentionDays: 30,            // documented policy placeholder; deletion of backup copies is NOT automated yet
+  deletePrefix: 'deletes/',     // per-id owner-delete markers in MEDIA_BACKUP (not a retention/undelete policy)
+  retentionDays: 30,            // placeholder for non-deleted historical backup-run retention; owner-delete prunes that media's backup object+row (not a restore/undelete policy)
   rpoHours: 24, rtoHours: 24,   // targets (planned), not measured
 });

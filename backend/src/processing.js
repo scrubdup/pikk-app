@@ -1,4 +1,5 @@
-import { vaultDeleteFor, assertVaultKeyFor } from './vault-keys.js';
+import { vaultDeleteFor, assertVaultKeyFor, isNoSuchUpload, VaultKeyError } from './vault-keys.js';
+import { purgeBackupForMedia, vaultBackupKey } from './backup.js';
 // PIKK Vault slice 3: processing pipeline, Story expiry sweeper, admin controls.
 // Processor runs in-Worker via ctx.waitUntil behind a pluggable interface so Cloudflare Queues can replace it later
 // (owner approval + paid plan required for Queues; not used here).
@@ -8,7 +9,7 @@ import { auditStmt, audit } from './audit.js';
 import { newId } from './crypto.js';
 import { sniff } from './magic.js';
 import { probe } from './probe.js';
-import { MEDIA_LIMITS, PROCESSING } from './media-config.js';
+import { MEDIA_LIMITS, PROCESSING, PENDING_UPLOAD_TTL_HOURS, R2_PENDING_ERR, CANCEL_R2_PENDING_ERR, DELETE_R2_PENDING_ERR } from './media-config.js';
 
 const now = () => new Date().toISOString();
 export const JOB_STATES = ['queued', 'running', 'succeeded', 'failed'];
@@ -42,12 +43,21 @@ export function setProcessor(p) { processor = p || inWorkerProcessor; }
 export function getProcessor() { return processor; }
 
 /** Called from POST /media/:id/complete. Returns the statement batch to atomically move media -> processing + create job. */
-export function enqueueStmts(env, mediaId) {
+/** CAS: only transition uploaded → processing when still live. Caller must check meta.changes === 1. */
+export function enqueueStmts(env, mediaId, { checksum = null, contentType = null } = {}) {
   const id = newId('job'); const t = now();
+  // Job row is inserted only if the CAS UPDATE actually moved the media row (EXISTS state=processing).
   return { id, stmts: [
-    env.DB.prepare(`UPDATE media SET state='processing', updated_at=?, last_error=NULL WHERE id=?`).bind(t, mediaId),
-    env.DB.prepare(`INSERT INTO processing_jobs(id,media_id,job_type,state,attempts,max_attempts,run_after,created_at,updated_at) VALUES (?,?,'probe','queued',0,?,?,?,?)`)
-      .bind(id, mediaId, PROCESSING.maxAttempts, t, t, t),
+    env.DB.prepare(
+      `UPDATE media SET state='processing', checksum_sha256=COALESCE(?, checksum_sha256), detected_content_type=COALESCE(?, detected_content_type), updated_at=?, last_error=NULL
+        WHERE id=? AND state='uploaded' AND deleted_at IS NULL`
+    ).bind(checksum, contentType, t, mediaId),
+    env.DB.prepare(
+      `INSERT INTO processing_jobs(id,media_id,job_type,state,attempts,max_attempts,run_after,created_at,updated_at)
+       SELECT ?,?,'probe','queued',0,?,?,?,? WHERE EXISTS (
+         SELECT 1 FROM media WHERE id=? AND state='processing' AND deleted_at IS NULL
+       )`
+    ).bind(id, mediaId, PROCESSING.maxAttempts, t, t, t, mediaId),
   ] };
 }
 
@@ -133,6 +143,210 @@ async function reclaimStuck(env) {
   ]);
 }
 
+
+const R2_DONE_ERR = 'abandoned upload cleanup';
+const R2_QUARANTINE_PREFIX = 'cleanup: quarantined:';
+const R2_RETRY_MAX = 5;
+
+function parseR2RetryCount(lastError) {
+  const m = String(lastError || '').match(/;n=(\d+)\s*$/);
+  return m ? Number(m[1]) : 0;
+}
+function isCancelProvenance(lastError) {
+  return /cancel/i.test(String(lastError || ''));
+}
+function isOwnerDeleteProvenance(lastError) {
+  const s = String(lastError || '');
+  return /owner delete/i.test(s) || /^deleted by owner/i.test(s);
+}
+/** Preserve cancel vs owner-delete vs abandoned prefix across retries. */
+function r2PendingMarker(lastError, n = 0) {
+  let base = R2_PENDING_ERR;
+  if (isCancelProvenance(lastError)) base = CANCEL_R2_PENDING_ERR;
+  else if (isOwnerDeleteProvenance(lastError)) base = DELETE_R2_PENDING_ERR;
+  return n > 0 ? `${base};n=${n}` : base;
+}
+function r2Quarantine(reason, lastError) {
+  let src = '';
+  if (isCancelProvenance(lastError)) src = 'cancel: ';
+  else if (isOwnerDeleteProvenance(lastError)) src = 'delete: ';
+  return `${R2_QUARANTINE_PREFIX}${src}${String(reason || 'permanent').slice(0, 100)}`;
+}
+
+async function abortMultipartSafe(env, r) {
+  const ses = await env.DB.prepare(`SELECT r2_upload_id, state FROM media_multipart WHERE media_id=?`).bind(r.id).first();
+  if (!ses || ses.state !== 'active' || !env.MEDIA) return { aborted: false, session: ses };
+  try {
+    await env.MEDIA.resumeMultipartUpload(r.object_key, ses.r2_upload_id).abort();
+    return { aborted: true, session: ses };
+  } catch (e) {
+    if (isNoSuchUpload(e)) return { aborted: true, session: ses, gone: true };
+    throw e;
+  }
+}
+
+async function finishAbandonedR2(env, r, t) {
+  if (env.MEDIA) await vaultDeleteFor(env.MEDIA, r.object_key, r);
+  const mp = await abortMultipartSafe(env, r);
+  if (mp.session && mp.session.state === 'active') {
+    await env.DB.prepare(`UPDATE media_multipart SET state='aborted', updated_at=? WHERE media_id=? AND state='active'`).bind(t, r.id).run();
+  }
+  const err = String(r.last_error || '');
+  const fromCancel = /cancel/i.test(err);
+  const fromOwnerDelete = /owner delete/i.test(err) || /^deleted by owner/i.test(err);
+  // Owner-delete retries also purge MEDIA_BACKUP object + media_backups row (same row only).
+  if (fromOwnerDelete) await purgeBackupForMedia(env, r);
+  let doneErr = R2_DONE_ERR;
+  if (fromCancel) doneErr = 'cancelled by owner';
+  else if (fromOwnerDelete) doneErr = 'deleted by owner';
+  await env.DB.prepare(`UPDATE media SET last_error=? WHERE id=? AND state='deleted'`).bind(doneErr, r.id).run();
+  // Cancel / owner-delete already audited at soft-delete time (incl. 202 cleanup_pending).
+  // Do not double-audit on successful R2 retry — keep exact 1 owner audit, 0 abandoned.
+  if (fromCancel || fromOwnerDelete) return;
+  await audit(env, {
+    action: 'media.upload_abandoned',
+    target: r.id,
+    meta: {
+      owner: r.owner_id,
+      prior_state: r.prior_state || null,
+      object_deleted: !!env.MEDIA,
+      from_r2_retry: true,
+      source: 'abandoned',
+    },
+  });
+}
+
+async function markR2RetryOrQuarantine(env, r, t, err) {
+  if (err instanceof VaultKeyError || (err && err.name === 'VaultKeyError')) {
+    await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
+      .bind(r2Quarantine('vault key refused', r.last_error), t, r.id).run();
+    return 'quarantined';
+  }
+  const n = parseR2RetryCount(r.last_error) + 1;
+  if (n >= R2_RETRY_MAX) {
+    await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
+      .bind(r2Quarantine('r2 retries exhausted', r.last_error), t, r.id).run();
+    return 'quarantined';
+  }
+  await env.DB.prepare(`UPDATE media SET last_error=?, updated_at=? WHERE id=? AND state='deleted'`)
+    .bind(r2PendingMarker(r.last_error, n), t, r.id).run();
+  return 'pending';
+}
+
+/**
+ * Soft-delete abandoned unfinished uploads. CLAIM (conditional UPDATE) before any R2 delete,
+ * so a concurrent complete/put cannot lose a ready object's bytes. R2 failures leave a retryable
+ * last_error marker (shared with owner cancel) and are never audited as success.
+ * Permanent failures (VaultKeyError / retry cap) quarantine via last_error without new schema.
+ */
+
+/** Local/operator quarantine listing (admin tooling / CLI). Not a user-facing API.
+ * Flags quarantined owner-deletes whose MEDIA_BACKUP object or media_backups row still exists —
+ * those must be purged (or their ids supplied via extraDeletedIds) before any disaster restore.
+ * Same-bucket delete markers alone are incomplete under marker-write outage.
+ */
+export async function quarantineReport(env, { limit = 100 } = {}) {
+  const lim = Math.min(Math.max(1, Number(limit) || 100), 500);
+  const rows = (await env.DB.prepare(
+    `SELECT id, owner_id, media_type, object_key, last_error, deleted_at, updated_at FROM media
+      WHERE state='deleted' AND last_error LIKE 'cleanup: quarantined:%'
+      ORDER BY updated_at DESC LIMIT ?`
+  ).bind(lim).all()).results;
+  const pending = (await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM media WHERE state='deleted' AND last_error LIKE '%r2 delete pending%'`
+  ).first()).n;
+  const enriched = [];
+  for (const r of rows) {
+    let backup_object_present = false;
+    let backup_row_present = false;
+    let delete_marker_present = false;
+    try {
+      backup_row_present = !!(await env.DB.prepare('SELECT 1 AS ok FROM media_backups WHERE media_id=?').bind(r.id).first());
+      if (env.MEDIA_BACKUP && r.object_key) {
+        const bkey = vaultBackupKey(r.object_key);
+        backup_object_present = !!(await env.MEDIA_BACKUP.head(bkey));
+        delete_marker_present = !!(await env.MEDIA_BACKUP.head(`deletes/${r.id}.json`));
+      }
+    } catch { /* key refused or probe failed — still report row */ }
+    enriched.push({
+      ...r,
+      backup_object_present,
+      backup_row_present,
+      delete_marker_present,
+      restore_risk: backup_object_present || backup_row_present,
+    });
+  }
+  return {
+    at: now(),
+    quarantined: enriched,
+    quarantined_count: enriched.length,
+    r2_pending: pending,
+    backup_restore_risk_count: enriched.filter((x) => x.restore_risk).length,
+    note: 'Quarantined owner-deletes with backup_object_present/backup_row_present can be resurrected by disaster restore into a tombstone-less DB until purged or their ids are passed as extraDeletedIds. Same-bucket deletes/ markers are not a complete guarantee under marker-write outage.',
+  };
+}
+
+export async function cleanupAbandonedUploads(env, { limit = PROCESSING.sweepLimit, nowMs = Date.now() } = {}) {
+  const cutoff = new Date(nowMs - PENDING_UPLOAD_TTL_HOURS * 3600e3).toISOString();
+  const t = now();
+  let deleted = 0; let errors = 0; let retried = 0; let scanned = 0; let quarantined = 0;
+
+  // Cap retry share so permanent/retry backlog cannot starve new claims.
+  const retryLimit = Math.min(limit, Math.max(1, Math.floor(limit / 2)));
+  // Shared marker with cancel: any last_error containing "r2 delete pending".
+  const pendingR2 = (await env.DB.prepare(
+    `SELECT id, object_key, owner_id, media_type, last_error FROM media
+      WHERE state='deleted' AND deleted_at IS NOT NULL AND last_error LIKE '%r2 delete pending%'
+      ORDER BY updated_at ASC LIMIT ?`
+  ).bind(retryLimit).all()).results;
+  for (const r of pendingR2) {
+    scanned++;
+    try {
+      await finishAbandonedR2(env, r, t);
+      deleted++; retried++;
+    } catch (e) {
+      errors++;
+      console.error('abandoned r2 retry failed', r.id, e && e.message);
+      const outcome = await markR2RetryOrQuarantine(env, r, t, e).catch(() => 'pending');
+      if (outcome === 'quarantined') quarantined++;
+    }
+  }
+
+  const remain = Math.max(0, limit - scanned);
+  const rows = remain === 0 ? [] : (await env.DB.prepare(
+    `SELECT id, object_key, owner_id, media_type, state FROM media
+      WHERE deleted_at IS NULL AND state IN ('pending_upload','uploaded') AND created_at < ?
+      ORDER BY created_at ASC LIMIT ?`
+  ).bind(cutoff, remain).all()).results;
+  scanned += rows.length;
+
+  for (const r of rows) {
+    try {
+      // Claim first — never delete R2 for a row that already advanced (ready/processing) or was cancelled.
+      const claim = await env.DB.prepare(
+        `UPDATE media SET state='deleted', deleted_at=?, last_error=?, updated_at=?
+          WHERE id=? AND deleted_at IS NULL AND state IN ('pending_upload','uploaded') AND created_at < ?`
+      ).bind(t, R2_PENDING_ERR, t, r.id, cutoff).run();
+      if ((claim?.meta?.changes ?? 0) !== 1) continue;
+
+      try {
+        await finishAbandonedR2(env, { ...r, prior_state: r.state, last_error: R2_PENDING_ERR }, t);
+        deleted++;
+      } catch (e) {
+        errors++;
+        console.error('abandoned r2 cleanup failed', r.id, e && e.message);
+        const outcome = await markR2RetryOrQuarantine(env, { ...r, last_error: R2_PENDING_ERR }, t, e);
+        if (outcome === 'quarantined') quarantined++;
+        // Do NOT mark multipart aborted or write success audit.
+      }
+    } catch (e) {
+      errors++;
+      console.error('abandoned upload cleanup failed', r.id, e && e.message);
+    }
+  }
+  return { at: t, scanned, deleted, errors, retried, quarantined, cutoff };
+}
+
 // ---- Story expiry sweeper (cron) ----
 export async function sweepExpiredStories(env, { limit = PROCESSING.sweepLimit } = {}) {
   const t = now();
@@ -157,9 +371,10 @@ export async function sweepExpiredStories(env, { limit = PROCESSING.sweepLimit }
 /** Cron entry point: sweep stories, reclaim stuck jobs, drain due jobs (retries with backoff). */
 export async function scheduledTick(env) {
   const sweep = await sweepExpiredStories(env);
+  const abandoned = await cleanupAbandonedUploads(env);
   await reclaimStuck(env);
   const drain = await drainJobs(env);
-  return { sweep, drain };
+  return { sweep, abandoned, drain };
 }
 
 // ---- admin controls (admin.access, audited) ----
