@@ -47,6 +47,7 @@ import { updateRouteIdentity } from './page-announcement.js';
 import { applyDrawerState } from './drawer-state.js';
 import { toggleMusicMenu, closeMusicMenu } from './music-menu.js';
 import { authApi, isPikkApiConfigured } from './api/auth-client.js';
+import { noteLiveAuthMe, clearLiveAuthMe } from './auth/readiness.js';
 import { messagesApi, isMessagesApiConfigured } from './api/messages-client.js';
 
 import { renderHome, bindHome } from './pages/home.js';
@@ -545,16 +546,25 @@ function wireMessagesUnreadBadge() {
 }
 
 async function restoreBackendSession() {
-  if (!isPikkApiConfigured()) return;
+  if (!isPikkApiConfigured()) {
+    clearLiveAuthMe();
+    return;
+  }
   const cached = getState().user;
   if (cached && cached.authSource !== 'backend') clearAuthenticatedUser();
   try {
     const session = await authApi.me();
-    if (session?.user) syncRemoteAuthUser(session.user);
+    if (session?.user) {
+      syncRemoteAuthUser(session.user);
+      noteLiveAuthMe(session.user);
+    } else {
+      clearLiveAuthMe();
+    }
     setServerRoles(session?.roles || []);
   } catch (err) {
     if (err?.status === 401) {
       setServerRoles([]);
+      clearLiveAuthMe();
       if (getState().user?.authSource === 'backend') clearAuthenticatedUser();
       return;
     }

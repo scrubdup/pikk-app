@@ -5,11 +5,39 @@ export const AUTH_STATES = Object.freeze({
   AUTHENTICATED: 'authenticated',
 });
 
+/**
+ * In-memory marker for a session confirmed by a live GET /auth/me in this runtime.
+ * Never persisted to localStorage — forged client flags must not grant AUTHENTICATED.
+ */
+let liveAuthMeUserId = null;
+
+export function noteLiveAuthMe(user) {
+  const id = user?.id ? String(user.id) : '';
+  liveAuthMeUserId = id || null;
+  return liveAuthMeUserId;
+}
+
+export function clearLiveAuthMe() {
+  liveAuthMeUserId = null;
+}
+
+export function getLiveAuthMeUserId() {
+  return liveAuthMeUserId;
+}
+
+/**
+ * Resolve client-facing auth state.
+ * AUTHENTICATED only for a live /auth/me confirmation in this runtime
+ * (session.liveFromAuthMe === true with user.id, or the in-memory noteLiveAuthMe id).
+ * Persisted flags like verifiedByServer / authSource alone never authenticate.
+ */
 export function resolveAuthState({ demoUser = null, session = null } = {}) {
-  // Client-supplied session objects (even with verifiedByServer: true) are forgeable.
-  // Authentication must be established through trusted server-side enforcement.
-  // Until a backend exists, the frontend may only identify guest/demo states.
-  return demoUser ? AUTH_STATES.DEMO : AUTH_STATES.GUEST;
+  const liveId = session?.liveFromAuthMe === true && session?.user?.id
+    ? String(session.user.id)
+    : liveAuthMeUserId;
+  if (liveId) return AUTH_STATES.AUTHENTICATED;
+  if (demoUser) return AUTH_STATES.DEMO;
+  return AUTH_STATES.GUEST;
 }
 
 export function canAccessProtectedAction(authState) {

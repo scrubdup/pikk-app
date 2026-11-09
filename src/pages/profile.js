@@ -17,6 +17,7 @@ import { GENDER_LABELS, genderOptionsHtml } from '../../backend/src/genders.js';
 import { navigate } from '../router.js';
 import { profileRouteHref } from '../profile-links.js';
 import { authApi, isPikkApiConfigured } from '../api/auth-client.js';
+import { noteLiveAuthMe, clearLiveAuthMe } from '../auth/readiness.js';
 import { accountApi } from '../api/account-client.js';
 
 function refresh(path) {
@@ -281,10 +282,12 @@ export function bindProfile(root) {
       authApi.me().then((session) => {
         if (!session?.user) return;
         syncRemoteAuthUser(session.user);
+        noteLiveAuthMe(session.user);
         if (!cachedUser || cachedUser.id !== session.user.id || !cachedUser.emailVerified === !session.user.email_verified) {
           refresh('#/profile');
         }
       }).catch((err) => {
+        clearLiveAuthMe();
         if (err?.status === 401 && cachedUser?.authSource === 'backend') {
           clearAuthenticatedUser();
           refresh('#/profile');
@@ -306,6 +309,7 @@ export function bindProfile(root) {
         password: root.querySelector('#signupPassword')?.value || '',
       });
       syncRemoteAuthUser(result.user);
+      noteLiveAuthMe(result.user);
       toast(result.user?.email_verified ? 'Account created' : 'Account created · email verification pending');
       refresh('#/profile');
     } catch (err) {
@@ -320,6 +324,7 @@ export function bindProfile(root) {
       });
       const session = await authApi.me();
       syncRemoteAuthUser(session.user);
+        noteLiveAuthMe(session.user);
       toast('Signed in');
       refresh('#/profile');
     } catch (err) {
@@ -341,6 +346,7 @@ export function bindProfile(root) {
   });
   root.querySelector('#signoutBtn')?.addEventListener('click', async () => {
     try { await authApi.logout(); } catch {}
+    clearLiveAuthMe();
     clearAuthenticatedUser();
     toast('Signed out');
     refresh('#/profile');
