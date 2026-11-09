@@ -54,6 +54,15 @@ export function renderProfile(route) {
   // Public profile by id, including the signed-in owner's read-only preview.
   if (viewingOther || isOwnPreview) {
     const profile = getProfile(viewId);
+    // When the API is configured and this id/handle is not a local demo profile,
+    // load the persistent backend public profile (no localStorage invent).
+    if (!profile && isPikkApiConfigured() && viewingOther) {
+      return shellPage(
+        'Profile',
+        `<section id="backendPublicProfile" data-handle="${esc(viewId)}"><div class="card muted">Loading @${esc(viewId)}…</div></section>`,
+        { lead: 'Persistent PIKK account profile' }
+      );
+    }
     if (!profile) {
       return shellPage(
         'Profile',
@@ -68,7 +77,7 @@ export function renderProfile(route) {
     const body = `
       <section class="pikk-profile-cover" aria-label="Public PIKK profile">
         <div class="pikk-profile-cover-inner">
-          <span class="pikk-profile-cover-kicker">PIKK · CREATOR PROFILE</span>
+          <span class="pikk-profile-cover-kicker">${isPikkApiConfigured() ? 'PIKK · LOCAL DEMO PROFILE' : 'PIKK · CREATOR PROFILE'}</span>
           ${avatarHtml(profile)}
           <div>
             <h2 style="margin:0">${esc(profile.username)}${profile.verified ? ' ✓' : ''}</h2>
@@ -256,6 +265,51 @@ export function renderProfile(route) {
 }
 
 export function bindProfile(root) {
+  const backendPublic = root.querySelector('#backendPublicProfile');
+  if (backendPublic && isPikkApiConfigured()) {
+    const handle = backendPublic.dataset.handle || '';
+    accountApi.publicProfile(handle).then((data) => {
+      const p = data?.user;
+      if (!p?.handle) throw new Error('User not found');
+      const avatar = p.avatar_url
+        ? `<img class="avatar" src="${esc(p.avatar_url)}" alt="" style="object-fit:cover" />`
+        : `<div class="avatar">${esc((p.display_name || p.handle || '?')[0].toUpperCase())}</div>`;
+      const canFollow = getState().user?.authSource === 'backend' && getState().user?.handle
+        && getState().user.handle.toLowerCase() !== String(p.handle).toLowerCase();
+      backendPublic.innerHTML = `
+        <section class="pikk-profile-cover" aria-label="Public PIKK profile">
+          <div class="pikk-profile-cover-inner">
+            <span class="pikk-profile-cover-kicker">PIKK · PUBLIC PROFILE</span>
+            ${avatar}
+            <div>
+              <h2 style="margin:0">${esc(p.display_name || p.handle)}</h2>
+              <p class="muted" style="margin:4px 0 0">@${esc(p.handle)}</p>
+              <p class="muted" style="margin:6px 0 0">${esc(p.bio || '')}</p>
+            </div>
+          </div>
+          <div class="row wrap pikk-profile-shortcuts">
+            ${canFollow ? `<button type="button" class="btn primary" id="backendPubFollow" data-handle="${esc(p.handle)}">Follow</button>` : ''}
+            <a class="btn" href="#/posts">Posts feed</a>
+            <a class="btn ghost" href="#/messages?view=new&handle=${encodeURIComponent(p.handle)}">Message</a>
+            <a class="btn ghost" href="#/profile">My profile</a>
+          </div>
+        </section>`;
+      root.querySelector('#backendPubFollow')?.addEventListener('click', async (ev) => {
+        const btn = ev.currentTarget;
+        try {
+          const { postsApi } = await import('../api/posts-client.js');
+          await postsApi.follow(btn.dataset.handle);
+          toast('Following @' + btn.dataset.handle);
+          btn.textContent = 'Following';
+          btn.disabled = true;
+        } catch (err) {
+          toast(err?.code === 'email_unverified' ? 'Verify your email before following' : (err?.message || 'Could not follow'));
+        }
+      });
+    }).catch((err) => {
+      backendPublic.innerHTML = `<div class="card muted">${esc(err?.status === 404 ? 'User not found' : (err?.message || 'Could not load profile'))}<br/><a class="btn" href="#/profile">Back</a></div>`;
+    });
+  }
   import('../api/verification-client.js').then(async (api) => {
     const out = root.querySelector('#accountGenderValue');
     if (!out) return;
