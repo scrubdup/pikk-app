@@ -20,6 +20,7 @@ import { esc, shellPage, toast, ytEmbedSrc } from '../ui.js';
 import { navigate } from '../router.js';
 import { resolveMediaSrc } from '../media-db.js';
 import { isVaultApiConfigured, fetchVaultMediaStorageReady } from '../api/vault-client.js';
+import { renderVaultMediaPanelHtml, bindVaultMediaPanel } from './vault-media-ui.js';
 import { bindPageYoutubeEmbeds } from '../player.js';
 import { musicUploadApi, isMusicUploadApiConfigured } from '../api/music-upload-client.js';
 
@@ -416,7 +417,7 @@ export function renderMusic(route = {}) {
 
     <div class="card" id="vault">
       <h2>Vault ${vaultOk ? '<span class="chip" style="border-color:var(--line);color:var(--tx)">Unlocked · ' + esc(tierLabel(membership)) + '</span>' : '<span class="chip">Locked</span>'}</h2>
-      <p class="muted" style="font-size:12px;margin:6px 0 0" id="vaultApiStatus">Demo · membership preview. Upload UI not built yet.${isVaultApiConfigured() ? ' Checking storage readiness…' : ''}</p>
+      <p class="muted" style="font-size:12px;margin:6px 0 0" id="vaultApiStatus">Demo membership cards below are separate from real Vault media.${isVaultApiConfigured() ? ' Checking storage readiness…' : ' API not configured.'}</p>
       <p class="muted">Exclusive unreleased tracks &amp; previews for members. Nested under Music — not a bottom-nav tab.</p>
 
       <div class="vault-grid" style="margin:12px 0">
@@ -434,6 +435,8 @@ export function renderMusic(route = {}) {
               Locked cards show title/cover only — no exclusive content until you join.
             </div>`
       }
+
+      ${renderVaultMediaPanelHtml()}
 
       <h3 style="margin:16px 0 8px">Membership (TEST MODE)</h3>
       <div class="grid-2">${tiers}</div>
@@ -457,14 +460,15 @@ export function bindMusic(root) {
     fetchVaultMediaStorageReady().then((r) => {
       if (!statusEl.isConnected) return;
       if (r.mediaStorage) {
-        statusEl.textContent = 'Worker reports media storage ready · upload UI not built yet (library only).';
+        statusEl.textContent = 'Worker reports media storage ready · use My Vault media panel for private uploads (no thumbnails/transcoding yet).';
       } else {
-        statusEl.textContent = 'API base set · media storage not ready (R2 unbound) · upload UI not built yet.';
+        statusEl.textContent = 'API base set · media storage not ready (R2 unbound) · My Vault media mutations disabled.';
       }
     }).catch(() => {
-      if (statusEl.isConnected) statusEl.textContent = 'API base set · could not read /health · upload UI not built yet.';
+      if (statusEl.isConnected) statusEl.textContent = 'API base set · could not read /health · My Vault media mutations disabled.';
     });
   }
+  bindVaultMediaPanel(root);
 
   const uploadForm=root.querySelector('#pikkMusicUploadForm');
   const uploadList=root.querySelector('#pikkMusicUploadList');

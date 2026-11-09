@@ -4,22 +4,30 @@ import { readFileSync } from 'node:fs';
 
 const client = readFileSync(new URL('../src/api/vault-client.js', import.meta.url), 'utf8');
 const music = readFileSync(new URL('../src/pages/music.js', import.meta.url), 'utf8');
+const ui = readFileSync(new URL('../src/pages/vault-media-ui.js', import.meta.url), 'utf8');
 
-test('vault client is a library only: endpoints present, no browser-store fallback', () => {
-  assert.match(client, /Not a complete Vault product UI/);
-  assert.match(client, /createUpload:\s*\(body\)\s*=>\s*request\('\/media\/uploads'/);
+test('vault client exposes list/upload/cancel/accessUrl and health readiness', () => {
   assert.match(client, /fetchVaultMediaStorageReady/);
   assert.match(client, /capabilities\.media_storage/);
+  assert.match(client, /listMine:/);
+  assert.match(client, /createUpload:/);
+  assert.match(client, /uploadVaultFile/);
   assert.match(client, /credentials:\s*'include'/);
   assert.doesNotMatch(client, /localStorage\.(get|set)Item/);
   assert.doesNotMatch(client, /dbs_v1/);
+  // Content-Length must not be forced (browsers set it for Blob bodies)
+  assert.doesNotMatch(client, /'Content-Length'/);
 });
 
-test('Vault page does not claim connected from API base alone; upload UI not built', () => {
-  assert.match(music, /fetchVaultMediaStorageReady/);
-  assert.match(music, /upload UI not built yet/i);
-  assert.match(music, /media storage not ready|media storage ready/);
-  assert.doesNotMatch(music, /Vault media API connected · secure upload\/retrieval/);
-  // minimal palette: unlocked chip no longer uses banned green
-  assert.doesNotMatch(music, /#8dffb0/);
+test('Music Vault retains entry and wires real media panel (not library-only claim)', () => {
+  assert.match(music, /renderVaultMediaPanelHtml/);
+  assert.match(music, /bindVaultMediaPanel/);
+  assert.match(music, /id="vault"/);
+  assert.match(ui, /vaultMediaUploadForm/);
+  assert.match(ui, /vaultApi\.listMine|vaultApi\.cancel|accessUrl/);
+  assert.match(ui, /media_storage/);
+  assert.match(ui, /No local upload fallback|No local fallback|nothing was saved locally/i);
+  assert.match(ui, /Thumbnails/);
+  assert.doesNotMatch(music, /upload UI not built yet/i);
+  assert.doesNotMatch(ui, /localStorage\.(get|set)Item/);
 });
