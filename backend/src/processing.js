@@ -1,5 +1,5 @@
 import { vaultDeleteFor, assertVaultKeyFor, isNoSuchUpload, VaultKeyError } from './vault-keys.js';
-import { purgeBackupForMedia } from './backup.js';
+import { purgeBackupForMedia, vaultBackupKey } from './backup.js';
 // PIKK Vault slice 3: processing pipeline, Story expiry sweeper, admin controls.
 // Processor runs in-Worker via ctx.waitUntil behind a pluggable interface so Cloudflare Queues can replace it later
 // (owner approval + paid plan required for Queues; not used here).
@@ -240,7 +240,11 @@ async function markR2RetryOrQuarantine(env, r, t, err) {
  * Permanent failures (VaultKeyError / retry cap) quarantine via last_error without new schema.
  */
 
-/** Local/operator quarantine listing (admin tooling / CLI). Not a user-facing API. */
+/** Local/operator quarantine listing (admin tooling / CLI). Not a user-facing API.
+ * Flags quarantined owner-deletes whose MEDIA_BACKUP object or media_backups row still exists —
+ * those must be purged (or their ids supplied via extraDeletedIds) before any disaster restore.
+ * Same-bucket delete markers alone are incomplete under marker-write outage.
+ */
 export async function quarantineReport(env, { limit = 100 } = {}) {
   const lim = Math.min(Math.max(1, Number(limit) || 100), 500);
   const rows = (await env.DB.prepare(
@@ -251,7 +255,35 @@ export async function quarantineReport(env, { limit = 100 } = {}) {
   const pending = (await env.DB.prepare(
     `SELECT COUNT(*) AS n FROM media WHERE state='deleted' AND last_error LIKE '%r2 delete pending%'`
   ).first()).n;
-  return { at: now(), quarantined: rows, quarantined_count: rows.length, r2_pending: pending };
+  const enriched = [];
+  for (const r of rows) {
+    let backup_object_present = false;
+    let backup_row_present = false;
+    let delete_marker_present = false;
+    try {
+      backup_row_present = !!(await env.DB.prepare('SELECT 1 AS ok FROM media_backups WHERE media_id=?').bind(r.id).first());
+      if (env.MEDIA_BACKUP && r.object_key) {
+        const bkey = vaultBackupKey(r.object_key);
+        backup_object_present = !!(await env.MEDIA_BACKUP.head(bkey));
+        delete_marker_present = !!(await env.MEDIA_BACKUP.head(`deletes/${r.id}.json`));
+      }
+    } catch { /* key refused or probe failed — still report row */ }
+    enriched.push({
+      ...r,
+      backup_object_present,
+      backup_row_present,
+      delete_marker_present,
+      restore_risk: backup_object_present || backup_row_present,
+    });
+  }
+  return {
+    at: now(),
+    quarantined: enriched,
+    quarantined_count: enriched.length,
+    r2_pending: pending,
+    backup_restore_risk_count: enriched.filter((x) => x.restore_risk).length,
+    note: 'Quarantined owner-deletes with backup_object_present/backup_row_present can be resurrected by disaster restore into a tombstone-less DB until purged or their ids are passed as extraDeletedIds. Same-bucket deletes/ markers are not a complete guarantee under marker-write outage.',
+  };
 }
 
 export async function cleanupAbandonedUploads(env, { limit = PROCESSING.sweepLimit, nowMs = Date.now() } = {}) {

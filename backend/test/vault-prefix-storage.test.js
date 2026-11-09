@@ -59,12 +59,12 @@ describe('Vault slice 4 operations never touch music/ keys', () => {
     const u = await newUser(); const mk = await plantMusic(u);
     const target = env.RESTORE_MEDIA;
     await target.put(mk, MUSIC);
-    const man = { format: 'pikk-vault-backup-manifest/1', run_id: 'r1', entries: [
+    const man = { format: 'pikk-vault-backup-manifest/1', run_id: 'r1', deleted_entries: [], entries: [
       { id: 'med_evil00001', owner_id: u.id, object_key: mk, backup_key: 'objects/' + mk, checksum_sha256: 'x', size_bytes: 1 },
       { id: 'med_evil00002', owner_id: u.id, object_key: `vault/photo/${u.id}/med_evil00002`, backup_key: mk, checksum_sha256: 'x', size_bytes: 1 },
     ], entitlements: [] };
     await env.MEDIA_BACKUP.put('manifests/evil.json', JSON.stringify(man));
-    const rep = await restoreBackup({ sourceBucket: env.MEDIA_BACKUP, targetDb: env.DB, targetBucket: target, manifestKey: 'manifests/evil.json' });
+    const rep = await restoreBackup({ sourceBucket: env.MEDIA_BACKUP, targetDb: env.DB, targetBucket: target, manifestKey: 'manifests/evil.json', confirmIsolatedTarget: true, extraDeletedIds: [] });
     expect(rep.restored).toBe(0);
     expect(rep.errors.map(e => e.media_id).sort()).toEqual(['med_evil00001', 'med_evil00002']);
     expect(await (await target.get(mk)).text()).toBe(MUSIC);

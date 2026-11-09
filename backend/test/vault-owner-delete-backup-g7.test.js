@@ -30,7 +30,7 @@ function proxyWith(obj, k, fn) {
   return new Proxy(obj, { get(t, kk) { if (kk === k) return fn(t); const v = t[kk]; return typeof v === 'function' ? v.bind(t) : v; } });
 }
 
-describe('G7 owner-delete prunes backup + restore cannot resurrect', () => {
+describe('G7 owner-delete prunes backup + restore skips when authority known', () => {
   it('after backup then owner delete: primary+backup object gone, media_backups row gone; restore skips', async () => {
     const a = await newUser();
     const id = await ready(a, 'secret-backup.jpg');
@@ -71,6 +71,10 @@ describe('G7 owner-delete prunes backup + restore cannot resurrect', () => {
       targetDb: env.DB,
       targetBucket: env.MEDIA,
       manifestKey: oldManifestKey,
+      confirmIsolatedTarget: true,
+      // Target already has owner-delete tombstone; also pass id explicitly for old manifests lacking deleted_entries.
+      extraDeletedIds: [id],
+      deletionSnapshotDb: env.DB,
     });
     expect(report.skipped_missing_backup.includes(id) || report.skipped_owner_deleted.includes(id)).toBe(true);
     expect(report.restored === 0 || !report.errors.some((e) => e.media_id === id && !String(e.error).includes('skip'))).toBe(true);

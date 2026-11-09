@@ -93,13 +93,13 @@ describe('slice 4: keys bound to their row (multipart, backup, restore)', () => 
     const typeKey = `vault/video/${a.id}/med_typemism01`;
     await env.MEDIA_BACKUP.put(`objects/${typeKey}`, ATTACK);
     const base = { checksum_sha256: await sha(ATTACK), size_bytes: ATTACK.length, media_type: 'photo', state: 'ready', is_story: 0, access_policy: 'private', filename: 'a.png', declared_content_type: 'image/png', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-    const man = { format: 'pikk-vault-backup-manifest/1', run_id: 'rk', entries: [
+    const man = { format: 'pikk-vault-backup-manifest/1', run_id: 'rk', deleted_entries: [], entries: [
       { ...base, id: 'med_victimrestor1', owner_id: a.id, object_key: victim, backup_key: `objects/${victim}` },
       { ...base, id: 'med_typemism01', owner_id: a.id, object_key: typeKey, backup_key: `objects/${typeKey}` },
       { ...base, id: bid, owner_id: a.id, object_key: aKeyForBid, backup_key: `objects/${aKeyForBid}` },
     ], entitlements: [] };
     await env.MEDIA_BACKUP.put('manifests/keybind.json', JSON.stringify(man));
-    const rep = await restoreBackup({ sourceBucket: env.MEDIA_BACKUP, targetDb: env.DB, targetBucket: target, manifestKey: 'manifests/keybind.json' });
+    const rep = await restoreBackup({ sourceBucket: env.MEDIA_BACKUP, targetDb: env.DB, targetBucket: target, manifestKey: 'manifests/keybind.json', confirmIsolatedTarget: true });
     expect(rep.restored).toBe(0);
     expect(rep.errors.map(e => e.media_id).sort()).toEqual([bid, 'med_typemism01', 'med_victimrestor1'].sort());
     await victimIntact(target, victim);
@@ -117,11 +117,11 @@ describe('slice 4: keys bound to their row (multipart, backup, restore)', () => 
     await env.MEDIA_BACKUP.put(own, VICTIM);
     const k1 = `vault/photo/${a.id}/med_bkatk00001`; const k2 = `vault/photo/${a.id}/med_bkatk00002`;
     const base = { checksum_sha256: await sha(VICTIM), size_bytes: VICTIM.length, media_type: 'photo', state: 'ready', is_story: 0, access_policy: 'private', filename: 'a.png', declared_content_type: 'image/png', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-    await env.MEDIA_BACKUP.put('manifests/bkey.json', JSON.stringify({ format: 'pikk-vault-backup-manifest/1', run_id: 'bkey', entitlements: [], entries: [
+    await env.MEDIA_BACKUP.put('manifests/bkey.json', JSON.stringify({ format: 'pikk-vault-backup-manifest/1', run_id: 'bkey', entitlements: [], deleted_entries: [], entries: [
       { ...base, id: 'med_bkatk00001', owner_id: a.id, object_key: k1, backup_key: other },
       { ...base, id: 'med_bkatk00002', owner_id: a.id, object_key: k2, backup_key: own },
     ] }));
-    const rep = await restoreBackup({ sourceBucket: env.MEDIA_BACKUP, targetDb: env.DB, targetBucket: target, manifestKey: 'manifests/bkey.json' });
+    const rep = await restoreBackup({ sourceBucket: env.MEDIA_BACKUP, targetDb: env.DB, targetBucket: target, manifestKey: 'manifests/bkey.json', confirmIsolatedTarget: true });
     expect(rep.restored).toBe(0);
     expect(rep.errors.map(e => e.media_id).sort()).toEqual(['med_bkatk00001', 'med_bkatk00002']);
     expect(await target.head(k1)).toBeNull(); expect(await target.head(k2)).toBeNull();
@@ -140,8 +140,8 @@ describe('slice 4: keys bound to their row (multipart, backup, restore)', () => 
       { ...base, id: null, owner_id: a.id, object_key: kn, backup_key: `objects/${kn}` },
       { ...base, id: '', owner_id: a.id, object_key: ke, backup_key: `objects/${ke}` },
     ];
-    await env.MEDIA_BACKUP.put('manifests/noid.json', JSON.stringify({ format: 'pikk-vault-backup-manifest/1', run_id: 'noid', entitlements: [], entries }));
-    const rep = await restoreBackup({ sourceBucket: env.MEDIA_BACKUP, targetDb: env.DB, targetBucket: target, manifestKey: 'manifests/noid.json' });
+    await env.MEDIA_BACKUP.put('manifests/noid.json', JSON.stringify({ format: 'pikk-vault-backup-manifest/1', run_id: 'noid', entitlements: [], deleted_entries: [], entries }));
+    const rep = await restoreBackup({ sourceBucket: env.MEDIA_BACKUP, targetDb: env.DB, targetBucket: target, manifestKey: 'manifests/noid.json', confirmIsolatedTarget: true });
     expect(rep.restored).toBe(0);
     expect(rep.skipped_invalid.map(x => x.object_key).sort()).toEqual([...keys].sort());
     for (const k of keys) {
