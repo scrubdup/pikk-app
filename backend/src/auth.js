@@ -24,15 +24,38 @@ function readCookie(req, name) {
   return null;
 }
 
-async function createSession(env, req, userId) {
+/**
+ * Create a session cookie. When expectedPasswordHash is set (login), the INSERT is
+ * conditioned on credentials.password_hash still matching the hash that was verified —
+ * so a concurrent password reset either revokes a pre-reset session or prevents insert.
+ * Signup omits expectedPasswordHash (plain insert).
+ */
+async function createSession(env, req, userId, { expectedPasswordHash } = {}) {
   const token = randomToken(32);
   // Keep session lifetime finite and bounded even when deployment configuration is malformed.
   const configuredHours = Number(env.SESSION_TTL_HOURS ?? 720);
   const hours = Number.isFinite(configuredHours) ? Math.min(720, Math.max(1, configuredHours)) : 720;
   const ttl = Math.floor(hours * 3600);
-  await env.DB.prepare(`INSERT INTO sessions(id_hash,user_id,created_at,expires_at,ip,user_agent) VALUES (?,?,?,?,?,?)`)
-    .bind(await sha256Hex(token), userId, nowIso(), new Date(Date.now() + ttl * 1000).toISOString(), clientIp(req), (req.headers.get('User-Agent') || '').slice(0, 200))
-    .run();
+  const idHash = await sha256Hex(token);
+  const created = nowIso();
+  const expires = new Date(Date.now() + ttl * 1000).toISOString();
+  const ip = clientIp(req);
+  const ua = (req.headers.get('User-Agent') || '').slice(0, 200);
+
+  if (expectedPasswordHash != null) {
+    const result = await env.DB.prepare(
+      `INSERT INTO sessions(id_hash,user_id,created_at,expires_at,ip,user_agent)
+       SELECT ?,?,?,?,?,?
+        WHERE EXISTS (SELECT 1 FROM credentials WHERE user_id = ? AND password_hash = ?)`
+    ).bind(idHash, userId, created, expires, ip, ua, userId, expectedPasswordHash).run();
+    if ((result?.meta?.changes ?? 0) !== 1) {
+      throw new ApiError(401, 'invalid_credentials', 'Email or password is incorrect');
+    }
+  } else {
+    await env.DB.prepare(
+      `INSERT INTO sessions(id_hash,user_id,created_at,expires_at,ip,user_agent) VALUES (?,?,?,?,?,?)`
+    ).bind(idHash, userId, created, expires, ip, ua).run();
+  }
   return sessionCookie(env, token, ttl);
 }
 
@@ -136,7 +159,8 @@ export async function login(env, req, body) {
     await audit(env, { actor: rec ? rec.user_id : null, action: 'auth.login_failed', ip: clientIp(req) });
     throw new ApiError(401, 'invalid_credentials', 'Email or password is incorrect');
   }
-  const cookie = await createSession(env, req, rec.user_id);
+  // Bind the password_hash that just verified so a concurrent reset cannot mint a live session.
+  const cookie = await createSession(env, req, rec.user_id, { expectedPasswordHash: rec.password_hash });
   await audit(env, { actor: rec.user_id, action: 'auth.login', ip: clientIp(req) });
   return { status: 200, cookie, body: { ok: true } };
 }
@@ -200,8 +224,9 @@ function genericForgotBody() {
 }
 
 async function hashRequestedIp(env, ip) {
-  const salt = env.IP_HASH_SALT || 'pikk-reset-ip';
-  return sha256Hex(`${salt}:${ip || ''}`);
+  // No fixed salt fallback: without IP_HASH_SALT store null (never raw IP).
+  if (!env.IP_HASH_SALT) return null;
+  return sha256Hex(`${env.IP_HASH_SALT}:${ip || ''}`);
 }
 
 function isMissingResetTable(err) {

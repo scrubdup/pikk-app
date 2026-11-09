@@ -190,15 +190,26 @@ describe('password recovery security fixes (secreview B1–B5)', () => {
     expect(keys[0]).toMatch(/^pikk-pwreset\//);
   });
 
-  it('requested_ip is hashed, not raw', async () => {
+  it('requested_ip is null without IP_HASH_SALT (never raw IP)', async () => {
     const u = await newUser();
     const ip = '203.0.113.50';
     await call('POST', '/auth/forgot-password', { body: { email: u.email }, ip });
     const row = await env.DB.prepare(
       'SELECT requested_ip FROM password_reset_tokens WHERE user_id=? ORDER BY created_at DESC LIMIT 1'
     ).bind(u.id).first();
-    expect(row.requested_ip).toBeTruthy();
-    expect(row.requested_ip).not.toBe(ip);
+    expect(row.requested_ip).toBeNull();
+  });
+
+  it('requested_ip is hashed when IP_HASH_SALT is set', async () => {
+    const { requestPasswordReset } = await import('../src/auth.js');
+    const u = await newUser();
+    const ip = '203.0.113.50';
+    const e = { ...env, IP_HASH_SALT: 'test-salt-only', EXPOSE_VERIFY_TOKEN: 'true' };
+    await requestPasswordReset(e, new Request('https://api.test/', { headers: { 'CF-Connecting-IP': ip } }), { email: u.email });
+    const row = await env.DB.prepare(
+      'SELECT requested_ip FROM password_reset_tokens WHERE user_id=? ORDER BY created_at DESC LIMIT 1'
+    ).bind(u.id).first();
     expect(row.requested_ip).toMatch(/^[a-f0-9]{64}$/);
+    expect(row.requested_ip).not.toBe(ip);
   });
 });
