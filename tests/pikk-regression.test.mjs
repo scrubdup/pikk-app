@@ -90,3 +90,13 @@ test('preserve the real DatBoiSkeet music catalog', () => {
     assert.ok(VIDEOS.some(({ title: actual }) => actual === title), `Missing ${title}`);
   }
 });
+
+
+test('Home first stage only shows verified live broadcasts, not demo seeds', () => {
+  const source = readFileSync(new URL('../src/pages/home.js', import.meta.url), 'utf8');
+  assert.ok(source.includes("const activeTab = 'toplive'"), 'First Home stage must be Top live');
+  assert.ok(source.includes("showStage('toplive')"), 'Initial stage must not use old preference');
+  assert.ok(source.includes('live.verifiedLive === true && live.live === true'), 'Seeded live activity must be excluded');
+  assert.ok(source.includes('session?.verifiedLive === true'), 'Local demo sessions must be excluded');
+  assert.ok(source.includes('No verified live broadcast is available'), 'Honest fallback is required');
+});

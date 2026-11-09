@@ -89,11 +89,17 @@ function pickActivityPosts(limit = 4) {
   return out.slice(0, limit);
 }
 
-/** Highest-viewed live for Featured Stage · Top live (hot seeds + active session). */
+/**
+ * The first Home stage is reserved for genuinely active, verified live streams.
+ * Local demo sessions and seeded Hot Feed examples must never be advertised
+ * as currently broadcasting. The server integration can mark verifiedLive.
+ */
 function topLiveForBadge() {
+  const candidates = listHotLives()
+    .filter((live) => live.verifiedLive === true && live.live === true && !live.endedAt)
+    .map((live) => ({ ...live }));
   const session = getState().live;
-  const candidates = listHotLives().map((l) => ({ ...l }));
-  if (session && !session.endedAt) {
+  if (session?.verifiedLive === true && !session.endedAt) {
     const viewers = Math.max(0, Number(session.viewers) || 0);
     const gifts = Math.max(0, Number(session.giftsTotal) || 0);
     candidates.push({
@@ -104,19 +110,20 @@ function topLiveForBadge() {
       viewers,
       giftsTotal: gifts,
       score: viewers + gifts * 20,
+      verifiedLive: true,
       house: session.hostId === 'dbs' || session.hostName === 'DatBoiSkeet',
     });
   }
-  candidates.sort(
-    (a, b) =>
-      (Number(b.viewers) || 0) - (Number(a.viewers) || 0) ||
-      (Number(b.score) || 0) - (Number(a.score) || 0)
+  candidates.sort((a, b) =>
+    (Number(b.viewers) || 0) - (Number(a.viewers) || 0) ||
+    (Number(b.score) || 0) - (Number(a.score) || 0)
   );
   return candidates[0] || null;
 }
 
 function liveCard(l, { rising = false } = {}) {
   const tag = l.house ? 'House' : rising ? 'Rising' : 'Hot';
+  const seedLabel = l.verifiedLive === true ? '' : ' · TEST MODE seed';
   const viewers = Number(l.viewers) || 0;
   const viewersLabel = fmtViewers(viewers);
   const extra =
@@ -139,7 +146,7 @@ function liveCard(l, { rising = false } = {}) {
         ${esc(viewersLabel)} watching (example) · ${esc(String(l.giftsTotal || 0))} gifts
         ${extra}
       </div>
-      <div class="home-live-score muted">Score ${esc(String(l.score || 0))} · TEST MODE seed</div>
+      <div class="home-live-score muted">Score ${esc(String(l.score || 0))}${seedLabel}</div>
     </a>`;
 }
 
@@ -417,7 +424,7 @@ export function renderHome() {
   const liveActivityList = `${mostPlayedRow}${liveSessionRow}${activityLiveRows}${activityPostRows}${activityPicRows}${houseKickers}${activityEmpty}`;
 
   /* §39 stage panels */
-  const activeTab = readStagePref();
+  const activeTab = 'toplive'; // First Home slide is never sold or replaced by a stored preference.
   const stageTabs = STAGE_TABS.map(
     (t) => `
     <button type="button" class="home-stage-tab${t.id === activeTab ? ' on' : ''}" role="tab"
@@ -447,11 +454,11 @@ export function renderHome() {
   const topLive = topLiveForBadge();
   const topLiveInner = topLive
     ? liveCard(topLive)
-    : `<p class="muted">No live streams right now — go Live or check Hot Feed.</p>`;
+    : `<p class="muted">No verified live broadcast is available. Explore Live or view demo activity in Hot Feed.</p>`;
 
   const toplivePanel = `
     <div class="home-stage-panel${activeTab === 'toplive' ? ' on' : ''}" data-panel="toplive" role="tabpanel" id="homeTopLivePanel" ${activeTab === 'toplive' ? '' : 'hidden'}>
-      <p class="muted home-stage-lead">Top live · highest viewers right now. Red LIVE hoodie on the card · updates as rankings change.</p>
+      <p class="muted home-stage-lead">Top live · highest verified active viewer count. Demo streams are excluded.</p>
       <div class="home-live-grid" id="homeTopLiveGrid">${topLiveInner}</div>
       <a class="btn ghost block" href="#/live" style="margin-top:10px">Open Live</a>
     </div>`;
@@ -851,7 +858,7 @@ export function bindHome(root) {
     const top = topLiveForBadge();
     grid.innerHTML = top
       ? liveCard(top)
-      : `<p class="muted">No live streams right now — go Live or check Hot Feed.</p>`;
+      : `<p class="muted">No verified live broadcast is available. Explore Live or view demo activity in Hot Feed.</p>`;
     return true;
   }
   let topLiveTimer = setInterval(() => {
@@ -939,8 +946,7 @@ export function bindHome(root) {
   });
 
   /* Force first paint via v2 pref (defaults toplive; legacy keys cleared in readStagePref) */
-  const preferred = readStagePref() || 'toplive';
-  showStage(preferred);
+  showStage('toplive'); // Always open with the unsponsored Top live stage.
   // Delay auto-cycle ≥ one full STAGE_CYCLE_MS so first paint stays Top live for audit proof.
   // User tap still pauses immediately via tab click handlers.
   if (!reduceMotion) {
