@@ -479,18 +479,48 @@ export function bindMusic(root) {
     if(!uploadList)return;
     try{
       const data=await musicUploadApi.list();
-      uploadList.innerHTML=renderMusicUploadDrafts(data.uploads||[]);
+      const uploads=data.uploads||[];
+      uploadList.innerHTML=renderMusicUploadDrafts(uploads);
+      // Restore cleanup-retry cards for ids that session still needs (list omits deleted drafts).
+      const pending=(()=>{try{return JSON.parse(sessionStorage.getItem('pikk_music_cleanup_pending')||'[]');}catch{return[];}})()
+        .filter(id=>!uploads.some(u=>u.id===id));
+      for(const id of pending){
+        uploadList.insertAdjacentHTML('beforeend',
+          `<article class="card" style="margin:0 0 8px" data-cleanup-pending="1"><div class="row wrap"><strong>Draft</strong><span class="chip">cleanup pending</span></div><p class="muted" style="margin:5px 0">Storage delete incomplete — retry required (no automatic sweeper).</p><div style="margin-top:8px"><button type="button" class="btn ghost music-draft-cleanup-retry" data-id="${esc(id)}">Retry storage cleanup</button></div></article>`);
+      }
     }catch(err){
       uploadList.innerHTML=err?.status===401?'<p class="muted">Sign in from <a href="#/profile">Profile</a> to view your music drafts.</p>':`<p class="muted">Could not load drafts: ${esc(err?.message||'Unknown error')}</p>`;
     }
   };
+  const pendingCleanupKey='pikk_music_cleanup_pending';
+  const readPending=()=>{try{return JSON.parse(sessionStorage.getItem(pendingCleanupKey)||'[]');}catch{return[];}};
+  const writePending=(ids)=>{try{sessionStorage.setItem(pendingCleanupKey,JSON.stringify([...new Set(ids)]));}catch{}};
+  const addPending=(id)=>writePending(readPending().concat(id));
+  const dropPending=(id)=>writePending(readPending().filter(x=>x!==id));
+
   uploadList?.addEventListener('click',async event=>{
-    const button=event.target.closest('.music-draft-delete');if(!button)return;
-    if(!confirm('Delete this private music draft?'))return;
+    const button=event.target.closest('.music-draft-delete,.music-draft-cleanup-retry');if(!button)return;
+    const isRetry=button.classList.contains('music-draft-cleanup-retry');
+    if(!isRetry && !confirm('Delete this private music draft?'))return;
     button.disabled=true;
     try{
-      await musicUploadApi.deleteDraft(button.dataset.id);
-      toast('Music draft deleted');
+      const data=await musicUploadApi.deleteDraft(button.dataset.id);
+      if(data?.cleanup_pending || data?.retry_required){
+        addPending(button.dataset.id);
+        toast(data.message||'Storage delete failed — retry Delete to finish. No automatic cleanup.');
+        // Keep the row visible for retry (do not rely on list, which omits deleted drafts).
+        const card=button.closest('article');
+        if(card){
+          card.dataset.cleanupPending='1';
+          button.textContent='Retry storage cleanup';
+          button.classList.add('music-draft-cleanup-retry');
+          button.classList.remove('music-draft-delete');
+          button.disabled=false;
+        }
+        return;
+      }
+      dropPending(button.dataset.id);
+      toast(isRetry?'Stored audio removed':'Music draft deleted');
       await loadUploads();
     }catch(err){
       toast(err?.message||'Could not delete music draft');

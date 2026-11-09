@@ -29,7 +29,7 @@ True status note for progress: **7 saved remote refs of current-update material 
 | vault limited PASS | bf1bb2e | tag `phase1-reviewed-local-vault-bf1bb2e` | Local PASS (G7/H5) |
 | vault restore-authority | 9d45755 | `phase1/vault-local-20261109` | **Local PASS** with documented R1 limitation |
 | membership/payment security | d304286 + atomic `384a4cb` cherry-picked | branch + integrate tip | Membership routes unchanged; **PAY-1/PAY-2 fix in tip — REVIEW PENDING (not PASS)** |
-| music private-draft delete | port of [#323](https://github.com/scrubdup/pikk-app/pull/323) | in integrate tip | Claim-before-delete + ownership tests; code only (no user-data deletion) |
+| music private-draft delete | port of [#323](https://github.com/scrubdup/pikk-app/pull/323) + MD1–MD4 fix | in integrate tip | Draft-only claim; owned deleted-row storage cleanup retry (no sweeper); honest 202 retry_required; published 409; key refuse 422; FE sessionStorage retry cards |
 | engagement admin handle guard | port of [#385](https://github.com/scrubdup/pikk-app/pull/385) one-line | in integrate tip | Client demo admin gate + negative test; hot-feed already in main |
 | Safety tap-target CI | [#394](https://github.com/scrubdup/pikk-app/pull/394) `8e451d1` | CODE PASS, CI green | Synthetic stitched markup + real CSS height ×27; **not** full routes/occlusion/signin; **not** LIVE PASS; CI-only Playwright (no box browser) |
 | progress ledger docs | in-tree | `docs/phase1-progress-meter/` | Snapshot + this manifest |
