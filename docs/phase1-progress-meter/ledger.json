@@ -1,0 +1,153 @@
+{
+  "ledger_version": 1,
+  "as_of": "2026-11-09T14:21:00-06:00",
+  "as_of_tz": "America/Chicago",
+  "scope": "PIKK Phase 1 batches only (auth, social, password recovery, Vault). Not all open repo PRs.",
+  "origin_main": "f42b2487935831e25cd02d567032ecad0d9a47c3",
+  "stage_definitions": {
+    "local_pass": "Independent local review PASS at exact SHA (tests + adversarial, Miniflare/local wrangler; not real browser)",
+    "saved_remote": "Exact SHA present on origin (branch or tag), verified by git ls-remote",
+    "merged": "Contained in origin/main",
+    "deployed": "Running in production (Pages bundle SHA / Worker deployment)",
+    "live_tested": "Verified against production with real browser/two accounts"
+  },
+  "batches": [
+    {
+      "id": "auth",
+      "branch": "phase1/auth-api-wiring-20261109",
+      "sha": "9e34a69e7831b9ebdb3c5c83766f2fc09a385633",
+      "pr": "https://github.com/scrubdup/pikk-app/pull/392",
+      "local_pass": true,
+      "local_pass_evidence": "security-review/REPORT.md (PASS code+local only)",
+      "saved_remote": true,
+      "saved_remote_evidence": "git ls-remote refs/heads/phase1/auth-api-wiring-20261109 = 9e34a69 (2026-11-09 14:21 CT); PR #392 OPEN, checks green",
+      "merged": false,
+      "deployed": false,
+      "live_tested": false
+    },
+    {
+      "id": "social",
+      "branch": "phase1/social-persist-20261109",
+      "sha": "06b187ecf6ad7f776c112f813f1452950ff87cad",
+      "local_pass": true,
+      "local_pass_evidence": "security-review/REPORT.md (PASS code+local only, non-blocking notes)",
+      "saved_remote": false,
+      "merged": false,
+      "deployed": false,
+      "live_tested": false
+    },
+    {
+      "id": "password",
+      "branch": "phase1/password-recovery-20261109",
+      "sha": "63fb16be0e24eb6351b0791c0cff7ff9e0c09094",
+      "local_pass": true,
+      "local_pass_evidence": "security-review/REPORT-63fb16b.md",
+      "saved_remote": false,
+      "merged": false,
+      "deployed": false,
+      "live_tested": false,
+      "notes": "Migration 0015 applied to prod D1 2026-11-09 18:36:02 UTC (owner-approved; d1_migrations id 18). Worker code not deployed."
+    },
+    {
+      "id": "vault",
+      "branch": "phase1/vault-local-20261109",
+      "sha": "bf1bb2ee463f761e0cea7400923885eaec45bda8",
+      "local_pass": true,
+      "local_pass_evidence": "security-review/vault/REPORT-bf1bb2e.md (PASS local; S1-S3 should-fix restore limits)",
+      "saved_remote": false,
+      "merged": false,
+      "deployed": false,
+      "live_tested": false,
+      "notes": "Uncommitted restore fix in builder worktree is NOT reviewed and NOT counted."
+    }
+  ],
+  "meter_phase1_batches": {
+    "denominator": 4,
+    "local_pass": 4,
+    "saved_remote": 1,
+    "merged": 0,
+    "deployed": 0,
+    "live_tested": 0
+  },
+  "documented_requirements": {
+    "source": "docs/PIKK_MASTER_DEVELOPMENT_BACKLOG.md @ f42b248 (sections 'Shop, memberships and advertising' item 3 and 'Backend, security and launch' items 1-7)",
+    "denominator_note": "Only explicitly documented checklist lines are counted; the docs do not break these items into sub-requirements, so the denominator is incomplete and NO completion percentage is computed.",
+    "items": [
+      {
+        "category": "Signup & memberships",
+        "text": "Production authentication, profiles, database and APIs",
+        "status": "Partial",
+        "evidence": "Auth/profile API in main and in prod Worker (deploy 2026-11-02); Phase1 fixes local PASS; Pages not wired; no live two-account test"
+      },
+      {
+        "category": "Signup & memberships",
+        "text": "Membership billing and entitlements",
+        "status": "Unverified",
+        "evidence": "Not audited in Phase 1"
+      },
+      {
+        "category": "Payments, security & backend",
+        "text": "Real-time messaging and notifications across devices",
+        "status": "Unverified",
+        "evidence": "Messages API exists in main; realtime/cross-device not tested"
+      },
+      {
+        "category": "Payments, security & backend",
+        "text": "Media storage and live video infrastructure",
+        "status": "Blocked",
+        "evidence": "Vault code local PASS bf1bb2e; prod R2 not enabled; live video not in scope"
+      },
+      {
+        "category": "Payments, security & backend",
+        "text": "Secure payment processing and transaction ledgers",
+        "status": "Unverified",
+        "evidence": "Not audited in Phase 1"
+      },
+      {
+        "category": "Payments, security & backend",
+        "text": "Permissions, age controls, privacy and security review",
+        "status": "Partial",
+        "evidence": "Phase1 security reviews local PASS; age controls not audited"
+      },
+      {
+        "category": "Launch testing & readiness",
+        "text": "Automated tests, end-to-end tests, load tests and mobile accessibility",
+        "status": "Partial",
+        "evidence": "FE 611 / BE 330 automated pass at bf1bb2e; no E2E browser (localhost intentionally blocked), no load tests"
+      },
+      {
+        "category": "Launch testing & readiness",
+        "text": "Staged beta and launch readiness verification",
+        "status": "Not started",
+        "evidence": "No beta; not launch ready"
+      }
+    ],
+    "counts": {
+      "total": 8,
+      "complete": 0,
+      "partial": 3,
+      "blocked": 1,
+      "unverified": 3,
+      "not_started": 1
+    }
+  },
+  "owner_estimates_unverified": {
+    "source": "docs/PIKK_MASTER_DEVELOPMENT_BACKLOG.md and VERIFICATION_CHECKLIST.md (user-supplied estimates, not verified)",
+    "Signup and memberships": "30%",
+    "Real payments, security and backend": "10%",
+    "Launch testing and readiness": "10%"
+  },
+  "eighteen_groups": {
+    "source": "docs/owner-requirements/VERIFICATION_CHECKLIST.md",
+    "verified": 0,
+    "total": 18,
+    "note": "Groups differ in size/difficulty; not a percentage of the app."
+  },
+  "known_limitations": [
+    "No real browser E2E (localhost intentionally blocked)",
+    "Prod R2 off; email provider unset",
+    "Vault restore S1-S3: disaster restore can resurrect while backup purge pending/quarantined; restore-into-live TOCTOU; dangling media_backups row",
+    "No main branch protection",
+    "Main merge publishes Pages wired to prod Worker; backend changes likely auto-deploy Worker"
+  ]
+}
