@@ -139,7 +139,12 @@ export function inferVaultMediaType(file) {
 
 export const vaultApi = {
   /** Owned media list (server authority; not localStorage). */
-  listMine: (limit = 50) => request(`/media?limit=${encodeURIComponent(limit)}`),
+  listMine: (limit = 50, { cursor } = {}) => {
+    const q = new URLSearchParams();
+    q.set('limit', String(limit));
+    if (cursor) q.set('cursor', cursor);
+    return request(`/media?${q}`);
+  },
   createUpload: (body) => request('/media/uploads', { method: 'POST', body }),
   putBytes: (id, bytes) => putBinary(`/media/uploads/${encodeURIComponent(id)}`, bytes),
   putPart: (id, partNumber, bytes) =>
@@ -149,6 +154,8 @@ export const vaultApi = {
   complete: (id) => request(`/media/${encodeURIComponent(id)}/complete`, { method: 'POST' }),
   /** Cancel unfinished upload only (pending_upload / uploaded). May return cleanup_pending. */
   cancel: (id) => request(`/media/uploads/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  /** Owner delete of READY media only. May return cleanup_pending. */
+  delete: (id) => request(`/media/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   get: (id) => request(`/media/${encodeURIComponent(id)}`),
   /**
    * Short-lived access URL for ready media. Caller must not persist the URL in durable UI state.

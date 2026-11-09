@@ -78,8 +78,21 @@ globalThis.fetch = async (url, opts = {}) => {
     if (healthMode === 'unbound') return json(200, { ok: true, capabilities: { media_storage: false } });
     return json(200, { ok: true, capabilities: { media_storage: mediaStorage } });
   }
-  if (u.includes('/media?') && method === 'GET') {
-    return json(200, { media: [...mediaStore.values()], count: mediaStore.size });
+  if ((u.includes('/media?') || /\/media$/.test(u.split('?')[0])) && method === 'GET') {
+    const url = new URL(u, 'https://api.test');
+    let limit = Number(url.searchParams.get('limit') || 50);
+    if (!Number.isFinite(limit) || limit < 1) limit = 50;
+    if (limit > 100) limit = 100;
+    const all = [...mediaStore.values()];
+    const cursor = url.searchParams.get('cursor');
+    let start = 0;
+    if (cursor) {
+      const idx = all.findIndex((m) => m.id === cursor);
+      start = idx >= 0 ? idx + 1 : all.length;
+    }
+    const slice = all.slice(start, start + limit);
+    const next = start + limit < all.length ? slice[slice.length - 1]?.id : null;
+    return json(200, { media: slice, count: slice.length, next_cursor: next });
   }
   if (u.endsWith('/media/uploads') && method === 'POST') {
     const body = JSON.parse(opts.body);
@@ -129,6 +142,13 @@ globalThis.fetch = async (url, opts = {}) => {
     const id = u.split('/').pop();
     mediaStore.delete(id);
     return json(202, { media: { id, state: 'deleted', cancelled: true, cleanup_pending: true } });
+  }
+  if (/\/media\/med_[^/?]+$/.test(u) && method === 'DELETE' && !u.includes('/uploads/')) {
+    const id = u.split('/').pop().split('?')[0];
+    const row = mediaStore.get(id);
+    if (!row || row.state !== 'ready') return json(409, { error: { code: 'invalid_state', message: 'Only ready' } });
+    mediaStore.delete(id);
+    return json(200, { media: { id, state: 'deleted', deleted: true, cleanup_pending: false } });
   }
   if (/\/media\/med_/.test(u) && method === 'GET') {
     const id = u.split('/').pop().split('?')[0];
@@ -270,4 +290,70 @@ test('safeOwnerError maps internal last_error', () => {
   assert.equal(__vaultMediaTest.safeOwnerError('size mismatch at /tmp/x'), 'Stored size did not match');
   assert.equal(__vaultMediaTest.safeOwnerError('object missing key=vault/…'), 'Upload incomplete');
   assert.equal(__vaultMediaTest.safeOwnerError('stack at /srv'), 'Processing failed');
+});
+
+
+test('DOM: delete ready item requires confirm then DELETE /media/:id', async () => {
+  healthMode = 'ok';
+  mediaStorage = true;
+  mediaStore.clear();
+  mediaStore.set('med_ready1', {
+    id: 'med_ready1', type: 'photo', filename: 'ready.png', size: 10,
+    access: 'private', state: 'ready',
+  });
+  const root = document.getElementById('app');
+  root.innerHTML = renderVaultMediaPanelHtml();
+  bindVaultMediaPanel(root);
+  await new Promise((r) => setTimeout(r, 30));
+  assert.match(root.querySelector('#vaultMediaList').innerHTML, /Delete/);
+  let confirmCalls = 0;
+  window.confirm = () => { confirmCalls += 1; return false; };
+  calls.length = 0;
+  root.querySelector('.vault-media-delete').dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(confirmCalls, 1);
+  assert.equal(calls.some((c) => c.method === 'DELETE'), false, 'no delete without confirm');
+
+  window.confirm = () => true;
+  calls.length = 0;
+  root.querySelector('.vault-media-delete').dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 40));
+  assert.ok(calls.some((c) => c.method === 'DELETE' && /\/media\/med_ready1$/.test(c.u) && !c.u.includes('/uploads/')));
+  assert.equal(mediaStore.has('med_ready1'), false);
+});
+
+test('DOM: load more uses next_cursor', async () => {
+  healthMode = 'ok';
+  mediaStorage = true;
+  mediaStore.clear();
+  for (let i = 0; i < 3; i++) {
+    mediaStore.set('med_p' + i, {
+      id: 'med_p' + i, type: 'photo', filename: 'p' + i + '.jpg', size: 10,
+      access: 'private', state: 'ready',
+    });
+  }
+  // Override list to page size 2 using real cursor field from stub (id-based in stub)
+  const root = document.getElementById('app');
+  root.innerHTML = renderVaultMediaPanelHtml();
+  // Monkeypatch listMine via re-bind after adjusting fetch — use limit by patching vaultApi through fetch only.
+  // Stub already pages by cursor=id; force small pages by wrapping fetch for this test.
+  const prev = globalThis.fetch;
+  globalThis.fetch = async (url, opts = {}) => {
+    const u = String(url);
+    if (u.includes('/media?') || /\/media(\?|$)/.test(u)) {
+      const urlObj = new URL(u, 'https://api.test');
+      urlObj.searchParams.set('limit', '2');
+      return prev(urlObj.toString(), opts);
+    }
+    return prev(url, opts);
+  };
+  bindVaultMediaPanel(root);
+  await new Promise((r) => setTimeout(r, 40));
+  const more = root.querySelector('#vaultMediaLoadMore');
+  assert.equal(more.hidden, false, 'load more visible when next_cursor');
+  calls.length = 0;
+  more.dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 40));
+  assert.ok(calls.some((c) => c.method === 'GET' && /cursor=/.test(c.u)));
+  globalThis.fetch = prev;
 });

@@ -42,3 +42,11 @@ test('vault client distinguishes unreachable vs media_storage false; honest stag
   assert.match(ui, /bindGeneration|stillThisBind|sameUser/);
   assert.match(ui, /Could not reach API/);
 });
+
+test('vault client exposes ready delete and cursor listMine', () => {
+  assert.match(client, /delete:\s*\(id\)/);
+  assert.match(client, /cursor/);
+  assert.match(ui, /vault-media-delete/);
+  assert.match(ui, /vaultMediaLoadMore|Load more/);
+  assert.match(ui, /window\.confirm/);
+});

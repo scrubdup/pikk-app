@@ -90,6 +90,7 @@ function renderList(items) {
       </p>
       <div class="row wrap" style="gap:8px">
         ${ready ? `<button type="button" class="btn ghost vault-media-open" data-id="${esc(m.id)}">Open (signed link)</button>` : ''}
+        ${ready ? `<button type="button" class="btn ghost vault-media-delete" data-id="${esc(m.id)}">Delete</button>` : ''}
         ${unfinished ? `<button type="button" class="btn ghost vault-media-cancel" data-id="${esc(m.id)}">Cancel upload</button>` : ''}
       </div>
     </article>`;
@@ -121,6 +122,9 @@ export function renderVaultMediaPanelHtml() {
       <p class="muted" id="vaultMediaFormBlocked" style="font-size:12px"></p>
       <div id="vaultMediaProgress" class="muted" style="font-size:12px;margin:8px 0" hidden></div>
       <div id="vaultMediaList"><p class="muted">No media loaded yet.</p></div>
+      <div class="row wrap" style="gap:8px;margin-top:8px">
+        <button type="button" class="btn ghost" id="vaultMediaLoadMore" hidden>Load more</button>
+      </div>
     </div>`;
 }
 
@@ -208,27 +212,60 @@ export function bindVaultMediaPanel(root) {
     return;
   }
 
-  async function refreshList() {
+  const loadMoreBtn = panelNode.querySelector('#vaultMediaLoadMore');
+  let listItems = [];
+  let nextCursor = null;
+  let loadingMore = false;
+
+  function paintList() {
+    if (!listEl) return;
+    listEl.innerHTML = renderList(listItems);
+    if (loadMoreBtn) {
+      loadMoreBtn.hidden = !nextCursor;
+      loadMoreBtn.disabled = false;
+      loadMoreBtn.textContent = 'Load more';
+    }
+  }
+
+  async function refreshList({ append = false, cursor = null } = {}) {
     if (!listEl) return;
     const gen = bindGen;
     const userId = boundUserId;
     try {
-      const data = await vaultApi.listMine(50);
+      const data = await vaultApi.listMine(50, { cursor: cursor || undefined });
       if (gen !== bindGeneration || !listEl.isConnected) return;
       if (String(userId) !== String(currentBoundUserId() || '')) return;
-      listEl.innerHTML = renderList(data.media || []);
+      const page = data.media || [];
+      if (append) listItems = listItems.concat(page);
+      else listItems = page;
+      nextCursor = data.next_cursor || null;
+      paintList();
     } catch (err) {
       if (gen !== bindGeneration || !listEl.isConnected) return;
       if (String(userId) !== String(currentBoundUserId() || '')) return;
-      if (err?.status === 401 || err?.code === 'unauthenticated') {
-        listEl.innerHTML = '<p class="muted">Sign in from <a href="#/profile">Profile</a> to see your Vault media.</p>';
-      } else if (err?.status === 403 || err?.code === 'email_unverified') {
-        listEl.innerHTML = '<p class="muted">Verify your email before using Vault media.</p>';
+      if (!append) {
+        if (err?.status === 401 || err?.code === 'unauthenticated') {
+          listEl.innerHTML = '<p class="muted">Sign in from <a href="#/profile">Profile</a> to see your Vault media.</p>';
+        } else if (err?.status === 403 || err?.code === 'email_unverified') {
+          listEl.innerHTML = '<p class="muted">Verify your email before using Vault media.</p>';
+        } else {
+          listEl.innerHTML = `<p class="muted">Could not load media: ${esc(err?.message || 'error')}</p>`;
+        }
+        if (loadMoreBtn) loadMoreBtn.hidden = true;
       } else {
-        listEl.innerHTML = `<p class="muted">Could not load media: ${esc(err?.message || 'error')}</p>`;
+        toast(err?.message || 'Could not load more');
       }
     }
   }
+
+  loadMoreBtn?.addEventListener('click', async () => {
+    if (!stillThisBind() || !sameUser() || !nextCursor || loadingMore) return;
+    loadingMore = true;
+    if (loadMoreBtn) { loadMoreBtn.disabled = true; loadMoreBtn.textContent = 'Loading…'; }
+    const cursor = nextCursor;
+    try { await refreshList({ append: true, cursor }); }
+    finally { loadingMore = false; }
+  });
 
   fetchVaultMediaStorageReady().then(async (r) => {
     if (!stillThisBind() || !sameUser() || !statusEl?.isConnected) return;
@@ -376,6 +413,7 @@ export function bindVaultMediaPanel(root) {
     if (!stillThisBind() || !sameUser()) return;
     const openBtn = ev.target.closest?.('.vault-media-open');
     const cancelItem = ev.target.closest?.('.vault-media-cancel');
+    const deleteItem = ev.target.closest?.('.vault-media-delete');
     if (openBtn) {
       const id = openBtn.getAttribute('data-id');
       if (!id) return;
@@ -418,6 +456,31 @@ export function bindVaultMediaPanel(root) {
         if (stillThisBind()) toast(err?.message || 'Cancel failed');
       } finally {
         if (stillThisBind()) cancelItem.disabled = false;
+      }
+      return;
+    }
+    if (deleteItem) {
+      const id = deleteItem.getAttribute('data-id');
+      if (!id) return;
+      const ok = typeof window.confirm === 'function'
+        ? window.confirm('Delete this ready media permanently from your Vault? Signed links will stop working.')
+        : false;
+      if (!ok) return;
+      deleteItem.disabled = true;
+      try {
+        const data = await vaultApi.delete(id);
+        if (!stillThisBind() || !sameUser()) return;
+        if (data?.media?.cleanup_pending) {
+          toast('Deleted · storage cleanup pending');
+          setProgress(progressEl, 'Deleted · storage cleanup pending');
+        } else {
+          toast('Media deleted');
+        }
+        await refreshList();
+      } catch (err) {
+        if (stillThisBind()) toast(err?.message || 'Delete failed');
+      } finally {
+        if (stillThisBind()) deleteItem.disabled = false;
       }
     }
   });
