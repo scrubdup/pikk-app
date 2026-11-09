@@ -53,12 +53,12 @@ export function authReadiness({ apiConfigured = false } = {}) {
     logoutEnabled: !!apiConfigured,
     serverSessionEnabled: !!apiConfigured,
     emailVerificationImplemented: true,
-    passwordResetEnabled: false,
+    passwordResetEnabled: !!apiConfigured,
     requiredBeforeLaunch: [
       'Configure the public Worker API endpoint in the frontend',
       'Verify signup/login/logout/session end to end in production',
-      'Configure email delivery for verification links',
-      'Add secure account recovery/password reset',
+      'Configure email delivery for verification and password-reset links',
+      'Apply password-reset migration 0015 to production after owner approval',
       'Account deletion and legacy demo-data migration',
     ],
   };

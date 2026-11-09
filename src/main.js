@@ -79,6 +79,8 @@ import { renderMerch, bindMerch } from './pages/merch.js';
 import { renderProfile, bindProfile } from './pages/profile.js';
 import { renderUser, bindUser } from './pages/user.js';
 import { renderVerifyEmail, bindVerifyEmail } from './pages/verify-email.js';
+import { renderForgotPassword, bindForgotPassword } from './pages/forgot-password.js';
+import { renderResetPassword, bindResetPassword } from './pages/reset-password.js';
 import { renderClippers, bindClippers } from './pages/clippers.js';
 import { renderLive, bindLive } from './pages/live.js';
 import { renderViralLive, bindViralLive } from './pages/viral-live.js';
@@ -153,6 +155,8 @@ const ROUTES = {
   '/profile': { render: renderProfile, bind: bindProfile },
   '/user': { render: renderUser, bind: bindUser },
   '/verify-email': { render: renderVerifyEmail, bind: bindVerifyEmail },
+  '/forgot-password': { render: renderForgotPassword, bind: bindForgotPassword },
+  '/reset-password': { render: renderResetPassword, bind: bindResetPassword },
   '/clippers': { render: renderClippers, bind: bindClippers },
   '/videos': { render: renderVideos, bind: bindVideos },
   '/live': { render: renderLive, bind: bindLive },

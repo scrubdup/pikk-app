@@ -153,6 +153,7 @@ export function renderProfile(route) {
         <div class="field"><label>Email</label><input id="loginEmail" type="email" autocomplete="email" /></div>
         <div class="field"><label>Password</label><input id="loginPassword" type="password" autocomplete="current-password" /></div>
         <button class="btn primary block" id="loginAccountBtn">Sign in</button>
+        <p style="margin:10px 0 0"><a class="muted" href="#/forgot-password">Forgot password?</a></p>
         <p class="muted" style="margin:10px 0 0">PIKK uses a secure server session cookie. Your password is not stored in browser-local profile state.</p>
       </div>
       <div class="card">

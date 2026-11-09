@@ -68,10 +68,12 @@ test('backend auth is implemented but frontend stays gated until the API endpoin
   assert.equal(off.serverSessionEnabled, false);
   assert.equal(off.emailVerificationImplemented, true);
   assert.equal(off.passwordResetEnabled, false);
+  // enabled only when API configured
   const on = authReadiness({ apiConfigured: true });
   assert.equal(on.productionAuthAvailable, true);
   assert.equal(on.signupEnabled, true);
   assert.equal(on.loginEnabled, true);
   assert.equal(on.logoutEnabled, true);
   assert.equal(on.serverSessionEnabled, true);
+  assert.equal(on.passwordResetEnabled, true);
 });

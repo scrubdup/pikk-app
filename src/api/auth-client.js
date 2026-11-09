@@ -53,4 +53,7 @@ export const authApi = {
   logout: () => request('/auth/logout', { method: 'POST', body: {} }),
   verifyEmail: (token) => request('/auth/verify', { method: 'POST', body: { token } }),
   resendVerification: () => request('/auth/resend-verification', { method: 'POST', body: {} }),
+  forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: { email } }),
+  resetPassword: ({ token, password }) =>
+    request('/auth/reset-password', { method: 'POST', body: { token, password } }),
 };
