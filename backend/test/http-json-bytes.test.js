@@ -34,6 +34,18 @@ describe('readJson UTF-8 byte limits', () => {
     await expect(readJson(request, 16)).rejects.toMatchObject({ status: 413, code: 'payload_too_large' });
     expect(reads).toBeLessThanOrEqual(2);
   });
+  it('rejects content types that only start with application/json', async () => {
+    await expect(readJson(req('{"ok":true}', 'application/json-malformed'))).rejects.toMatchObject({
+      status: 415, code: 'unsupported_media_type',
+    });
+    await expect(readJson(req('{"ok":true}', 'application/jsonp'))).rejects.toMatchObject({
+      status: 415, code: 'unsupported_media_type',
+    });
+  });
+  it('accepts standard JSON content types with UTF-8 charset', async () => {
+    await expect(readJson(req('{"ok":true}', 'application/json; charset=utf-8'))).resolves.toEqual({ ok: true });
+    await expect(readJson(req('{"ok":true}', 'application/json'))).resolves.toEqual({ ok: true });
+  });
   it('keeps rejecting non-object JSON', async () => {
     await expect(readJson(req('[1,2]'))).rejects.toMatchObject({ status: 400, code: 'invalid_json' });
   });
