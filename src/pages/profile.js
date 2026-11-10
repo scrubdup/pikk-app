@@ -21,6 +21,7 @@ import { noteLiveAuthMe, clearLiveAuthMe, currentAuthGeneration, isAuthGeneratio
 import { getMembershipView, requestMembershipSync } from '../membership-sync.js';
 import { membershipChipText, paintMembershipStatus } from '../membership-view.js';
 import { accountApi } from '../api/account-client.js';
+import { signOutBackendSession } from '../auth/sign-out.js';
 
 function refresh(path) {
   navigate(path || '#/profile');
@@ -363,6 +364,8 @@ export function bindProfile(root) {
   root.querySelector('#signupAccountBtn')?.addEventListener('click', async () => {
     const gender = root.querySelector('#signupGender')?.value || '';
     if (!gender) { toast('Choose your gender. It cannot be changed later.'); return; }
+    // AG-1: a new signup supersedes any older in-flight /auth/me probe (old cookie) before and after the request.
+    const signupGen = invalidateAuthProbes();
     try {
       const result = await authApi.signup({
         gender,
@@ -371,6 +374,8 @@ export function bindProfile(root) {
         email: root.querySelector('#signupEmail')?.value?.trim(),
         password: root.querySelector('#signupPassword')?.value || '',
       });
+      if (!isAuthGenerationCurrent(signupGen)) return; // signed out / superseded while the signup was pending
+      invalidateAuthProbes(); // probes started while the signup was pending may still carry the old cookie
       syncRemoteAuthUser(result.user);
       noteLiveAuthMe(result.user);
       toast(result.user?.email_verified ? 'Account created' : 'Account created · email verification pending');
@@ -411,13 +416,18 @@ export function bindProfile(root) {
     }
   });
   root.querySelector('#signoutBtn')?.addEventListener('click', async () => {
-    invalidateAuthProbes(); // before awaiting logout: no in-flight /auth/me may restore this identity
-    try { await authApi.logout(); } catch {}
-    clearLiveAuthMe();
-    clearAuthenticatedUser();
-    toast('Signed out');
+    if (!isPikkApiConfigured()) { // demo mode: local only, unchanged
+      clearLiveAuthMe();
+      clearAuthenticatedUser();
+      toast('Signed out');
+      refresh('#/profile');
+      return;
+    }
+    const { message } = await signOutBackendSession(); // invalidates probes before POST /auth/logout; clears locally even on error
+    toast(message);
     refresh('#/profile');
   });
+
   root.querySelector('#saveProfile')?.addEventListener('click', async () => {
     const current = getState().user;
     const bio = root.querySelector('#editBio')?.value || '';
