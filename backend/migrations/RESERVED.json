@@ -1,3 +1,4 @@
 {
-  "_comment": "Reserved migration numbers for PRs not yet merged. Changes need owner/reviewer approval (see backend/README.md 'Migration numbering'). Remove an entry in the same PR that adds its .sql file."
+  "_comment": "Reserved migration numbers for PRs not yet merged. Changes need owner/reviewer approval (see backend/README.md 'Migration numbering'). Remove an entry in the same PR that adds its .sql file.",
+  "0016": "membership_billing (backend/migrations-pending/, LOCAL ONLY, pending owner approval)"
 }
