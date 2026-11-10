@@ -92,3 +92,8 @@
 - UI (API mode only; demo mode unchanged):
   - **Pricing → Memberships card:** the status line shows a server state (sign in / checking / unavailable / no active membership / active plan + period end + "member perks are not enabled yet"). The three tier rows and prices are unchanged; Join/Subscribe are disabled with a note that checkout isn't available yet, and no local membership is ever written.
   - **Profile cover:** the local demo tier chip is replaced by a server membership chip ("Membership · checking…", "No membership", "Member · <plan>", "Membership · unavailable").
+- Residual fixes (after fcd500f review):
+  - `current_period_end` must be a real UTC calendar instant (`YYYY-MM-DDTHH:MM:SS[.mmm]Z`); impossible values such as Feb 30, month 13 or minute 60 are rejected (status unavailable), never normalized.
+  - The server plan id is shown verbatim as "plan <id>" (e.g. "Active membership · plan <id> …", chip "Member · plan <id>"). It is not mapped to the demo pricing-preview tier names, because no paid plan ↔ tier contract exists yet (owner decision).
+  - "member perks are not enabled yet" is always shown for an active plan; it no longer depends on whether the server sends an entitlements object, since no UI entitlement mapping exists.
+  - Every `/auth/me` probe (startup restore in `src/auth/restore-session.js`, Profile check, login, verify-email) is generation-guarded: sign-out and account switches invalidate in-flight probes, so a late response cannot restore a local identity.

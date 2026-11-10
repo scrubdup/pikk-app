@@ -7,7 +7,17 @@ import { membershipApi } from './api/auth-client.js';
 
 export const MEMBERSHIP_EVENT = 'pikk:membership-changed';
 const PLAN_RE = /^[A-Za-z0-9][A-Za-z0-9_+.-]{0,63}$/;
-const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
+const ISO_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?Z$/;
+/** Strict UTC timestamp: well-formed AND a real calendar instant (no Feb 30, month 13, hour 24 rollover). */
+export function isStrictIsoUtc(v) {
+  if (typeof v !== 'string') return false;
+  const m = ISO_RE.exec(v);
+  if (!m) return false;
+  const [y, mo, d, h, mi, s] = m.slice(1).map(Number);
+  if (mo < 1 || mo > 12 || d < 1 || h > 23 || mi > 59 || s > 59) return false;
+  const t = new Date(Date.UTC(y, mo - 1, d, h, mi, s));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === mo - 1 && t.getUTCDate() === d;
+}
 
 let generation = 0;
 let phase = 'idle'; // idle | loading | ready | error | signed_out
@@ -32,7 +42,7 @@ export function validateMembershipResponse(body) {
   if (m.status === 'inactive' && m.plan !== null && m.plan !== undefined) return null;
   if (m.billing_configured !== undefined && typeof m.billing_configured !== 'boolean') return null;
   if (m.current_period_end !== undefined && m.current_period_end !== null
-    && (typeof m.current_period_end !== 'string' || !ISO_RE.test(m.current_period_end))) return null;
+    && !isStrictIsoUtc(m.current_period_end)) return null;
   if (m.entitlements !== undefined && m.entitlements !== null && (typeof m.entitlements !== 'object' || Array.isArray(m.entitlements))) return null;
   return m;
 }

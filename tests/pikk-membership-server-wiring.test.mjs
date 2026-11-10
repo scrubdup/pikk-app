@@ -69,7 +69,7 @@ test('success: fetch only after live /auth/me identity, tied to that identity, c
   assert.equal(m.status, 'active'); assert.equal(m.userId, 'u_a'); assert.equal(m.plan, FIXTURE_PLAN);
   const v = sync.getMembershipView();
   assert.equal(v.phase, 'ready'); assert.equal(v.status, 'active');
-  assert.match(view.membershipViewText(v), /Active membership · testonly_plan · current period ends 2099-01-31 · member perks are not enabled yet/);
+  assert.match(view.membershipViewText(v), /Active membership · plan testonly_plan · current period ends 2099-01-31 · member perks are not enabled yet/);
 });
 
 test('entitlements null: an active plan never grants Vault tiers / perks by inference, even for tier-like plan ids', async () => {
@@ -206,7 +206,7 @@ test('Pricing (API mode): Join/Subscribe disabled, no local grant, honest read-o
   // active
   routes.set('GET /memberships/me', () => ({ status: 200, body: activeBody({ cancel_at_period_end: true }) }));
   await sync.requestMembershipSync();
-  assert.equal(st().textContent, 'Active membership · testonly_plan · ends 2099-01-31 · member perks are not enabled yet');
+  assert.equal(st().textContent, 'Active membership · plan testonly_plan · ends 2099-01-31 · member perks are not enabled yet');
   assert.ok([...root.querySelectorAll('[data-join]')].every((b) => b.hasAttribute('disabled')), 'still read-only when active');
   // sign out clears the painted status
   readiness.clearLiveAuthMe();
@@ -238,7 +238,7 @@ test('Profile auth sequence: login -> /auth/me -> /memberships/me for that user;
   store.setState({ user: { ...store.getState().user, memberships: { innerCircle: true }, membership: 'inner' } });
   root.innerHTML = profile.renderProfile({ path: '/profile', query: {} });
   const chip = root.querySelector('[data-server-membership="chip"]');
-  assert.ok(chip); assert.equal(chip.textContent, 'Member · testonly_plan');
+  assert.ok(chip); assert.equal(chip.textContent, 'Member · plan testonly_plan');
   assert.ok(![...root.querySelectorAll('.chip')].some((c) => /Inner Circle|Backstage|PIKK\+/.test(c.textContent)), 'no demo tier chip in API mode');
   assert.equal(store.hasVaultAccess('inner'), false);
   // account switch to B
@@ -256,4 +256,55 @@ test('Profile auth sequence: login -> /auth/me -> /memberships/me for that user;
   assert.equal(store.getServerMembership().status, 'inactive'); assert.equal(store.getServerMembership().userId, null);
   assert.equal(sync.getMembershipView().phase, 'signed_out');
   assert.ok(memberCalls().length >= before);
+});
+
+test('residual 2: impossible calendar dates are rejected (not normalized); real dates incl. leap day accepted', async () => {
+  reset();
+  readiness.noteLiveAuthMe({ id: 'u_dates' });
+  const bad = ['2026-02-30T00:00:00.000Z', '2026-13-01T00:00:00Z', '2027-02-29T00:00:00Z', '2026-04-31T00:00:00Z', '2026-01-00T00:00:00Z',
+    '2026-01-01T24:00:00Z', '2026-01-01T23:60:00Z', '2026-01-01T23:59:60Z', '2026-01-01T10:60:00Z', '2026-01-01T10:00:60Z', '2026-00-10T00:00:00Z', '2026-01-01T00:00:00.1234Z', '2026-01-01T00:00:00+00:00'];
+  for (const d of bad) {
+    assert.equal(sync.isStrictIsoUtc(d), false, d);
+    routes.set('GET /memberships/me', () => ({ status: 200, body: activeBody({ current_period_end: d }) }));
+    await sync.requestMembershipSync();
+    assert.equal(sync.getMembershipView().phase, 'error', d);
+    assert.equal(store.getServerMembership().status, 'inactive', d);
+  }
+  for (const d of ['2028-02-29T00:00:00Z', '2026-12-31T23:59:59.999Z', '2026-02-28T12:00:00.5Z']) {
+    assert.equal(sync.isStrictIsoUtc(d), true, d);
+    routes.set('GET /memberships/me', () => ({ status: 200, body: activeBody({ current_period_end: d }) }));
+    await sync.requestMembershipSync();
+    assert.equal(sync.getMembershipView().phase, 'ready', d);
+    assert.ok(view.membershipViewText(sync.getMembershipView()).includes(d.slice(0, 10)), d);
+  }
+});
+
+test('residual 2: perks note never disappears on unknown entitlements; plan id shown verbatim, not mapped to demo tier names', async () => {
+  reset();
+  readiness.noteLiveAuthMe({ id: 'u_ent' });
+  for (const ent of [null, {}, { vault: 'inner', ad_free: true, unknown_x: 1 }]) {
+    routes.set('GET /memberships/me', () => ({ status: 200, body: activeBody({ plan: 'inner', entitlements: ent }) }));
+    await sync.requestMembershipSync();
+    const v = sync.getMembershipView();
+    const t = view.membershipViewText(v);
+    assert.ok(t.endsWith('· member perks are not enabled yet'), JSON.stringify(ent));
+    assert.ok(t.includes('plan inner')); assert.ok(!/Inner Circle|Backstage|PIKK\+/.test(t));
+    assert.equal(view.membershipChipText(v), 'Member · plan inner');
+    assert.equal(store.getMembership(), null);
+    for (const lvl of ['skeet', 'backstage', 'inner']) assert.equal(store.hasVaultAccess(lvl), false);
+  }
+});
+
+test('residual 2: status copy is rendered as text (escaped), never parsed as markup', async () => {
+  reset();
+  readiness.noteLiveAuthMe({ id: 'u_esc' });
+  routes.set('GET /memberships/me', () => ({ status: 200, body: activeBody({ plan: 'a.b+c_d-1' }) }));
+  await sync.requestMembershipSync();
+  const root = document.createElement('div');
+  root.innerHTML = shells.renderPricing();
+  const st = root.querySelector('[data-server-membership="text"]');
+  assert.equal(st.children.length, 0);
+  assert.equal(st.textContent, 'Active membership · plan a.b+c_d-1 · current period ends 2099-01-31 · member perks are not enabled yet');
+  view.paintMembershipStatus(root, { mode: 'api', phase: 'ready', status: 'active', plan: '<img src=x onerror=1>', current_period_end: null, entitlements: null });
+  assert.equal(st.children.length, 0, 'paint uses textContent'); assert.ok(st.textContent.includes('<img src=x onerror=1>'));
 });
