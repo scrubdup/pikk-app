@@ -42,8 +42,13 @@ export function errorResponse(err, requestId) {
 export async function readJson(req, maxBytes = 16 * 1024) {
   const ct = req.headers.get('Content-Type') || '';
   if (!ct.toLowerCase().startsWith('application/json')) throw new ApiError(415, 'unsupported_media_type', 'Content-Type must be application/json');
-  const text = await req.text();
-  if (text.length > maxBytes) throw new ApiError(413, 'payload_too_large', 'Request body too large');
+  // Limit actual UTF-8 bytes, not JavaScript UTF-16 code units. Non-ASCII JSON
+  // otherwise bypasses the intended request-size cap.
+  const bytes = await req.arrayBuffer();
+  if (bytes.byteLength > maxBytes) throw new ApiError(413, 'payload_too_large', 'Request body too large');
+  let text;
+  try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+  catch { throw new ApiError(400, 'invalid_json', 'Body must be valid UTF-8 JSON'); }
   try {
     const v = JSON.parse(text);
     if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error();
