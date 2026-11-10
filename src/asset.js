@@ -1,5 +1,5 @@
 /** Public asset URLs under Vite `base` (e.g. /dbs-app/ on GitHub Pages). */
-const RAW_BASE = import.meta.env.BASE_URL || '/';
+const RAW_BASE = (import.meta.env && import.meta.env.BASE_URL) || '/'; // tolerate plain-Node module tests
 export const BASE = RAW_BASE.endsWith('/') ? RAW_BASE.slice(0, -1) : RAW_BASE;
 
 export function asset(path) {

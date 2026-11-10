@@ -10,15 +10,27 @@ export const AUTH_STATES = Object.freeze({
  * Never persisted to localStorage — forged client flags must not grant AUTHENTICATED.
  */
 let liveAuthMeUserId = null;
+const liveAuthListeners = new Set();
+
+/** Subscribe to live-identity changes (prevId, nextId). Fires only when the id actually changes. */
+export function onLiveAuthChange(fn) {
+  liveAuthListeners.add(fn);
+  return () => liveAuthListeners.delete(fn);
+}
+function setLiveAuthMeUserId(next) {
+  const prev = liveAuthMeUserId;
+  liveAuthMeUserId = next;
+  if (prev !== next) for (const fn of [...liveAuthListeners]) { try { fn(prev, next); } catch (_) { /* listener errors never break auth */ } }
+}
 
 export function noteLiveAuthMe(user) {
   const id = user?.id ? String(user.id) : '';
-  liveAuthMeUserId = id || null;
+  setLiveAuthMeUserId(id || null);
   return liveAuthMeUserId;
 }
 
 export function clearLiveAuthMe() {
-  liveAuthMeUserId = null;
+  setLiveAuthMeUserId(null);
 }
 
 export function getLiveAuthMeUserId() {

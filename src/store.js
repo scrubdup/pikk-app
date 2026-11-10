@@ -470,6 +470,7 @@ export function signInLocal(username) {
 }
 
 export function signOut() {
+  serverMembership = { ...EMPTY_SERVER_MEMBERSHIP };
   state = { ...state, user: null };
   save(state);
 }
@@ -501,6 +502,7 @@ export function syncRemoteAuthUser(remoteUser) {
 
 export function clearAuthenticatedUser() {
   serverRoles = [];
+  serverMembership = { ...EMPTY_SERVER_MEMBERSHIP };
   state = { ...state, user: null };
   save(state);
 }
@@ -567,19 +569,34 @@ export function isApiConfigured() {
 }
 
 // Server membership from GET /memberships/me — never persisted to localStorage.
-let serverMembership = { status: 'inactive', plan: null, authoritative: true };
-export function setServerMembership(m) {
+// Tied to the identity (userId) it was fetched for; see src/membership-sync.js for the fetch lifecycle.
+const EMPTY_SERVER_MEMBERSHIP = Object.freeze({
+  status: 'inactive', plan: null, authoritative: true, userId: null,
+  billing_configured: false, activation: 'not_available', source: 'none', billing_reason: null,
+  subscription_status: null, current_period_end: null, cancel_at_period_end: false,
+  entitlements: null, entitlement_policy: 'unconfigured',
+});
+let serverMembership = { ...EMPTY_SERVER_MEMBERSHIP };
+export function setServerMembership(m, { userId = null } = {}) {
   if (!m || typeof m !== 'object') {
-    serverMembership = { status: 'inactive', plan: null, authoritative: true };
-    return serverMembership;
+    serverMembership = { ...EMPTY_SERVER_MEMBERSHIP };
+    return { ...serverMembership };
   }
+  const active = m.status === 'active' && typeof m.plan === 'string' && !!m.plan;
   serverMembership = {
-    status: m.status === 'active' ? 'active' : 'inactive',
-    plan: typeof m.plan === 'string' ? m.plan : null,
-    authoritative: true,
-    billing_configured: !!m.billing_configured,
-    activation: m.activation || 'not_available',
-    source: m.source || 'none',
+    ...EMPTY_SERVER_MEMBERSHIP,
+    status: active ? 'active' : 'inactive',
+    plan: active ? m.plan : null,
+    userId: userId ? String(userId) : null,
+    billing_configured: m.billing_configured === true,
+    activation: typeof m.activation === 'string' ? m.activation : 'not_available',
+    source: typeof m.source === 'string' ? m.source : 'none',
+    billing_reason: typeof m.billing_reason === 'string' ? m.billing_reason : null,
+    subscription_status: typeof m.subscription_status === 'string' ? m.subscription_status : null,
+    current_period_end: typeof m.current_period_end === 'string' ? m.current_period_end : null,
+    cancel_at_period_end: m.cancel_at_period_end === true,
+    entitlements: m.entitlements && typeof m.entitlements === 'object' ? { ...m.entitlements } : null,
+    entitlement_policy: typeof m.entitlement_policy === 'string' ? m.entitlement_policy : 'unconfigured',
   };
   return { ...serverMembership };
 }
@@ -589,10 +606,10 @@ export function getServerMembership() {
 
 export function getMembership() {
   // When API is configured, localStorage / demo user.membership is not authority.
-  if (isApiConfigured()) {
-    if (serverMembership.status === 'active' && serverMembership.plan) return serverMembership.plan;
-    return null;
-  }
+  // The server reports a plan id, not entitlements (entitlements: null, entitlement_policy: 'unconfigured'),
+  // so no Vault tier / ad-free / perk is ever inferred from an active plan id here. Mapping plans to
+  // entitlements is an owner decision that must arrive from the server explicitly.
+  if (isApiConfigured()) return null;
   const user = state.user;
   if (!user) return null;
   if (user.membership) return user.membership;
