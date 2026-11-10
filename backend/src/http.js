@@ -53,7 +53,11 @@ export async function readJson(req, maxBytes = 16 * 1024) {
         const { done, value } = await reader.read();
         if (done) break;
         total += value.byteLength;
-        if (total > maxBytes) throw new ApiError(413, 'payload_too_large', 'Request body too large');
+        if (total > maxBytes) {
+          // Stop upstream streaming once the request is known to be too large.
+          await reader.cancel().catch(() => {});
+          throw new ApiError(413, 'payload_too_large', 'Request body too large');
+        }
         chunks.push(value);
       }
     } finally { reader.releaseLock(); }
