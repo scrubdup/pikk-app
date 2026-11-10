@@ -139,7 +139,7 @@ export function renderProfile(route) {
         <p class="kicker">PIKK · YOUR PROFILE</p>
         <h2>Your space. Your people. <span>One PIKK.</span></h2>
         <p>Create your PIKK account or sign in to follow creators, post, message and use account tools.</p>
-        <span class="chip">${isPikkApiConfigured() ? "Backend account service connected" : "Account service configuration pending"}</span>
+        <span class="chip">${isPikkApiConfigured() ? "Account API configured · live availability not yet verified" : "Account service configuration pending"}</span>
       </section>
       <div class="card">
         <p class="kicker">PIKK account</p>
