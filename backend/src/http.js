@@ -41,7 +41,7 @@ export function errorResponse(err, requestId) {
 
 export async function readJson(req, maxBytes = 16 * 1024) {
   const ct = req.headers.get('Content-Type') || '';
-  if (!ct.toLowerCase().startsWith('application/json')) throw new ApiError(415, 'unsupported_media_type', 'Content-Type must be application/json');
+  if (!/^application\/json(?:\s*;\s*charset\s*=\s*"?utf-8"?\s*)?$/i.test(ct.trim())) throw new ApiError(415, 'unsupported_media_type', 'Content-Type must be application/json');
   // Read at most maxBytes before decoding. Buffering the entire request first
   // would allow a very large body to consume memory before a 413 response.
   const reader = req.body?.getReader();
