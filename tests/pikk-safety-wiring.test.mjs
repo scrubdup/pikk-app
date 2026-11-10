@@ -18,7 +18,7 @@ test('isAdmin trusts server roles; local role only in dev demo', () => {
   assert.match(store, /return isDemoAdminAllowed\(\) && !!\(state\.user && state\.user\.role === 'admin'\)/);
   assert.match(store, /env\.DEV === true && !apiBase/);
   assert.match(store, /if \(on && !isDemoAdminAllowed\(\)\) return \{ error: 'staff_only' \}/);
-  assert.match(read('src/main.js'), /setServerRoles\(session\?\.roles \|\| \[\]\)/);
+  assert.match(read('src/auth/restore-session.js'), /setServerRoles\(session\?\.roles \|\| \[\]\)/);
 });
 
 test('safety client maps to backend /reports and /blocks with honest fallback labels', async () => {

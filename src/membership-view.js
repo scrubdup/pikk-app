@@ -1,10 +1,10 @@
 // Read-only text for the server membership status (Profile chip + Pricing Memberships card).
 // Honest states only: no benefits are listed and an active plan is never described as unlocking perks.
-import { MEMBERSHIPS } from './data.js';
-
+// The server plan id is shown verbatim (as "plan <id>"): it is NOT mapped to the demo pricing-preview tier names,
+// because no paid plan <-> tier contract exists yet (owner decision).
+// Text is always assigned via textContent / esc() by callers.
 function planLabel(plan) {
-  const t = MEMBERSHIPS.find((m) => m.id === plan);
-  return t ? t.name : String(plan || '');
+  return `plan ${String(plan || '')}`;
 }
 function day(iso) {
   const d = new Date(iso);
@@ -26,7 +26,8 @@ export function membershipViewText(view) {
   let t = `Active membership · ${planLabel(view.plan)}`;
   const end = view.current_period_end ? day(view.current_period_end) : '';
   if (end) t += view.cancel_at_period_end ? ` · ends ${end}` : ` · current period ends ${end}`;
-  if (!view.entitlements) t += ' · member perks are not enabled yet';
+  // No UI entitlement mapping is implemented, so this note never depends on what the server sends as entitlements.
+  t += ' · member perks are not enabled yet';
   return t;
 }
 

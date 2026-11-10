@@ -8,6 +8,7 @@
  *
  *   MEMBERSHIP_BILLING      = "enabled"                       (exact; any other value = off)
  *   MEMBERSHIP_STRIPE_MODE  = "test" | "live"                 (must match the key prefix and every Stripe object)
+ *   MEMBERSHIP_STRIPE_ACCOUNT_ID = acct_…                      (required; resync verifies GET /v1/account matches)
  *   STRIPE_SECRET_KEY       = sk_test_… | sk_live_… | rk_…    (Wrangler secret; never logged or returned)
  *   STRIPE_WEBHOOK_SECRET   = whsec_…                         (Wrangler secret)
  *   MEMBERSHIP_CHECKOUT_SUCCESS_URL / _CANCEL_URL             (https, same origin as PUBLIC_APP_URL)
@@ -63,14 +64,15 @@ export function membershipBillingConfig(env) {
   if (!env.PUBLIC_APP_URL) return fail('app_url_missing');
   if (!sameOriginHttps(env.MEMBERSHIP_CHECKOUT_SUCCESS_URL, env.PUBLIC_APP_URL)) return fail('success_url_invalid');
   if (!sameOriginHttps(env.MEMBERSHIP_CHECKOUT_CANCEL_URL, env.PUBLIC_APP_URL)) return fail('cancel_url_invalid');
-  // Optional (MB-5): the expected Stripe account. When set it must be well-formed; resync then verifies
-  // GET /v1/account matches before treating any 404 as definitive.
+  // Required (MB-6): the expected Stripe account. Billing stays off until it is set and well-formed, so resync
+  // always verifies GET /v1/account before treating any 404 as definitive (no wrong-account resync).
   const acct = env.MEMBERSHIP_STRIPE_ACCOUNT_ID;
-  if (acct !== undefined && acct !== '' && (typeof acct !== 'string' || !/^acct_[A-Za-z0-9]{6,64}$/.test(acct))) return fail('stripe_account_invalid');
+  if (acct === undefined || acct === null || acct === '') return fail('stripe_account_missing');
+  if (typeof acct !== 'string' || !/^acct_[A-Za-z0-9]{6,64}$/.test(acct)) return fail('stripe_account_invalid');
   const cat = parseCatalog(env.MEMBERSHIP_CATALOG);
   if (!cat.ok) return cat;
   return {
-    ok: true, mode, livemode: mode === 'live', plans: cat.plans, secretKey: key, expectedAccount: acct || null,
+    ok: true, mode, livemode: mode === 'live', plans: cat.plans, secretKey: key, expectedAccount: acct,
     successUrl: env.MEMBERSHIP_CHECKOUT_SUCCESS_URL, cancelUrl: env.MEMBERSHIP_CHECKOUT_CANCEL_URL,
   };
 }
