@@ -10,7 +10,8 @@ import { requireString, requirePositiveInt, validateSignupRoles } from './valida
 import { rateLimit } from './ratelimit.js';
 import { balance, transfer } from './ledger.js';
 import { stripeWebhook } from './webhook.js';
-import { membershipMe, rejectClientMembershipGrant } from './memberships.js';
+import { membershipMe, rejectClientMembershipGrant, createMembershipCheckout, resyncMemberships, retryNeedsReview } from './memberships.js';
+import { billingSummary } from './membership-config.js';
 import { newId } from './crypto.js';
 import { audit, auditStmt } from './audit.js';
 import { mediaRoute } from './media.js';
@@ -58,7 +59,7 @@ async function route(req, env, ctx) {
 
   const withCookie = (r) => json(r.status, r.body, { 'Set-Cookie': r.cookie });
 
-  if (m === 'GET' && p === '/health') return json(200, {
+  if (m === 'GET' && p === '/health') { const mb = await billingSummary(env); return json(200, {
     ok: true,
     service: 'pikk-api',
     capabilities: {
@@ -69,8 +70,11 @@ async function route(req, env, ctx) {
       media_storage: !!env.MEDIA,
       payments_webhook: !!env.STRIPE_WEBHOOK_SECRET,
       membership_status: !!env.DB,
+      membership_billing: mb.configured,
     },
-  });
+    // Non-secret reason code, e.g. billing_disabled / schema_missing / catalog_invalid.
+    membership_billing_reason: mb.reason,
+  }); }
 
   if (m === 'GET' && p === '/verification/age') return idvStatus(env, ctx);
   if (m === 'POST' && p === '/verification/age/start') return startIdv(env, req, ctx);
@@ -265,6 +269,30 @@ async function route(req, env, ctx) {
   if (m === 'GET' && p === '/memberships/me') {
     const s = requireAuth(ctx);
     return json(200, { membership: await membershipMe(env, s) });
+  }
+  if (m === 'POST' && (p === '/admin/memberships/resync' || p === '/admin/memberships/needs-review/retry')) {
+    const s = requirePermission(ctx, 'membership.resync');
+    await rateLimit(env, `mbr-resync:${s.user.id}`, 10, 600); // one shared owner budget for both operator actions
+    const isRetry = p !== '/admin/memberships/resync';
+    const body = isRetry ? await readJson(req) : null;
+    const tryAudit = async (e) => { try { await audit(env, e); return true; } catch { return false; } };
+    let out;
+    try { out = isRetry ? await retryNeedsReview(env, body) : await resyncMemberships(env); } catch (e) {
+      if (e instanceof ApiError && e.status === 503) await tryAudit({ actor: s.user.id, action: isRetry ? 'membership.needs_review_retry_refused' : 'membership.resync_refused', meta: { reason: e.details && e.details.reason || e.code } });
+      throw e;
+    }
+    // The state change above is already committed: an audit write failure must not turn it into a 500.
+    const meta = isRetry ? { subscriptions: out.subscriptions, checkouts: out.checkouts, all: out.all, subscription_ids: out.subscription_ids, checkout_ids: out.checkout_ids }
+      : { errors: out.errors, complete: out.complete, pending: out.pending, needs_review: out.needs_review, deferred_resolved: out.deferred_resolved, aborted: out.aborted, account_verified: out.account_verified, unverified_not_found: out.unverified_not_found };
+    const audited = await tryAudit({ actor: s.user.id, action: isRetry ? 'membership.needs_review_retry' : 'membership.resync', meta });
+    const res = isRetry ? { retry: out } : { resync: out };
+    if (!audited) { res.audit_failed = true; console.error('membership operator audit write failed', p); }
+    return json(200, res);
+  }
+  if (m === 'POST' && p === '/memberships/checkout') {
+    const s = requireVerified(ctx);
+    await rateLimit(env, `mbr-checkout:${s.user.id}`, 20, 600);
+    return json(200, await createMembershipCheckout(env, s, await readJson(req)));
   }
   if (m === 'POST' && (p === '/memberships/join' || p === '/memberships/activate' || p === '/memberships/grant')) {
     requireAuth(ctx);

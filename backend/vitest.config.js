@@ -4,6 +4,8 @@ import path from 'node:path';
 
 export default defineConfig(async () => {
   const migrations = await readD1Migrations(path.join(import.meta.dirname, 'migrations'));
+  // LOCAL ONLY: owner-pending migrations (never applied remotely; see migrations-pending/*.sql headers).
+  const pendingMigrations = await readD1Migrations(path.join(import.meta.dirname, 'migrations-pending'));
   return {
     plugins: [cloudflareTest({
       wrangler: { configPath: './wrangler.jsonc' },
@@ -16,6 +18,7 @@ export default defineConfig(async () => {
           // PIKK Vault (test-only key; kept at the top so it never touches lines other PRs append to).
           VAULT_SIGNING_KEY: 'vault_local_test_only_not_a_real_signing_key_0123456789',
           TEST_MIGRATIONS: migrations,
+          TEST_PENDING_MIGRATIONS: pendingMigrations,
           EXPOSE_VERIFY_TOKEN: 'true',
           // Forwarded so migration-order.test.js can relax the no-gaps rule on PR CI runs.
           GITHUB_BASE_REF: process.env.GITHUB_BASE_REF || '',

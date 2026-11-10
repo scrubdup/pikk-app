@@ -15,6 +15,7 @@ export const PERMISSIONS = Object.freeze({
   'tickets.reply': ['support_agent', 'admin'],
   'copyright.takedown.review': ['admin', 'dmca'],
   'ops.view': ['owner'], // PIKK Master Mind read-only monitoring; owner only
+  'membership.resync': ['owner'], // re-read membership state from Stripe after billing re-enable; owner only
 });
 /** owner sits above admin: it holds every admin permission plus owner-only ones (ops.view).
  *  owner is NOT grantable via /admin/roles; only the env-gated one-time bootstrap assigns it. */

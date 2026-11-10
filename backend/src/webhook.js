@@ -1,5 +1,6 @@
 import { ApiError, json } from './http.js';
 import { hmacSha256Hex, timingSafeEqual, sha256Hex, newId } from './crypto.js';
+import { isMembershipEvent, handleMembershipEvent, DEFERRED_BILLING_OFF } from './memberships.js';
 
 const TOLERANCE_SEC = 300;
 
@@ -138,6 +139,20 @@ export async function stripeWebhook(env, req) {
     if (!row || !row.processed_at) throw new ApiError(500, 'payment_not_settled', 'Payment event not settled; retry');
     return row.outcome;
   };
+
+  // Membership subscription lifecycle (subscription-mode sessions + customer.subscription.*). Coins handling below is
+  // unchanged: coin orders never use mode=subscription. Billing-off => recorded and ignored, nothing granted.
+  // A throw (e.g. provider read failed) leaves the event unprocessed so the provider retries it.
+  if (isMembershipEvent(evt)) {
+    const mOutcome = await handleMembershipEvent(env, evt);
+    if (mOutcome === DEFERRED_BILLING_OFF) {
+      // Acknowledge (no endless provider retries) but leave unprocessed so a resend or owner resync still applies it.
+      await env.DB.prepare(`UPDATE payment_events SET outcome = ? WHERE id = ? AND processed_at IS NULL`).bind(mOutcome, peId).run();
+      return json(200, { received: true, outcome: mOutcome, deferred: true });
+    }
+    await finish(mOutcome).run();
+    return json(200, { received: true, outcome: await settledOutcome() });
+  }
 
   let outcome = 'ignored_event_type';
   if (evt.type === 'checkout.session.completed') {
