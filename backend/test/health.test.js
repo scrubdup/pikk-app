@@ -18,6 +18,9 @@ describe('backend readiness health', () => {
     expect(typeof body.capabilities.media_storage).toBe('boolean');
     expect(typeof body.capabilities.payments_webhook).toBe('boolean');
     expect(body.capabilities.membership_status).toBe(true);
+    expect(body).toHaveProperty('membership_billing_reason');
+    expect(body.activation_readiness.membership_billing.configured).toBe(body.capabilities.membership_billing);
+    expect(body.activation_readiness.membership_billing.reason).toBe(body.membership_billing_reason ?? null);
     expect(JSON.stringify(body)).not.toMatch(/api[_-]?key|secret|token/i);
   });
 });

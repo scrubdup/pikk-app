@@ -12,6 +12,7 @@ import { balance, transfer } from './ledger.js';
 import { stripeWebhook } from './webhook.js';
 import { membershipMe, rejectClientMembershipGrant, createMembershipCheckout, resyncMemberships, retryNeedsReview } from './memberships.js';
 import { billingSummary } from './membership-config.js';
+import { activationReadiness, emailDeliveryConfigured, mediaStorageConfigured, paymentsWebhookConfigured } from './readiness-config.js';
 import { newId } from './crypto.js';
 import { audit, auditStmt } from './audit.js';
 import { mediaRoute } from './media.js';
@@ -66,14 +67,16 @@ async function route(req, env, ctx) {
       database: !!env.DB,
       auth: !!env.DB,
       email_verification: !!env.DB,
-      email_delivery: !!(env.RESEND_API_KEY && env.EMAIL_FROM),
-      media_storage: !!env.MEDIA,
-      payments_webhook: !!env.STRIPE_WEBHOOK_SECRET,
+      email_delivery: emailDeliveryConfigured(env),
+      media_storage: mediaStorageConfigured(env),
+      payments_webhook: paymentsWebhookConfigured(env),
       membership_status: !!env.DB,
       membership_billing: mb.configured,
     },
     // Non-secret reason code, e.g. billing_disabled / schema_missing / catalog_invalid.
     membership_billing_reason: mb.reason,
+    // Requirement presence only (public codes). Not provider-availability or live checks.
+    activation_readiness: activationReadiness(env, mb),
   }); }
 
   if (m === 'GET' && p === '/verification/age') return idvStatus(env, ctx);
