@@ -17,7 +17,7 @@ import { GENDER_LABELS, genderOptionsHtml } from '../../backend/src/genders.js';
 import { navigate } from '../router.js';
 import { profileRouteHref } from '../profile-links.js';
 import { authApi, isPikkApiConfigured } from '../api/auth-client.js';
-import { noteLiveAuthMe, clearLiveAuthMe } from '../auth/readiness.js';
+import { noteLiveAuthMe, clearLiveAuthMe, currentAuthGeneration, isAuthGenerationCurrent, invalidateAuthProbes } from '../auth/readiness.js';
 import { getMembershipView, requestMembershipSync } from '../membership-sync.js';
 import { membershipChipText, paintMembershipStatus } from '../membership-view.js';
 import { accountApi } from '../api/account-client.js';
@@ -338,7 +338,9 @@ export function bindProfile(root) {
       clearAuthenticatedUser();
     }
     if (!cachedUser || cachedUser.authSource === 'backend') {
+      const probeGen = currentAuthGeneration();
       authApi.me().then((session) => {
+        if (!isAuthGenerationCurrent(probeGen)) return; // signed out / switched while in flight
         if (!session?.user) return;
         syncRemoteAuthUser(session.user);
         noteLiveAuthMe(session.user);
@@ -347,6 +349,7 @@ export function bindProfile(root) {
           refresh('#/profile');
         }
       }).catch((err) => {
+        if (!isAuthGenerationCurrent(probeGen)) return;
         clearLiveAuthMe();
         if (err?.status === 401 && cachedUser?.authSource === 'backend') {
           clearAuthenticatedUser();
@@ -382,7 +385,9 @@ export function bindProfile(root) {
         email: root.querySelector('#loginEmail')?.value?.trim(),
         password: root.querySelector('#loginPassword')?.value || '',
       });
+      const loginGen = invalidateAuthProbes(); // a new sign-in supersedes any older in-flight probe
       const session = await authApi.me();
+      if (!isAuthGenerationCurrent(loginGen)) return; // signed out again before /auth/me returned
       syncRemoteAuthUser(session.user);
       noteLiveAuthMe(session.user);
       requestMembershipSync();
@@ -406,6 +411,7 @@ export function bindProfile(root) {
     }
   });
   root.querySelector('#signoutBtn')?.addEventListener('click', async () => {
+    invalidateAuthProbes(); // before awaiting logout: no in-flight /auth/me may restore this identity
     try { await authApi.logout(); } catch {}
     clearLiveAuthMe();
     clearAuthenticatedUser();

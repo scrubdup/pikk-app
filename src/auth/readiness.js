@@ -12,6 +12,16 @@ export const AUTH_STATES = Object.freeze({
 let liveAuthMeUserId = null;
 const liveAuthListeners = new Set();
 
+/**
+ * Auth generation: every in-flight GET /auth/me probe (startup restore, Profile check, login, verify) captures it
+ * and must re-check it before touching local identity. Bumped on sign-out (clearLiveAuthMe / invalidateAuthProbes)
+ * and on any identity change, so a late response can never restore an identity after logout or switch.
+ */
+let authGeneration = 0;
+export function currentAuthGeneration() { return authGeneration; }
+export function isAuthGenerationCurrent(gen) { return gen === authGeneration; }
+export function invalidateAuthProbes() { authGeneration += 1; return authGeneration; }
+
 /** Subscribe to live-identity changes (prevId, nextId). Fires only when the id actually changes. */
 export function onLiveAuthChange(fn) {
   liveAuthListeners.add(fn);
@@ -20,6 +30,7 @@ export function onLiveAuthChange(fn) {
 function setLiveAuthMeUserId(next) {
   const prev = liveAuthMeUserId;
   liveAuthMeUserId = next;
+  if (prev !== null && prev !== next) authGeneration += 1; // switch or sign-out; first confirmation (null -> id) keeps concurrent probes valid
   if (prev !== next) for (const fn of [...liveAuthListeners]) { try { fn(prev, next); } catch (_) { /* listener errors never break auth */ } }
 }
 
@@ -30,6 +41,7 @@ export function noteLiveAuthMe(user) {
 }
 
 export function clearLiveAuthMe() {
+  authGeneration += 1; // always: also invalidates probes started while no identity was noted yet
   setLiveAuthMeUserId(null);
 }
 
