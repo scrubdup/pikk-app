@@ -47,6 +47,8 @@ import { updateRouteIdentity } from './page-announcement.js';
 import { applyDrawerState } from './drawer-state.js';
 import { toggleMusicMenu, closeMusicMenu } from './music-menu.js';
 import { authApi, isPikkApiConfigured } from './api/auth-client.js';
+import { requestMembershipSync, MEMBERSHIP_EVENT } from './membership-sync.js';
+import { paintMembershipStatus } from './membership-view.js';
 import { noteLiveAuthMe, clearLiveAuthMe } from './auth/readiness.js';
 import { messagesApi, isMessagesApiConfigured } from './api/messages-client.js';
 
@@ -539,6 +541,13 @@ function wireMusicInterruptBridge() {
 }
 
 /** t212u · Messages unread badge: store markThreadRead → refresh tabbar */
+/** Repaint mounted read-only membership status nodes when the server membership state changes. */
+function wireMembershipStatus() {
+  window.addEventListener(MEMBERSHIP_EVENT, (e) => {
+    try { paintMembershipStatus(document, e.detail); } catch (_) { /* page may not show membership */ }
+  });
+}
+
 function wireMessagesUnreadBadge() {
   window.addEventListener('dbs:messages-unread', () => {
     try {
@@ -561,6 +570,7 @@ async function restoreBackendSession() {
     if (session?.user) {
       syncRemoteAuthUser(session.user);
       noteLiveAuthMe(session.user);
+      requestMembershipSync();
     } else {
       clearLiveAuthMe();
     }
@@ -588,6 +598,7 @@ async function boot() {
   initDbsPlayer();
   wireMusicInterruptBridge();
   wireMessagesUnreadBadge();
+  wireMembershipStatus();
 
   document.getElementById('menuBtn').addEventListener('click', () => setDrawer(true));
   document.getElementById('scrim').addEventListener('click', () => setDrawer(false, true));

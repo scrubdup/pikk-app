@@ -18,6 +18,8 @@ import { navigate } from '../router.js';
 import { profileRouteHref } from '../profile-links.js';
 import { authApi, isPikkApiConfigured } from '../api/auth-client.js';
 import { noteLiveAuthMe, clearLiveAuthMe } from '../auth/readiness.js';
+import { getMembershipView, requestMembershipSync } from '../membership-sync.js';
+import { membershipChipText, paintMembershipStatus } from '../membership-view.js';
 import { accountApi } from '../api/account-client.js';
 
 function refresh(path) {
@@ -188,7 +190,9 @@ export function renderProfile(route) {
           <h2 style="margin:0">${esc(user.username)}</h2>
           <p class="muted" style="margin:4px 0 0">${esc(user.bio)}</p>
           <span class="chip">${user.authSource === 'backend' ? (user.emailVerified ? 'Backend account · email verified' : 'Backend account · verification pending') : 'Legacy demo account'}</span>
-          ${m.skeetPlus || m.backstage || m.innerCircle ? `<span class="chip">${m.innerCircle ? 'Inner Circle' : m.backstage ? 'Backstage' : 'PIKK+'}</span>` : ''}
+          ${isPikkApiConfigured()
+            ? (() => { const c = membershipChipText(getMembershipView()); return `<span class="chip" data-server-membership="chip"${c ? '' : ' hidden'}>${esc(c || '')}</span>`; })()
+            : (m.skeetPlus || m.backstage || m.innerCircle ? `<span class="chip">${m.innerCircle ? 'Inner Circle' : m.backstage ? 'Backstage' : 'PIKK+'}</span>` : '')}
         </div>
       </div>
       <div class="stats pikk-profile-stats">
@@ -338,6 +342,7 @@ export function bindProfile(root) {
         if (!session?.user) return;
         syncRemoteAuthUser(session.user);
         noteLiveAuthMe(session.user);
+        requestMembershipSync();
         if (!cachedUser || cachedUser.id !== session.user.id || !cachedUser.emailVerified === !session.user.email_verified) {
           refresh('#/profile');
         }
@@ -379,7 +384,8 @@ export function bindProfile(root) {
       });
       const session = await authApi.me();
       syncRemoteAuthUser(session.user);
-        noteLiveAuthMe(session.user);
+      noteLiveAuthMe(session.user);
+      requestMembershipSync();
       toast('Signed in');
       refresh('#/profile');
     } catch (err) {

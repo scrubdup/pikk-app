@@ -1,4 +1,7 @@
 import { getMembership, joinMembership, membershipStatus } from '../settings-store.js';
+import { isApiConfigured } from '../store.js';
+import { getMembershipView, requestMembershipSync } from '../membership-sync.js';
+import { membershipViewText, paintMembershipStatus } from '../membership-view.js';
 import { renderStoriesAndPromotions } from '../featured-promos.js';
 import { getState, setState, setNotifPrefs, listCatalog, submitCreatorSellApp } from '../store.js';
 import { resolveMediaSrc } from '../media-db.js';
@@ -244,8 +247,14 @@ export { renderEarnings, bindEarnings } from './earnings.js';
 export { renderMissions, bindMissions } from './missions.js';
 
 export function renderPricing() {
+  // API-configured mode: the server is the only membership authority (GET /memberships/me, read-only here);
+  // Join/Subscribe stay disabled and never write a local membership.
+  const apiMode = isApiConfigured();
+  const statusHtml = apiMode
+    ? `<p class="pikk-member-status" data-member-status data-server-membership="text" role="status">${esc(membershipViewText(getMembershipView()) || '')}</p>`
+    : `<p class="pikk-member-status" data-member-status role="status">${esc(membershipStatus(getMembership()))}</p>`;
   const tiers = MEMBERSHIPS.map(
-    (m) => `<li class="pikk-tier" data-tier="${esc(m.id)}"><span><strong>${esc(m.name)}</strong><br/><small class="muted">${esc(m.blurb || '')}</small></span><strong>$${m.price}/mo</strong><button type="button" class="btn primary pikk-join" data-join="${esc(m.id)}">${m.id === 'inner' ? 'Join' : 'Subscribe'}</button></li>`
+    (m) => `<li class="pikk-tier" data-tier="${esc(m.id)}"><span><strong>${esc(m.name)}</strong><br/><small class="muted">${esc(m.blurb || '')}</small></span><strong>$${m.price}/mo</strong><button type="button" class="btn primary pikk-join" data-join="${esc(m.id)}"${apiMode ? ' disabled aria-disabled="true" title="Membership checkout is not available yet"' : ''}>${m.id === 'inner' ? 'Join' : 'Subscribe'}</button></li>`
   ).join('');
   const apps = getState().creatorSellApps || [];
   const appsList = apps.length
@@ -327,7 +336,7 @@ export function renderPricing() {
       ${appsList}
     </div>
 
-    <div class="card" id="memberships"><h3>Memberships</h3><p class="pikk-member-status" data-member-status role="status">${esc(membershipStatus(getMembership()))}</p><ul class="list-plain">${tiers}</ul><div class="pikk-join-confirm" data-join-confirm hidden></div><p class="muted" style="font-size:12px">TEST MODE · no real charge. Billing starts when Stripe is live.</p></div>
+    <div class="card" id="memberships"><h3>Memberships</h3>${statusHtml}<ul class="list-plain">${tiers}</ul>${apiMode ? '<p class="muted" style="font-size:12px" data-membership-checkout-note>Membership checkout is not available yet · nothing is charged and nothing is unlocked from this page.</p>' : ''}<div class="pikk-join-confirm" data-join-confirm hidden></div><p class="muted" style="font-size:12px">TEST MODE · no real charge. Billing starts when Stripe is live.</p></div>
      <div class="card"><h3>Music price ranges</h3>
        <ul class="list-plain">
          <li><span>Song</span><span>$0.99–$1.29</span></li>
@@ -993,6 +1002,12 @@ export function renderNotFound(path) {
 }
 
 export function bindMemberships(root) {
+  if (isApiConfigured()) {
+    // Read-only server status; no join handler at all in API mode (buttons are disabled, never local-grant).
+    paintMembershipStatus(root, getMembershipView());
+    requestMembershipSync();
+    return;
+  }
   const box = root.querySelector('[data-join-confirm]'); if (!box) return;
   root.querySelectorAll('[data-join]').forEach((b) => b.addEventListener('click', () => {
     const t = MEMBERSHIPS.find((m) => m.id === b.dataset.join); if (!t) return;

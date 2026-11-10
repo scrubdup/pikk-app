@@ -41,6 +41,11 @@ async function request(path, { method = 'GET', body } = {}) {
   return data;
 }
 
+/** GET /memberships/me (read-only; server-authoritative). */
+export const membershipApi = {
+  me: () => request('/memberships/me'),
+};
+
 export const authApi = {
   health: () => request('/health'),
   me: () => request('/auth/me'),

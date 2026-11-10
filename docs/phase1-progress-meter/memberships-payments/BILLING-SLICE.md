@@ -84,3 +84,11 @@
 - **Low:** a Stripe-complete session that can't be mapped to a subscription returns 409 `membership_checkout_needs_review` with the outcome, and no new session.
 - **Runbook:** never drop or rename the 0016 tables once sessions exist (`schema_missing` events are finished as ignored).
 - **Still owner policy:** a banned account with an active subscription (R8); the catalog, benefits, trials and grace.
+
+## Frontend wiring (read-only server membership status)
+- `src/membership-sync.js` calls `GET /memberships/me` (with credentials) only after a live `GET /auth/me` has confirmed an identity in this runtime: at startup session restore, after Profile sign-in, and when Profile or Pricing is shown. The result goes into `setServerMembership(..., { userId })`, tied to that identity, and is never persisted.
+- Concurrent requests for the same identity share one HTTP call. A response that arrives after sign-out, an account switch or a newer request is dropped. A 401, 5xx, network failure or malformed body clears the membership (fail closed).
+- In API-configured mode `getMembership()` returns `null`: the server returns `entitlements: null` / `entitlement_policy: 'unconfigured'`, so an active plan id never unlocks Vault tiers, ad-free or other perks by inference. Mapping plans to entitlements is an owner decision that has to come from the server explicitly.
+- UI (API mode only; demo mode unchanged):
+  - **Pricing → Memberships card:** the status line shows a server state (sign in / checking / unavailable / no active membership / active plan + period end + "member perks are not enabled yet"). The three tier rows and prices are unchanged; Join/Subscribe are disabled with a note that checkout isn't available yet, and no local membership is ever written.
+  - **Profile cover:** the local demo tier chip is replaced by a server membership chip ("Membership · checking…", "No membership", "Member · <plan>", "Membership · unavailable").
