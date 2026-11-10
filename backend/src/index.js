@@ -371,10 +371,13 @@ async function route(req, env, ctx) {
   }
 
   if (m === 'POST' && p === '/bootstrap/owner') return json(200, await bootstrapOwner(env, req, ip));
-  if (m === 'GET' && p === '/admin/ops/summary') { requirePermission(ctx, 'ops.view'); 
-    // PIKK Vault (#236) not in this branch: no vault handler is wired, so the vault panel reports unknown.
-    // Once #236 lands: vaultHealth: () => mediaRoute(env, new Request(new URL('/vault/health', req.url)), ctx, 'GET', '/vault/health')
-    return json(200, await opsSummary(env, { vaultHealth: undefined })); }
+  if (m === 'GET' && p === '/admin/ops/summary') {
+    requirePermission(ctx, 'ops.view');
+    // Reuse the authenticated in-process Vault handler; never fetch an external URL or expose its raw response.
+    // Vault health itself requires admin.access, so operators without that role see an unknown panel.
+    const vaultHealth = () => mediaRoute(env, req, ctx, 'GET', '/vault/health');
+    return json(200, await opsSummary(env, { vaultHealth }));
+  }
   if (m === 'GET' && p === '/admin/audit') {
     requirePermission(ctx, 'admin.access');
     const r = await env.DB.prepare(`SELECT id, actor_id, action, target, created_at FROM audit_log ORDER BY created_at DESC LIMIT 100`).all();
