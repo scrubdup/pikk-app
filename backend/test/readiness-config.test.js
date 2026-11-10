@@ -105,6 +105,65 @@ describe('readiness-config helpers (presence only, public codes)', () => {
     expect(r.membership_billing.configured).toBe(mb.configured);
     expect(r.membership_billing.reason).toBe(mb.reason);
   });
+
+  it('RD-2: false/0/null/arrays/objects are not required strings (email + webhook)', () => {
+    const billing = { configured: false, reason: 'billing_disabled' };
+    for (const bad of [false, 0, null, [], {}]) {
+      const r = activationReadiness({
+        RESEND_API_KEY: bad,
+        EMAIL_FROM: bad,
+        STRIPE_WEBHOOK_SECRET: bad,
+      }, billing);
+      expect(emailDeliveryConfigured({ RESEND_API_KEY: bad, EMAIL_FROM: bad })).toBe(false);
+      expect(paymentsWebhookConfigured({ STRIPE_WEBHOOK_SECRET: bad })).toBe(false);
+      expect(r.email_delivery).toEqual({
+        configured: false,
+        missing: ['email_delivery_credential', 'email_from_address'],
+      });
+      expect(r.payments_webhook).toEqual({ configured: false, missing: ['payments_webhook_credential'] });
+      assertNoSecretsOrEnvNames(r);
+    }
+    // One side false must not flip email_delivery to configured.
+    const half = activationReadiness({
+      RESEND_API_KEY: 're_test',
+      EMAIL_FROM: false,
+    }, billing);
+    expect(emailDeliveryConfigured({ RESEND_API_KEY: 're_test', EMAIL_FROM: false })).toBe(false);
+    expect(half.email_delivery).toEqual({ configured: false, missing: ['email_from_address'] });
+  });
+
+  it('whitespace-only email/webhook strings count as present (no format check; not a delivery claim)', () => {
+    const r = activationReadiness({
+      RESEND_API_KEY: '   ',
+      EMAIL_FROM: '   ',
+      STRIPE_WEBHOOK_SECRET: '   ',
+    }, { configured: false, reason: 'billing_disabled' });
+    expect(emailDeliveryConfigured({ RESEND_API_KEY: '   ', EMAIL_FROM: '   ' })).toBe(true);
+    expect(paymentsWebhookConfigured({ STRIPE_WEBHOOK_SECRET: '   ' })).toBe(true);
+    expect(r.email_delivery).toEqual({ configured: true, missing: [] });
+    expect(r.payments_webhook).toEqual({ configured: true, missing: [] });
+    assertNoSecretsOrEnvNames(r);
+  });
+
+  it('RD-1: vault signing matches signingKey() — string length >= 32 only', () => {
+    const billing = { configured: false, reason: 'billing_disabled' };
+    const missing = { configured: false, missing: ['vault_signing_credential'] };
+    const ok = { configured: true, missing: [] };
+    expect(vaultSigningConfigured({ VAULT_SIGNING_KEY: 'short' })).toBe(false);
+    expect(activationReadiness({ VAULT_SIGNING_KEY: 'short' }, billing).vault_signing).toEqual(missing);
+    expect(vaultSigningConfigured({ VAULT_SIGNING_KEY: 'x'.repeat(31) })).toBe(false);
+    expect(activationReadiness({ VAULT_SIGNING_KEY: 'x'.repeat(31) }, billing).vault_signing).toEqual(missing);
+    expect(vaultSigningConfigured({ VAULT_SIGNING_KEY: '   ' })).toBe(false);
+    expect(activationReadiness({ VAULT_SIGNING_KEY: '   ' }, billing).vault_signing).toEqual(missing);
+    for (const bad of [false, 0, null, [], {}, '']) {
+      expect(vaultSigningConfigured({ VAULT_SIGNING_KEY: bad })).toBe(false);
+      expect(activationReadiness({ VAULT_SIGNING_KEY: bad }, billing).vault_signing).toEqual(missing);
+    }
+    expect(vaultSigningConfigured({ VAULT_SIGNING_KEY: 'x'.repeat(32) })).toBe(true);
+    expect(activationReadiness({ VAULT_SIGNING_KEY: 'x'.repeat(32) }, billing).vault_signing).toEqual(ok);
+    const r = activationReadiness({ VAULT_SIGNING_KEY: 'x'.repeat(32) }, billing);
+    assertNoSecretsOrEnvNames(r);
+  });
 });
 
 describe('GET /health activation_readiness (preserves billing fields)', () => {
@@ -168,5 +227,44 @@ describe('GET /health activation_readiness (preserves billing fields)', () => {
     expect(h.json.capabilities.membership_billing).toBe(false);
     expect(h.json.membership_billing_reason).toBe('billing_disabled');
     assertNoSecretsOrEnvNames(h.json);
+  });
+
+  it('RD-1/RD-2 on /health: false/0/short are unconfigured; sentinels and env names do not leak', async () => {
+    const sentinels = {
+      RESEND_API_KEY: 'sentinel-resend-LEAKTEST-9f3c',
+      EMAIL_FROM: 'sentinel-from-LEAKTEST-9f3c@example.invalid',
+      STRIPE_WEBHOOK_SECRET: 'sentinel-whsec-LEAKTEST-9f3c',
+      VAULT_SIGNING_KEY: 'sentinel-vault-LEAKTEST-9f3c-32chars!!',
+      STRIPE_SECRET_KEY: 'sentinel-sk-LEAKTEST-9f3c',
+      OWNER_BOOTSTRAP_TOKEN: 'sentinel-bootstrap-LEAKTEST-9f3c',
+    };
+    // Valid strings + sentinels: configured flags may be true, values must not appear.
+    const ok = await health({ ...sentinels, MEMBERSHIP_BILLING: undefined });
+    expect(ok.status).toBe(200);
+    expect(ok.json.activation_readiness.email_delivery.configured).toBe(true);
+    expect(ok.json.activation_readiness.payments_webhook.configured).toBe(true);
+    expect(ok.json.activation_readiness.vault_signing.configured).toBe(true);
+    assertNoSecretsOrEnvNames(ok.json);
+    const raw = JSON.stringify(ok.json);
+    for (const v of Object.values(sentinels)) {
+      expect(raw).not.toContain(v);
+    }
+
+    const bad = await health({
+      RESEND_API_KEY: 're_test',
+      EMAIL_FROM: false,
+      STRIPE_WEBHOOK_SECRET: 0,
+      VAULT_SIGNING_KEY: 'short',
+      MEMBERSHIP_BILLING: undefined,
+    });
+    expect(bad.status).toBe(200);
+    expect(bad.json.capabilities.email_delivery).toBe(false);
+    expect(bad.json.activation_readiness.email_delivery.missing).toEqual(['email_from_address']);
+    expect(bad.json.capabilities.payments_webhook).toBe(false);
+    expect(bad.json.activation_readiness.payments_webhook.missing).toEqual(['payments_webhook_credential']);
+    expect(bad.json.activation_readiness.vault_signing.configured).toBe(false);
+    expect(bad.json.activation_readiness.vault_signing.missing).toEqual(['vault_signing_credential']);
+    expect(bad.json.capabilities.membership_billing).toBe(false);
+    assertNoSecretsOrEnvNames(bad.json);
   });
 });
