@@ -37,10 +37,13 @@ describe('PIKK Master Mind: GET /admin/ops/summary', () => {
   it('unknown panels really say unknown and never claim healthy', async () => {
     const o = await owner();
     const { panels } = (await call('GET', '/admin/ops/summary', { cookie: o.cookie })).json;
-    for (const n of ['vault', 'live', 'broadcast', 'costs', 'backups']) {
+    // Vault now performs an in-process health check; its status is based on
+    // storage reachability, not an unconditional placeholder.
+    expect(['healthy', 'degraded', 'down', 'stale', 'unknown']).toContain(panels.vault.status);
+    expect(panels.vault.source).toMatch(/vault\/health/);
+    for (const n of ['live', 'broadcast', 'costs', 'backups']) {
       expect(panels[n].status).toBe('unknown'); expect(panels[n].checkedAt).toBeNull();
     }
-    expect(panels.vault.detail.reason).toMatch(/Vault health isn't available/);
   });
 
   it('admin, moderator, support_agent, dmca, user get 403; anonymous gets 401', async () => {
