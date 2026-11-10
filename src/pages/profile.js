@@ -17,10 +17,11 @@ import { GENDER_LABELS, genderOptionsHtml } from '../../backend/src/genders.js';
 import { navigate } from '../router.js';
 import { profileRouteHref } from '../profile-links.js';
 import { authApi, isPikkApiConfigured } from '../api/auth-client.js';
-import { noteLiveAuthMe, clearLiveAuthMe } from '../auth/readiness.js';
+import { noteLiveAuthMe, clearLiveAuthMe, currentAuthGeneration, isAuthGenerationCurrent, invalidateAuthProbes } from '../auth/readiness.js';
 import { getMembershipView, requestMembershipSync } from '../membership-sync.js';
 import { membershipChipText, paintMembershipStatus } from '../membership-view.js';
 import { accountApi } from '../api/account-client.js';
+import { signOutBackendSession } from '../auth/sign-out.js';
 
 function refresh(path) {
   navigate(path || '#/profile');
@@ -338,7 +339,9 @@ export function bindProfile(root) {
       clearAuthenticatedUser();
     }
     if (!cachedUser || cachedUser.authSource === 'backend') {
+      const probeGen = currentAuthGeneration();
       authApi.me().then((session) => {
+        if (!isAuthGenerationCurrent(probeGen)) return; // signed out / switched while in flight
         if (!session?.user) return;
         syncRemoteAuthUser(session.user);
         noteLiveAuthMe(session.user);
@@ -347,6 +350,7 @@ export function bindProfile(root) {
           refresh('#/profile');
         }
       }).catch((err) => {
+        if (!isAuthGenerationCurrent(probeGen)) return;
         clearLiveAuthMe();
         if (err?.status === 401 && cachedUser?.authSource === 'backend') {
           clearAuthenticatedUser();
@@ -360,6 +364,8 @@ export function bindProfile(root) {
   root.querySelector('#signupAccountBtn')?.addEventListener('click', async () => {
     const gender = root.querySelector('#signupGender')?.value || '';
     if (!gender) { toast('Choose your gender. It cannot be changed later.'); return; }
+    // AG-1: a new signup supersedes any older in-flight /auth/me probe (old cookie) before and after the request.
+    const signupGen = invalidateAuthProbes();
     try {
       const result = await authApi.signup({
         gender,
@@ -368,6 +374,8 @@ export function bindProfile(root) {
         email: root.querySelector('#signupEmail')?.value?.trim(),
         password: root.querySelector('#signupPassword')?.value || '',
       });
+      if (!isAuthGenerationCurrent(signupGen)) return; // signed out / superseded while the signup was pending
+      invalidateAuthProbes(); // probes started while the signup was pending may still carry the old cookie
       syncRemoteAuthUser(result.user);
       noteLiveAuthMe(result.user);
       toast(result.user?.email_verified ? 'Account created' : 'Account created · email verification pending');
@@ -382,7 +390,9 @@ export function bindProfile(root) {
         email: root.querySelector('#loginEmail')?.value?.trim(),
         password: root.querySelector('#loginPassword')?.value || '',
       });
+      const loginGen = invalidateAuthProbes(); // a new sign-in supersedes any older in-flight probe
       const session = await authApi.me();
+      if (!isAuthGenerationCurrent(loginGen)) return; // signed out again before /auth/me returned
       syncRemoteAuthUser(session.user);
       noteLiveAuthMe(session.user);
       requestMembershipSync();
@@ -406,12 +416,18 @@ export function bindProfile(root) {
     }
   });
   root.querySelector('#signoutBtn')?.addEventListener('click', async () => {
-    try { await authApi.logout(); } catch {}
-    clearLiveAuthMe();
-    clearAuthenticatedUser();
-    toast('Signed out');
+    if (!isPikkApiConfigured()) { // demo mode: local only, unchanged
+      clearLiveAuthMe();
+      clearAuthenticatedUser();
+      toast('Signed out');
+      refresh('#/profile');
+      return;
+    }
+    const { message } = await signOutBackendSession(); // invalidates probes before POST /auth/logout; clears locally even on error
+    toast(message);
     refresh('#/profile');
   });
+
   root.querySelector('#saveProfile')?.addEventListener('click', async () => {
     const current = getState().user;
     const bio = root.querySelector('#editBio')?.value || '';

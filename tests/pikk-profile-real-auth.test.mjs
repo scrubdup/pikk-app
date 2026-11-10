@@ -6,7 +6,10 @@ const profile = readFileSync(new URL('../src/pages/profile.js', import.meta.url)
 const store = readFileSync(new URL('../src/store.js', import.meta.url), 'utf8');
 
 test('Profile uses the real auth API for signup, login, current session and logout', () => {
-  for (const token of ['authApi.signup', 'authApi.login', 'authApi.me', 'authApi.logout']) assert.ok(profile.includes(token), token);
+  for (const token of ['authApi.signup', 'authApi.login', 'authApi.me']) assert.ok(profile.includes(token), token);
+  // logout goes through the shared backend sign-out path (also used by Settings); behaviour is DOM-tested in pikk-auth-signout.test.mjs
+  assert.ok(profile.includes('signOutBackendSession()'));
+  assert.ok(readFileSync(new URL('../src/auth/sign-out.js', import.meta.url), 'utf8').includes('authApi.logout()'));
   assert.match(profile, /syncRemoteAuthUser\(result\.user\)/);
   assert.match(profile, /syncRemoteAuthUser\(session\.user\)/);
   assert.match(profile, /clearAuthenticatedUser\(\)/);

@@ -13,8 +13,9 @@ const WHSEC = 'whsec_local_test_only_not_a_real_secret';
 const TEST_PRICE = 'price_TESTONLYfixture001';
 const TEST_PRICE_2 = 'price_TESTONLYfixture002';
 const fixturePlan = (over = {}) => ({ plan_id: 'testonly_plan', stripe_price_id: TEST_PRICE, unit_amount: 101, currency: 'usd', interval: 'month', interval_count: 1, ...over });
+const TEST_ACCT = 'acct_TESTONLYfake0001'; // test-only fake account id (not a credential)
 const BILLING = (over = {}) => ({
-  MEMBERSHIP_BILLING: 'enabled', MEMBERSHIP_STRIPE_MODE: 'test',
+  MEMBERSHIP_BILLING: 'enabled', MEMBERSHIP_STRIPE_MODE: 'test', MEMBERSHIP_STRIPE_ACCOUNT_ID: TEST_ACCT,
   STRIPE_SECRET_KEY: 'sk_test_LOCALTESTONLYnotarealkey0000',
   MEMBERSHIP_CHECKOUT_SUCCESS_URL: 'https://scrubdup.github.io/pikk-app/#/vault?checkout=success',
   MEMBERSHIP_CHECKOUT_CANCEL_URL: 'https://scrubdup.github.io/pikk-app/#/vault?checkout=cancel',

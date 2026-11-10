@@ -1,5 +1,6 @@
 import { authApi, isPikkApiConfigured } from '../api/auth-client.js';
 import { syncRemoteAuthUser } from '../store.js';
+import { currentAuthGeneration, isAuthGenerationCurrent } from '../auth/readiness.js';
 import { shellPage, esc } from '../ui.js';
 
 export function renderVerifyEmail(route) {
@@ -21,8 +22,9 @@ export function bindVerifyEmail(root) {
   authApi.verifyEmail(token)
     .then(async () => {
       try {
+        const probeGen = currentAuthGeneration();
         const session = await authApi.me();
-        if (session?.user) syncRemoteAuthUser(session.user);
+        if (session?.user && isAuthGenerationCurrent(probeGen)) syncRemoteAuthUser(session.user);
       } catch {}
       if (status) status.textContent = 'Email verified. Your PIKK account is ready.';
     })

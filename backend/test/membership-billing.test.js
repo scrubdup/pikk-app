@@ -13,8 +13,9 @@ const WHSEC = 'whsec_local_test_only_not_a_real_secret';
 const TEST_PRICE = 'price_TESTONLYfixture001';
 const TEST_PRICE_2 = 'price_TESTONLYfixture002';
 const fixturePlan = (over = {}) => ({ plan_id: 'testonly_plan', stripe_price_id: TEST_PRICE, unit_amount: 101, currency: 'usd', interval: 'month', interval_count: 1, ...over });
+const TEST_ACCT = 'acct_TESTONLYfake0001'; // test-only fake account id (not a credential)
 const BILLING = (over = {}) => ({
-  MEMBERSHIP_BILLING: 'enabled', MEMBERSHIP_STRIPE_MODE: 'test',
+  MEMBERSHIP_BILLING: 'enabled', MEMBERSHIP_STRIPE_MODE: 'test', MEMBERSHIP_STRIPE_ACCOUNT_ID: TEST_ACCT,
   STRIPE_SECRET_KEY: 'sk_test_LOCALTESTONLYnotarealkey0000',
   MEMBERSHIP_CHECKOUT_SUCCESS_URL: 'https://scrubdup.github.io/pikk-app/#/vault?checkout=success',
   MEMBERSHIP_CHECKOUT_CANCEL_URL: 'https://scrubdup.github.io/pikk-app/#/vault?checkout=cancel',
@@ -22,7 +23,6 @@ const BILLING = (over = {}) => ({
   ...over,
 });
 
-const TEST_ACCT = 'acct_TESTONLYfake0001';
 // ---------------- fake Stripe ----------------
 let fake;
 function newFake() {
@@ -111,7 +111,7 @@ describe('config: deny by default, strict catalog', () => {
     const base = { ...env, ...BILLING() };
     expect(membershipBillingConfig(base).ok).toBe(true);
     const cases = {
-      billing_disabled: { MEMBERSHIP_BILLING: 'true' }, stripe_mode_missing: { MEMBERSHIP_STRIPE_MODE: undefined },
+      billing_disabled: { MEMBERSHIP_BILLING: 'true' }, stripe_mode_missing: { MEMBERSHIP_STRIPE_MODE: undefined }, stripe_account_missing: { MEMBERSHIP_STRIPE_ACCOUNT_ID: undefined }, stripe_account_invalid: { MEMBERSHIP_STRIPE_ACCOUNT_ID: 'acct_x' },
       // Non-credential fixtures only: a wrong-shaped value, and the test-mode fixture key paired with mode=live.
       stripe_key_missing: { STRIPE_SECRET_KEY: 'not-a-stripe-secret-key' }, stripe_mode_mismatch: { MEMBERSHIP_STRIPE_MODE: 'live' },
       webhook_secret_missing: { STRIPE_WEBHOOK_SECRET: '' }, success_url_invalid: { MEMBERSHIP_CHECKOUT_SUCCESS_URL: 'https://evil.example/x' },
@@ -521,7 +521,7 @@ describe('review d6d79cf fixes (ported S1/S2/S3 + variants)', () => {
   // ---------------- MB-4 (review 86f5728): resync rotation, cross-pass completion, 404, livemode ----------------
   const clearRl = () => env.DB.prepare(`DELETE FROM rate_limits`).run();
   const resync = async (envOver = BILLING()) => { await clearRl(); const r = await api('POST', '/admin/memberships/resync', { cookie: (await getOwner()).cookie, envOver }); expect(r.status, JSON.stringify(r.json)).toBe(200); return r.json.resync; };
-  const ACCT = () => BILLING({ MEMBERSHIP_STRIPE_ACCOUNT_ID: TEST_ACCT });
+  const ACCT = () => BILLING(); // MB-6: the account id is part of every enabled config now
   async function paidUsers(n) {
     const out = [];
     for (let i = 0; i < n; i++) { const u = await newUser(); const p = await checkoutAndPay(u); await deliver(sessionCompleted(p.session)); out.push({ u, sub: p.sub.id }); }
@@ -619,18 +619,24 @@ describe('review d6d79cf fixes (ported S1/S2/S3 + variants)', () => {
     expect(accountCalls()).toBe(1);
   });
 
-  it('MB-5/A2: no account configured: N consecutive 404s abort without marking; <N 404s with no successful read stay unmarked', async () => {
-    const xs = await paidUsers(4); await isolateResync(xs.map((x) => x.sub), [], { clearDeferred: true });
-    fake.subs.clear();
-    const p = await resync();
-    expect(p).toMatchObject({ aborted: 'stripe_not_found_streak', needs_review: 0, complete: false });
+  it('MB-6: no MEMBERSHIP_STRIPE_ACCOUNT_ID => billing not ready (fail closed): no resync, no Stripe calls, events deferred, nobody marked', async () => {
+    const xs = await paidUsers(2); await isolateResync(xs.map((x) => x.sub), [], { clearDeferred: true });
+    const NOACCT = () => BILLING({ MEMBERSHIP_STRIPE_ACCOUNT_ID: undefined });
+    expect(membershipBillingConfig({ ...env, ...NOACCT() })).toEqual({ ok: false, reason: 'stripe_account_missing' });
+    const h = await api('GET', '/health', { envOver: NOACCT() });
+    expect(h.json.capabilities.membership_billing).toBe(false); expect(h.json.membership_billing_reason).toBe('stripe_account_missing');
+    fake.subs.clear(); const before = fake.calls.length;
+    const owner = await getOwner(); await clearRl();
+    const r = await api('POST', '/admin/memberships/resync', { cookie: owner.cookie, envOver: NOACCT() });
+    expect(r.status).toBe(503);
+    const a = await env.DB.prepare(`SELECT meta FROM audit_log WHERE action='membership.resync_refused' AND actor_id=? ORDER BY created_at DESC LIMIT 1`).bind(owner.id).first();
+    expect(JSON.parse(a.meta).reason).toBe('stripe_account_missing');
+    const d = subEvent('customer.subscription.updated', { ...structuredClone({ id: xs[0].sub, object: 'subscription' }) });
+    expect((await deliver(d, { envOver: NOACCT() })).json.outcome).toBe('deferred_membership_billing_off');
+    expect(fake.calls.length).toBe(before); // no Stripe traffic at all without a verified account id
     for (const x of xs) { expect(await nr(x.u)).toBeNull(); expect((await me(x.u)).status).toBe('active'); }
-    const ys = await paidUsers(2); await isolateResync(ys.map((x) => x.sub), [], { clearDeferred: true });
-    for (const y of ys) fake.subs.delete(y.sub);
-    const q = await resync();
-    expect(q).toMatchObject({ aborted: null, needs_review: 0, unverified_not_found: 2 });
-    for (const y of ys) { expect(await nr(y.u)).toBeNull(); expect((await me(y.u)).status).toBe('active'); }
-    expect(accountCalls()).toBe(0);
+    const c = await api('POST', '/memberships/checkout', { cookie: xs[0].u.cookie, envOver: NOACCT(), body: { plan_id: 'testonly_plan' } });
+    expect(c.status).toBe(503);
   });
 
   it('MB-5/A3: verified account: 404 rows are marked needs_review (never entitled), /v1/account read once per pass', async () => {

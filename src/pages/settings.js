@@ -1,6 +1,8 @@
 // #/settings — works signed in or out. TEST MODE: everything saved locally on this device until the backend exists.
 import { esc, shellPage, toast } from '../ui.js';
 import { getState, signOut } from '../store.js';
+import { isPikkApiConfigured } from '../api/auth-client.js';
+import { signOutBackendSession } from '../auth/sign-out.js';
 import { getSettings, setSetting, applyAppearance, getMembership, membershipStatus } from '../settings-store.js';
 
 export const APP_VERSION = '0.1.0';
@@ -9,9 +11,9 @@ const link = (href, label, hint) => `<a class="pikk-set-row pikk-set-link" href=
 const group = (id, title, body) => `<section class="card pikk-set-group" id="set-${id}" aria-labelledby="set-${id}-h"><h2 id="set-${id}-h">${esc(title)}</h2>${body}</section>`;
 
 export function renderSettings() {
-  const s = getSettings(); const user = getState()?.user; const m = getMembership();
+  const s = getSettings(); const user = getState()?.user; const m = getMembership(); const apiMode = isPikkApiConfigured();
   const account = user
-    ? `<p class="pikk-set-who">Signed in as <strong>@${esc(user.username)}</strong> · local demo account</p>${link('#/profile', 'Edit profile', 'Name, bio, avatar')}<button type="button" class="btn pikk-set-btn" id="setSignOut">Sign out</button>`
+    ? `<p class="pikk-set-who">Signed in as <strong>@${esc(user.username)}</strong> · ${apiMode && user.authSource === 'backend' ? 'PIKK account' : 'local demo account'}</p>${link('#/profile', 'Edit profile', 'Name, bio, avatar')}<button type="button" class="btn pikk-set-btn" id="setSignOut">Sign out</button>`
     : `<p class="pikk-set-who">You're not signed in.</p><a class="btn primary pikk-set-btn" href="#/profile" id="setSignIn">Sign in / Create account</a>`;
   return shellPage('Settings', `
     ${group('account', 'Account', account + (m ? `<p class="pikk-set-member" data-membership>${esc(membershipStatus(m))}</p>` : '') + link('#/pricing', 'Memberships', 'PIKK+ · Backstage · Inner Circle'))}
@@ -28,5 +30,12 @@ export function bindSettings(root = document.getElementById('app')) {
   root?.querySelectorAll('[data-setting]').forEach((el) => el.addEventListener('change', () => {
     const s = setSetting(el.dataset.setting, el.checked); applyAppearance(s); toast('Saved on this device');
   }));
-  root?.querySelector('#setSignOut')?.addEventListener('click', () => { signOut(); toast('Signed out'); root.innerHTML = renderSettings(); bindSettings(root); });
+  root?.querySelector('#setSignOut')?.addEventListener('click', async (e) => {
+    if (!isPikkApiConfigured()) { signOut(); toast('Signed out'); root.innerHTML = renderSettings(); bindSettings(root); return; } // demo mode unchanged
+    // API mode: same backend path as Profile (invalidate probes -> POST /auth/logout -> clear live/local/membership).
+    if (e?.currentTarget) e.currentTarget.disabled = true;
+    const { message } = await signOutBackendSession();
+    toast(message);
+    root.innerHTML = renderSettings(); bindSettings(root);
+  });
 }

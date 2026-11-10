@@ -38,7 +38,7 @@ import {
   notifyLiveOpen,
   notifyLiveClosed,
 } from './player.js';
-import { getState, ensureDemoPosts, markSplash, shouldShowSplash, getUnreadMessageCount, ensureDemoUnreadMessages, syncRemoteAuthUser, clearAuthenticatedUser, setServerRoles } from './store.js';
+import { getState, ensureDemoPosts, markSplash, shouldShowSplash, getUnreadMessageCount, ensureDemoUnreadMessages } from './store.js';
 import { startRouter, onRoute, getRoute } from './router.js';
 import { ICONS, esc, shellPage, toast } from './ui.js';
 import { asset, rewriteAssetUrls } from './asset.js';
@@ -46,10 +46,9 @@ import { markActiveTab } from './tabbar-state.js';
 import { updateRouteIdentity } from './page-announcement.js';
 import { applyDrawerState } from './drawer-state.js';
 import { toggleMusicMenu, closeMusicMenu } from './music-menu.js';
-import { authApi, isPikkApiConfigured } from './api/auth-client.js';
-import { requestMembershipSync, MEMBERSHIP_EVENT } from './membership-sync.js';
+import { restoreBackendSession } from './auth/restore-session.js';
+import { MEMBERSHIP_EVENT } from './membership-sync.js';
 import { paintMembershipStatus } from './membership-view.js';
-import { noteLiveAuthMe, clearLiveAuthMe } from './auth/readiness.js';
 import { messagesApi, isMessagesApiConfigured } from './api/messages-client.js';
 
 import { renderHome, bindHome } from './pages/home.js';
@@ -558,33 +557,6 @@ function wireMessagesUnreadBadge() {
   });
 }
 
-async function restoreBackendSession() {
-  if (!isPikkApiConfigured()) {
-    clearLiveAuthMe();
-    return;
-  }
-  const cached = getState().user;
-  if (cached && cached.authSource !== 'backend') clearAuthenticatedUser();
-  try {
-    const session = await authApi.me();
-    if (session?.user) {
-      syncRemoteAuthUser(session.user);
-      noteLiveAuthMe(session.user);
-      requestMembershipSync();
-    } else {
-      clearLiveAuthMe();
-    }
-    setServerRoles(session?.roles || []);
-  } catch (err) {
-    if (err?.status === 401) {
-      setServerRoles([]);
-      clearLiveAuthMe();
-      if (getState().user?.authSource === 'backend') clearAuthenticatedUser();
-      return;
-    }
-    console.warn('PIKK startup session check failed', err);
-  }
-}
 
 async function boot() {
   // Do not use a #app anchor: PIKK uses the URL hash for routing.
