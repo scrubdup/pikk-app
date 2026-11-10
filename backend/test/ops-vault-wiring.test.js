@@ -1,11 +1,8 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { it, expect } from 'vitest';
+import source from '../src/index.js?raw';
 
-const source = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
-
-test('Master Mind uses the authenticated in-process Vault health route', () => {
-  assert.match(source, /const vaultHealth = \(\) => mediaRoute\(env, req, ctx, 'GET', '\/vault\/health'\)/);
-  assert.match(source, /opsSummary\(env, \{ vaultHealth \}\)/);
-  assert.doesNotMatch(source, /vaultHealth: undefined/);
+it('Master Mind wires authenticated in-process Vault health', () => {
+  expect(source).toMatch(/const vaultHealth = \(\) => mediaRoute\(env, req, ctx, 'GET', '\/vault\/health'\)/);
+  expect(source).toMatch(/opsSummary\(env, \{ vaultHealth \}\)/);
+  expect(source).not.toMatch(/vaultHealth: undefined/);
 });
