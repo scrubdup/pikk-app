@@ -34,6 +34,24 @@ describe('readJson UTF-8 byte limits', () => {
     await expect(readJson(request, 16)).rejects.toMatchObject({ status: 413, code: 'payload_too_large' });
     expect(reads).toBeLessThanOrEqual(2);
   });
+  it('cancels the request stream after an oversized chunk', async () => {
+    let cancelled = false;
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new Uint8Array(64));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const request = new Request('https://pikk.test/submit', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body, duplex: 'half',
+    });
+    await expect(readJson(request, 16)).rejects.toMatchObject({
+      status: 413, code: 'payload_too_large',
+    });
+    expect(cancelled).toBe(true);
+  });
   it('rejects content types that only start with application/json', async () => {
     await expect(readJson(req('{"ok":true}', 'application/json-malformed'))).rejects.toMatchObject({
       status: 415, code: 'unsupported_media_type',
