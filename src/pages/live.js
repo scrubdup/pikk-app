@@ -216,6 +216,8 @@ const LIVE_DISCOVERY_CATEGORIES = [
   ['Boss Ladies', 'Women entrepreneurs, business networking and financial growth', '👑'],
   ['Fashion & Fits', 'Fashion, outfits and personal style', '👗'],
   ['Ladies Only Live', 'Women-centered livestreams and hosted events', '🎥'],
+  ['Twerk Solo · Coming Soon (18+)', 'Adult solo dance and gifts. Host may opt in to receive or decline 30-second Twerk-Off challenges. No nudity; age verification and moderation required before launch', '💃'],
+  ['Twerk-Off Battles · Coming Soon (18+)', 'Separate two-creator 30-second dance battles with gifts and fan-voted winners. No nudity; participation opt-in, reporting and age verification required', '🏆'],
 
   ["What's the Word?", 'Entertainment news, celebrity conversations, viral moments and trending discussions', '🗣️'],
   ['Women in Business', 'Women entrepreneurs, founders, business networking and mentorship', '👩‍💼'],
