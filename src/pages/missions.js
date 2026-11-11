@@ -22,7 +22,7 @@ const PROMOTE_LABELS = {
   album: 'Album',
   video: 'Video',
   live: 'Livestream',
-  app: 'DBS App',
+  app: 'PIKK App',
   interview: 'Interview',
 };
 
@@ -68,7 +68,7 @@ export function renderMissions() {
     const feeChip =
       m.fundSource === 'third_party'
         ? `<span class="chip">20% management fee · disclosed</span>`
-        : `<span class="chip">DBS-funded · marketing expense</span>`;
+        : `<span class="chip">PIKK-funded · marketing expense</span>`;
     const rankings = getMissionRankings(m.id);
     const joined = user && (m.participants || []).some((p) => p.userId === user.id);
     const mySubmissions = (m.submissions || []).filter((s) => user && s.userId === user.id);
@@ -147,7 +147,7 @@ export function renderMissions() {
       <h3 style="margin:10px 0 4px">${esc(m.title)}</h3>
       <p class="muted" style="margin:0 0 6px;font-size:13px">${esc(m.reward || '')}</p>
       <p class="muted" style="margin:0;font-size:12px">
-        Fund: <strong>${m.fundSource === 'third_party' ? 'Third-party' : 'DBS'}</strong>
+        Fund: <strong>${m.fundSource === 'third_party' ? 'Third-party' : 'PIKK'}</strong>
         ${m.fundSource === 'third_party' ? ' · 20% management fee (disclosed)' : ' · not a creator commission — marketing expense'}
         · ${(m.participants || []).length} joined · ${(m.submissions || []).length} submissions
         ${joined ? ` · your proofs: ${mySubmissions.length}` : ''}
@@ -203,9 +203,9 @@ export function renderMissions() {
         <span class="chip">Signed in as ${esc(user?.username || 'guest')}</span>
       </div>
       <p class="muted" style="margin:10px 0 0;font-size:13px">
-        Admin-created missions promoting songs, albums, interviews, videos, livestreams, and the DBS app.
+        Admin-created missions promoting songs, albums, interviews, videos, livestreams, and the PIKK app.
         Budgets, deadlines, creator participation, rankings, and verified payouts (demo).
-        Third-party-funded campaigns disclose a <strong>20% management fee</strong>; DBS-funded campaigns are a marketing expense (not a commission).
+        Third-party-funded campaigns disclose a <strong>20% management fee</strong>; PIKK-funded campaigns are a marketing expense (not a commission).
       </p>
       <div class="row wrap" style="margin-top:12px;gap:8px">
         <button class="btn" id="msnSeed">${missions.length ? 'Reload demo missions' : 'Load demo missions'}</button>
@@ -234,7 +234,7 @@ export function renderMissions() {
           <div class="field"><label>Deadline</label><input name="deadline" id="msnDeadline" type="date" value="${deadlineInputValue(14)}" /></div>
           <div class="field"><label>Fund source</label>
             <select name="fundSource" id="msnFund">
-              <option value="dbs">DBS-funded (marketing expense)</option>
+              <option value="dbs">PIKK-funded (marketing expense)</option>
               <option value="third_party">Third-party (20% mgmt fee)</option>
             </select>
           </div>
