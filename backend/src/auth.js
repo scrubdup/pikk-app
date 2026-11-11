@@ -176,14 +176,19 @@ export async function logout(env, req, ctx) {
 export async function verifyEmail(env, req, body) {
   const token = requireString(body, 'token', { min: 20, max: 100 });
   const h = await sha256Hex(token);
-  const row = await env.DB.prepare(`SELECT * FROM email_verifications WHERE token_hash = ?`).bind(h).first();
-  if (!row || row.used_at || row.expires_at <= nowIso()) throw new ApiError(400, 'invalid_token', 'Verification link is invalid or expired');
   const t = nowIso();
-  await env.DB.batch([
-    env.DB.prepare(`UPDATE email_verifications SET used_at = ? WHERE token_hash = ? AND used_at IS NULL`).bind(t, h),
-    env.DB.prepare(`UPDATE credentials SET email_verified_at = ?, updated_at = ? WHERE user_id = ?`).bind(t, t, row.user_id),
-  ]);
-  await audit(env, { actor: row.user_id, action: 'auth.email_verified', ip: clientIp(req) });
+  // Claim the token atomically. A prior SELECT followed by UPDATE could let
+  // concurrent requests both report successful verification for one token.
+  const claimed = await env.DB.prepare(
+    `UPDATE email_verifications SET used_at = ?1
+       WHERE token_hash = ?2 AND used_at IS NULL AND expires_at > ?1
+       RETURNING user_id`
+  ).bind(t, h).first();
+  if (!claimed?.user_id) throw new ApiError(400, 'invalid_token', 'Verification link is invalid or expired');
+  await env.DB.prepare(
+    `UPDATE credentials SET email_verified_at = COALESCE(email_verified_at, ?), updated_at = ? WHERE user_id = ?`
+  ).bind(t, t, claimed.user_id).run();
+  await audit(env, { actor: claimed.user_id, action: 'auth.email_verified', ip: clientIp(req) });
   return { ok: true };
 }
 
