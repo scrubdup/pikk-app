@@ -80,6 +80,15 @@ describe('auth', () => {
     expect(results.find(x => x.status === 400).json.error.code).toBe('invalid_token');
     const cred = await env.DB.prepare('SELECT email_verified_at FROM credentials WHERE user_id = ?').bind(r.json.user.id).first();
     expect(cred.email_verified_at).toBeTruthy();
+    const audits = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM audit_log WHERE action = 'auth.email_verified' AND actor_id = ?"
+    ).bind(r.json.user.id).first();
+    expect(audits.n).toBe(1);
+    const tokens = await env.DB.prepare(
+      'SELECT used_at FROM email_verifications WHERE user_id = ?'
+    ).bind(r.json.user.id).all();
+    expect(tokens.results).toHaveLength(1);
+    expect(tokens.results[0].used_at).toBeTruthy();
   });
 
   it('rejects expired email verification tokens without marking the account verified', async () => {
