@@ -41,9 +41,33 @@ export function errorResponse(err, requestId) {
 
 export async function readJson(req, maxBytes = 16 * 1024) {
   const ct = req.headers.get('Content-Type') || '';
-  if (!ct.toLowerCase().startsWith('application/json')) throw new ApiError(415, 'unsupported_media_type', 'Content-Type must be application/json');
-  const text = await req.text();
-  if (text.length > maxBytes) throw new ApiError(413, 'payload_too_large', 'Request body too large');
+  if (!/^application\/json(?:\s*;\s*charset\s*=\s*"?utf-8"?\s*)?$/i.test(ct.trim())) throw new ApiError(415, 'unsupported_media_type', 'Content-Type must be application/json');
+  // Read at most maxBytes before decoding. Buffering the entire request first
+  // would allow a very large body to consume memory before a 413 response.
+  const reader = req.body?.getReader();
+  const chunks = [];
+  let total = 0;
+  if (reader) {
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > maxBytes) {
+          // Stop upstream streaming once the request is known to be too large.
+          await reader.cancel().catch(() => {});
+          throw new ApiError(413, 'payload_too_large', 'Request body too large');
+        }
+        chunks.push(value);
+      }
+    } finally { reader.releaseLock(); }
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  let text;
+  try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+  catch { throw new ApiError(400, 'invalid_json', 'Body must be valid UTF-8 JSON'); }
   try {
     const v = JSON.parse(text);
     if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error();
