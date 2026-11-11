@@ -81,6 +81,18 @@ try {
     body: JSON.stringify({ token: 'not-a-valid-password-reset-token', password: 'Invalid smoke password 123!' }),
   });
   assert.equal(reset.error?.code, 'invalid_token');
+  const logoutResponse = await fetch(new URL('/auth/logout', base), {
+    method: 'POST',
+    redirect: 'manual',
+    signal: AbortSignal.timeout(timeout),
+    headers: { Accept: 'application/json' },
+  });
+  assert.equal(logoutResponse.status, 200, 'anonymous logout must safely succeed');
+  assert.equal((await logoutResponse.json()).ok, true);
+  const clearedCookie = logoutResponse.headers.get('set-cookie') || '';
+  assert.match(clearedCookie, /__Host-pikk_session=/, 'logout must clear the session cookie');
+  assert.match(clearedCookie, /Max-Age=0/i, 'logout cookie must expire immediately');
+  console.log('PASS anonymous logout clears session cookie (not authenticated logout)');
   const login = await check('invalid login rejected', '/auth/login', 401, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
