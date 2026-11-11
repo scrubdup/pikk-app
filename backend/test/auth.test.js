@@ -65,6 +65,23 @@ describe('auth', () => {
     expect(again.status).toBe(400); expect(again.json.error.code).toBe('invalid_token');
   });
 
+  it('concurrent verification attempts cannot both consume the same token', async () => {
+    const r = await call('POST', '/auth/signup', {
+      body: { email: 'verify-race@example.com', password: 'verify me 123', handle: 'verify_race', display_name: 'Race', gender: 'female' },
+      ip: freshIp(),
+    });
+    expect(r.status).toBe(201);
+    const token = r.json.verification.token;
+    const results = await Promise.all([
+      call('POST', '/auth/verify', { body: { token }, ip: freshIp() }),
+      call('POST', '/auth/verify', { body: { token }, ip: freshIp() }),
+    ]);
+    expect(results.map(x => x.status).sort()).toEqual([200, 400]);
+    expect(results.find(x => x.status === 400).json.error.code).toBe('invalid_token');
+    const cred = await env.DB.prepare('SELECT email_verified_at FROM credentials WHERE user_id = ?').bind(r.json.user.id).first();
+    expect(cred.email_verified_at).toBeTruthy();
+  });
+
   it('per-IP auth rate limit returns 429', async () => {
     const ip = '203.0.113.77'; let last;
     // Fixed 60s windows: pin the clock mid-window so the 11 calls can't straddle a boundary (CI flake).
