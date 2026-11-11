@@ -94,6 +94,8 @@ try {
   assert.match(clearedCookie, /Max-Age=0/i, 'logout cookie must expire immediately');
   assert.match(clearedCookie, /HttpOnly/i, 'session cookie must not be readable by browser JavaScript');
   assert.match(clearedCookie, /Secure/i, 'session cookie must be HTTPS-only');
+  assert.match(clearedCookie, /(?:^|;)\\s*Path=\\//i, 'host-prefixed cookie must use root path');
+  assert.doesNotMatch(clearedCookie, /(?:^|;)\\s*Domain=/i, 'host-prefixed cookie must not specify a Domain');
   assert.match(clearedCookie, /SameSite=(?:Strict|Lax|None)/i, 'session cookie must specify SameSite');
   console.log('PASS anonymous logout clears session cookie (not authenticated logout)');
   const login = await check('invalid login rejected', '/auth/login', 401, {
