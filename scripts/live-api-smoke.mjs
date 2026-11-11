@@ -92,6 +92,9 @@ try {
   const clearedCookie = logoutResponse.headers.get('set-cookie') || '';
   assert.match(clearedCookie, /__Host-pikk_session=/, 'logout must clear the session cookie');
   assert.match(clearedCookie, /Max-Age=0/i, 'logout cookie must expire immediately');
+  assert.match(clearedCookie, /HttpOnly/i, 'session cookie must not be readable by browser JavaScript');
+  assert.match(clearedCookie, /Secure/i, 'session cookie must be HTTPS-only');
+  assert.match(clearedCookie, /SameSite=(?:Strict|Lax|None)/i, 'session cookie must specify SameSite');
   console.log('PASS anonymous logout clears session cookie (not authenticated logout)');
   const login = await check('invalid login rejected', '/auth/login', 401, {
     method: 'POST',
@@ -99,7 +102,7 @@ try {
     body: JSON.stringify({ email: 'smoke-nonexistent-' + Date.now() + '@example.invalid', password: 'invalid-smoke-password' }),
   });
   assert.equal(login.error?.code, 'invalid_credentials');
-  console.log('PASS read-only live smoke checks. Signup, real login, email delivery, Vault uploads and logout NOT verified.');
+  console.log('PASS read-only live smoke checks. Signup, real login, email delivery, Vault uploads and authenticated logout NOT verified.');
 } catch (error) {
   console.error('FAIL live API smoke:', error.message);
   process.exitCode = 1;
