@@ -1,3 +1,4 @@
+import { renderAdminOnlineNow } from '../online-now.js';
 import {
   getState,
   setClipperStatus,
@@ -409,6 +410,7 @@ export function renderAdmin() {
       <p class="muted admin-gate-hint">Gate: server-verified staff role (dev demo builds may use the local toggle). Phase 2 panels deep-link to owner pages.</p>
     </div>
 
+    ${renderAdminOnlineNow()}
     ${quickLinksHtml()}
     ${engagementAlertsHtml(overview)}
     ${openMicQueueHtml(overview)}
