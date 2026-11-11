@@ -14,11 +14,16 @@ test('all approved creation types are represented without a nine-tile cap', () =
   for (const name of [
     'Create Post', 'Community Post', 'Story', 'Reels', 'Photo Post',
     'Upload Video', 'Music Video', 'Upload Song', 'Upload EP', 'Upload Album',
-    'Create Playlist', 'Add to Vault', 'Go Live', 'Live Battle', 'Create Community',
+    'Create Playlist', 'Add to Vault', 'Go Live', 'Gift Battles', 'Roast Battle', 'Create Community',
     'Create Chatroom', 'Create Event', 'List Product', 'Seller Store',
     'Paid Content', 'Drafts', 'Artist Protection', 'AI Support',
   ]) assert.ok(names.includes(name), name);
   assert.equal(new Set(names).size, names.length, 'No duplicate actions');
+  for (const title of ['Gift Battles', 'Roast Battle']) {
+    const item = CREATE_MENU_ITEMS.find(entry => entry.title === title);
+    assert.equal(item.href, undefined, title + ' is not a standalone creator workflow');
+    assert.match(item.detail, /Planned/);
+  }
 });
 
 test('available links point to defined app routes; planned features are not fake links', () => {
