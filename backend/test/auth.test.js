@@ -82,6 +82,35 @@ describe('auth', () => {
     expect(cred.email_verified_at).toBeTruthy();
   });
 
+  it('rejects expired email verification tokens without marking the account verified', async () => {
+    const r = await call('POST', '/auth/signup', {
+      body: { email: 'expired-verify@example.com', password: 'verify me 123', handle: 'expired_verify', display_name: 'Expired', gender: 'female' },
+      ip: freshIp(),
+    });
+    expect(r.status).toBe(201);
+    await env.DB.prepare('UPDATE email_verifications SET expires_at = ? WHERE user_id = ?')
+      .bind('2000-01-01T00:00:00.000Z', r.json.user.id).run();
+    const response = await call('POST', '/auth/verify', { body: { token: r.json.verification.token }, ip: freshIp() });
+    expect(response.status).toBe(400);
+    expect(response.json.error.code).toBe('invalid_token');
+    const cred = await env.DB.prepare('SELECT email_verified_at FROM credentials WHERE user_id = ?').bind(r.json.user.id).first();
+    expect(cred.email_verified_at).toBeNull();
+  });
+
+  it('does not overwrite the original verification timestamp when a valid later token is used', async () => {
+    const r = await call('POST', '/auth/signup', {
+      body: { email: 'already-verified@example.com', password: 'verify me 123', handle: 'already_verified', display_name: 'Verified', gender: 'female' },
+      ip: freshIp(),
+    });
+    expect(r.status).toBe(201);
+    const original = '2025-01-01T00:00:00.000Z';
+    await env.DB.prepare('UPDATE credentials SET email_verified_at = ? WHERE user_id = ?').bind(original, r.json.user.id).run();
+    const response = await call('POST', '/auth/verify', { body: { token: r.json.verification.token }, ip: freshIp() });
+    expect(response.status).toBe(200);
+    const cred = await env.DB.prepare('SELECT email_verified_at FROM credentials WHERE user_id = ?').bind(r.json.user.id).first();
+    expect(cred.email_verified_at).toBe(original);
+  });
+
   it('per-IP auth rate limit returns 429', async () => {
     const ip = '203.0.113.77'; let last;
     // Fixed 60s windows: pin the clock mid-window so the 11 calls can't straddle a boundary (CI flake).
