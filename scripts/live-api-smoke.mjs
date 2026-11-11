@@ -75,6 +75,12 @@ try {
     method: 'POST',
   });
   assert.equal(resend.error?.code, 'unauthenticated');
+  const reset = await check('invalid password reset token rejected', '/auth/reset-password', 400, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: 'not-a-valid-password-reset-token', password: 'Invalid smoke password 123!' }),
+  });
+  assert.equal(reset.error?.code, 'invalid_token');
   const login = await check('invalid login rejected', '/auth/login', 401, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
