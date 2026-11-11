@@ -47,6 +47,18 @@ try {
     headers: { Cookie: '__Host-pikk_session=not-a-valid-session-token' },
   });
   assert.equal(forged.error?.code, 'unauthenticated');
+  const invalidJson = await check('malformed login JSON rejected', '/auth/login', 400, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{"email":',
+  });
+  assert.equal(invalidJson.error?.code, 'invalid_json');
+  const wrongContentType = await check('login requires JSON content type', '/auth/login', 415, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: '{"email":"test@example.invalid"}',
+  });
+  assert.equal(wrongContentType.error?.code, 'unsupported_media_type');
   const login = await check('invalid login rejected', '/auth/login', 401, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
