@@ -59,6 +59,12 @@ try {
     body: '{"email":"test@example.invalid"}',
   });
   assert.equal(wrongContentType.error?.code, 'unsupported_media_type');
+  const oversized = await check('oversized login JSON rejected', '/auth/login', 413, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'oversized@example.invalid', password: 'x'.repeat(20 * 1024) }),
+  });
+  assert.equal(oversized.error?.code, 'payload_too_large');
   const login = await check('invalid login rejected', '/auth/login', 401, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
