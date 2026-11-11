@@ -43,6 +43,10 @@ try {
   console.log('PASS API identity and configured auth capability (not a login test)');
   const me = await check('unauthenticated session denied', '/auth/me', 401);
   assert.equal(me.error?.code, 'unauthenticated');
+  const forged = await check('forged session cookie denied', '/auth/me', 401, {
+    headers: { Cookie: '__Host-pikk_session=not-a-valid-session-token' },
+  });
+  assert.equal(forged.error?.code, 'unauthenticated');
   const login = await check('invalid login rejected', '/auth/login', 401, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
