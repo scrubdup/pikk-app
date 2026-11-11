@@ -8,7 +8,13 @@ if (!raw) {
   console.error('Set PIKK_API_URL to the deployed API origin; no request was sent.');
   process.exit(2);
 }
-const base = new URL(raw);
+let base;
+try {
+  base = new URL(raw);
+} catch {
+  console.error('PIKK_API_URL is not a valid URL; no request was sent.');
+  process.exit(2);
+}
 if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash || base.pathname !== '/') {
   console.error('PIKK_API_URL must be an HTTPS origin ending in /, without credentials or query parameters.');
   process.exit(2);
