@@ -71,6 +71,10 @@ try {
     body: JSON.stringify({ display_name: 'Unauthorized change' }),
   });
   assert.equal(profile.error?.code, 'unauthenticated');
+  const resend = await check('verification resend requires a session', '/auth/resend-verification', 401, {
+    method: 'POST',
+  });
+  assert.equal(resend.error?.code, 'unauthenticated');
   const login = await check('invalid login rejected', '/auth/login', 401, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
