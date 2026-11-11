@@ -65,6 +65,12 @@ try {
     body: JSON.stringify({ email: 'oversized@example.invalid', password: 'x'.repeat(20 * 1024) }),
   });
   assert.equal(oversized.error?.code, 'payload_too_large');
+  const profile = await check('profile changes require a session', '/account/profile', 401, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ display_name: 'Unauthorized change' }),
+  });
+  assert.equal(profile.error?.code, 'unauthenticated');
   const login = await check('invalid login rejected', '/auth/login', 401, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
