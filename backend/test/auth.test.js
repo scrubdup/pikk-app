@@ -51,6 +51,26 @@ describe('auth', () => {
     expect((await call('GET', '/auth/me')).status).toBe(401);
   });
 
+  it('logout revokes only the presented session, not other active devices', async () => {
+    const u = await newUser();
+    const second = await call('POST', '/auth/login', {
+      body: { email: u.email, password: u.password }, ip: freshIp(),
+    });
+    expect(second.status).toBe(200);
+    expect(second.cookie).not.toBe(u.cookie);
+    const out = await call('POST', '/auth/logout', { cookie: u.cookie, ip: freshIp() });
+    expect(out.status).toBe(200);
+    expect((await call('GET', '/auth/me', { cookie: u.cookie })).status).toBe(401);
+    const remaining = await call('GET', '/auth/me', { cookie: second.cookie });
+    expect(remaining.status).toBe(200);
+    expect(remaining.json.user.id).toBe(u.id);
+    const sessions = await env.DB.prepare(
+      'SELECT revoked_at FROM sessions WHERE user_id = ? ORDER BY created_at'
+    ).bind(u.id).all();
+    expect(sessions.results).toHaveLength(2);
+    expect(sessions.results.filter(s => s.revoked_at !== null)).toHaveLength(1);
+  });
+
   it('expired sessions are rejected', async () => {
     const u = await newUser();
     await env.DB.prepare(`UPDATE sessions SET expires_at = '2000-01-01T00:00:00Z' WHERE user_id = ?`).bind(u.id).run();
