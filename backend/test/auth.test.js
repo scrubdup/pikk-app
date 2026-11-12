@@ -77,6 +77,20 @@ describe('auth', () => {
     expect((await call('GET', '/auth/me', { cookie: u.cookie })).status).toBe(401);
   });
 
+  it('disabled accounts lose access to existing sessions and cannot sign in again', async () => {
+    const u = await newUser();
+    expect((await call('GET', '/auth/me', { cookie: u.cookie })).status).toBe(200);
+    await env.DB.prepare('UPDATE users SET disabled_at = ? WHERE id = ?')
+      .bind(new Date().toISOString(), u.id).run();
+    const existing = await call('GET', '/auth/me', { cookie: u.cookie });
+    expect(existing.status).toBe(401);
+    const login = await call('POST', '/auth/login', {
+      body: { email: u.email, password: u.password }, ip: freshIp(),
+    });
+    expect(login.status).toBe(401);
+    expect(login.json.error.code).toBe('invalid_credentials');
+  });
+
   it('verification tokens are single-use', async () => {
     const r = await call('POST', '/auth/signup', { body: { email: 'v@example.com', password: 'verify me 123', handle: 'verify_me', display_name: 'V', gender: 'female' }, ip: freshIp() });
     const t = r.json.verification.token;
