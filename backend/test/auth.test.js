@@ -93,14 +93,14 @@ describe('auth', () => {
 
   it('an expired session cannot log out or revoke another active session', async () => {
     const u = await newUser();
+    // Expire the original session before issuing the second one, avoiding
+    // ambiguous ordering when two sessions share the same created_at timestamp.
+    await env.DB.prepare('UPDATE sessions SET expires_at = ? WHERE user_id = ?')
+      .bind('2000-01-01T00:00:00.000Z', u.id).run();
     const second = await call('POST', '/auth/login', {
       body: { email: u.email, password: u.password }, ip: freshIp(),
     });
     expect(second.status).toBe(200);
-    const expiredHash = await env.DB.prepare('SELECT id_hash FROM sessions WHERE user_id = ? ORDER BY created_at LIMIT 1')
-      .bind(u.id).first();
-    await env.DB.prepare('UPDATE sessions SET expires_at = ? WHERE id_hash = ?')
-      .bind('2000-01-01T00:00:00.000Z', expiredHash.id_hash).run();
     const logout = await call('POST', '/auth/logout', { cookie: u.cookie, ip: freshIp() });
     expect(logout.status).toBe(200);
     expect(logout.res.headers.get('Set-Cookie')).toMatch(/Max-Age=0/);
