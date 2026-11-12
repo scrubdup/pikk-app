@@ -109,6 +109,22 @@ describe('auth', () => {
     expect(other.json.user.id).toBe(u.id);
   });
 
+  it('anonymous logout clears a forged cookie without changing active sessions', async () => {
+    const u = await newUser();
+    const before = await env.DB.prepare('SELECT revoked_at FROM sessions WHERE user_id = ?')
+      .bind(u.id).first();
+    expect(before.revoked_at).toBeNull();
+    const logout = await call('POST', '/auth/logout', {
+      cookie: '__Host-pikk_session=forged-session', ip: freshIp(),
+    });
+    expect(logout.status).toBe(200);
+    expect(logout.res.headers.get('Set-Cookie')).toMatch(/Max-Age=0/);
+    const after = await env.DB.prepare('SELECT revoked_at FROM sessions WHERE user_id = ?')
+      .bind(u.id).first();
+    expect(after.revoked_at).toBeNull();
+    expect((await call('GET', '/auth/me', { cookie: u.cookie })).status).toBe(200);
+  });
+
   it('verification tokens are single-use', async () => {
     const r = await call('POST', '/auth/signup', { body: { email: 'v@example.com', password: 'verify me 123', handle: 'verify_me', display_name: 'V', gender: 'female' }, ip: freshIp() });
     const t = r.json.verification.token;
