@@ -65,6 +65,32 @@ describe('auth', () => {
     expect(again.status).toBe(400); expect(again.json.error.code).toBe('invalid_token');
   });
 
+  it('does not issue new verification tokens for already-verified accounts', async () => {
+    const signup = await call('POST', '/auth/signup', {
+      body: { email: 'verified-resend@example.com', password: 'verify me 123', handle: 'verified_resend', display_name: 'Verified Resend', gender: 'female' },
+      ip: freshIp(),
+    });
+    expect(signup.status).toBe(201);
+    const verified = await call('POST', '/auth/verify', {
+      body: { token: signup.json.verification.token }, ip: freshIp(),
+    });
+    expect(verified.status).toBe(200);
+    const before = await env.DB.prepare('SELECT COUNT(*) AS n FROM email_verifications WHERE user_id = ?')
+      .bind(signup.json.user.id).first();
+    const resend = await call('POST', '/auth/resend-verification', {
+      cookie: signup.cookie, body: {}, ip: freshIp(),
+    });
+    expect(resend.status).toBe(200);
+    expect(resend.json.verification.delivery).toBe('already_verified');
+    expect(resend.json.verification.token).toBeUndefined();
+    const after = await env.DB.prepare('SELECT COUNT(*) AS n FROM email_verifications WHERE user_id = ?')
+      .bind(signup.json.user.id).first();
+    expect(after.n).toBe(before.n);
+    const audit = await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'auth.verification_resent' AND actor_id = ?")
+      .bind(signup.json.user.id).first();
+    expect(audit.n).toBe(0);
+  });
+
   it('concurrent verification attempts cannot both consume the same token', async () => {
     const r = await call('POST', '/auth/signup', {
       body: { email: 'verify-race@example.com', password: 'verify me 123', handle: 'verify_race', display_name: 'Race', gender: 'female' },
