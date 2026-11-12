@@ -51,10 +51,78 @@ describe('auth', () => {
     expect((await call('GET', '/auth/me')).status).toBe(401);
   });
 
+  it('logout revokes only the presented session, not other active devices', async () => {
+    const u = await newUser();
+    const second = await call('POST', '/auth/login', {
+      body: { email: u.email, password: u.password }, ip: freshIp(),
+    });
+    expect(second.status).toBe(200);
+    expect(second.cookie).not.toBe(u.cookie);
+    const out = await call('POST', '/auth/logout', { cookie: u.cookie, ip: freshIp() });
+    expect(out.status).toBe(200);
+    expect((await call('GET', '/auth/me', { cookie: u.cookie })).status).toBe(401);
+    const remaining = await call('GET', '/auth/me', { cookie: second.cookie });
+    expect(remaining.status).toBe(200);
+    expect(remaining.json.user.id).toBe(u.id);
+    const sessions = await env.DB.prepare(
+      'SELECT revoked_at FROM sessions WHERE user_id = ? ORDER BY created_at'
+    ).bind(u.id).all();
+    expect(sessions.results).toHaveLength(2);
+    expect(sessions.results.filter(s => s.revoked_at !== null)).toHaveLength(1);
+  });
+
   it('expired sessions are rejected', async () => {
     const u = await newUser();
     await env.DB.prepare(`UPDATE sessions SET expires_at = '2000-01-01T00:00:00Z' WHERE user_id = ?`).bind(u.id).run();
     expect((await call('GET', '/auth/me', { cookie: u.cookie })).status).toBe(401);
+  });
+
+  it('disabled accounts lose access to existing sessions and cannot sign in again', async () => {
+    const u = await newUser();
+    expect((await call('GET', '/auth/me', { cookie: u.cookie })).status).toBe(200);
+    await env.DB.prepare('UPDATE users SET disabled_at = ? WHERE id = ?')
+      .bind(new Date().toISOString(), u.id).run();
+    const existing = await call('GET', '/auth/me', { cookie: u.cookie });
+    expect(existing.status).toBe(401);
+    const login = await call('POST', '/auth/login', {
+      body: { email: u.email, password: u.password }, ip: freshIp(),
+    });
+    expect(login.status).toBe(401);
+    expect(login.json.error.code).toBe('invalid_credentials');
+  });
+
+  it('an expired session cannot log out or revoke another active session', async () => {
+    const u = await newUser();
+    // Expire the original session before issuing the second one, avoiding
+    // ambiguous ordering when two sessions share the same created_at timestamp.
+    await env.DB.prepare('UPDATE sessions SET expires_at = ? WHERE user_id = ?')
+      .bind('2000-01-01T00:00:00.000Z', u.id).run();
+    const second = await call('POST', '/auth/login', {
+      body: { email: u.email, password: u.password }, ip: freshIp(),
+    });
+    expect(second.status).toBe(200);
+    const logout = await call('POST', '/auth/logout', { cookie: u.cookie, ip: freshIp() });
+    expect(logout.status).toBe(200);
+    expect(logout.res.headers.get('Set-Cookie')).toMatch(/Max-Age=0/);
+    const other = await call('GET', '/auth/me', { cookie: second.cookie });
+    expect(other.status).toBe(200);
+    expect(other.json.user.id).toBe(u.id);
+  });
+
+  it('anonymous logout clears a forged cookie without changing active sessions', async () => {
+    const u = await newUser();
+    const before = await env.DB.prepare('SELECT revoked_at FROM sessions WHERE user_id = ?')
+      .bind(u.id).first();
+    expect(before.revoked_at).toBeNull();
+    const logout = await call('POST', '/auth/logout', {
+      cookie: '__Host-pikk_session=forged-session', ip: freshIp(),
+    });
+    expect(logout.status).toBe(200);
+    expect(logout.res.headers.get('Set-Cookie')).toMatch(/Max-Age=0/);
+    const after = await env.DB.prepare('SELECT revoked_at FROM sessions WHERE user_id = ?')
+      .bind(u.id).first();
+    expect(after.revoked_at).toBeNull();
+    expect((await call('GET', '/auth/me', { cookie: u.cookie })).status).toBe(200);
   });
 
   it('verification tokens are single-use', async () => {
@@ -63,6 +131,87 @@ describe('auth', () => {
     expect((await call('POST', '/auth/verify', { body: { token: t }, ip: freshIp() })).status).toBe(200);
     const again = await call('POST', '/auth/verify', { body: { token: t }, ip: freshIp() });
     expect(again.status).toBe(400); expect(again.json.error.code).toBe('invalid_token');
+  });
+
+  it('does not issue new verification tokens for already-verified accounts', async () => {
+    const signup = await call('POST', '/auth/signup', {
+      body: { email: 'verified-resend@example.com', password: 'verify me 123', handle: 'verified_resend', display_name: 'Verified Resend', gender: 'female' },
+      ip: freshIp(),
+    });
+    expect(signup.status).toBe(201);
+    const verified = await call('POST', '/auth/verify', {
+      body: { token: signup.json.verification.token }, ip: freshIp(),
+    });
+    expect(verified.status).toBe(200);
+    const before = await env.DB.prepare('SELECT COUNT(*) AS n FROM email_verifications WHERE user_id = ?')
+      .bind(signup.json.user.id).first();
+    const resend = await call('POST', '/auth/resend-verification', {
+      cookie: signup.cookie, body: {}, ip: freshIp(),
+    });
+    expect(resend.status).toBe(200);
+    expect(resend.json.verification.delivery).toBe('already_verified');
+    expect(resend.json.verification.token).toBeUndefined();
+    const after = await env.DB.prepare('SELECT COUNT(*) AS n FROM email_verifications WHERE user_id = ?')
+      .bind(signup.json.user.id).first();
+    expect(after.n).toBe(before.n);
+    const audit = await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'auth.verification_resent' AND actor_id = ?")
+      .bind(signup.json.user.id).first();
+    expect(audit.n).toBe(0);
+  });
+
+  it('concurrent verification attempts cannot both consume the same token', async () => {
+    const r = await call('POST', '/auth/signup', {
+      body: { email: 'verify-race@example.com', password: 'verify me 123', handle: 'verify_race', display_name: 'Race', gender: 'female' },
+      ip: freshIp(),
+    });
+    expect(r.status).toBe(201);
+    const token = r.json.verification.token;
+    const results = await Promise.all([
+      call('POST', '/auth/verify', { body: { token }, ip: freshIp() }),
+      call('POST', '/auth/verify', { body: { token }, ip: freshIp() }),
+    ]);
+    expect(results.map(x => x.status).sort()).toEqual([200, 400]);
+    expect(results.find(x => x.status === 400).json.error.code).toBe('invalid_token');
+    const cred = await env.DB.prepare('SELECT email_verified_at FROM credentials WHERE user_id = ?').bind(r.json.user.id).first();
+    expect(cred.email_verified_at).toBeTruthy();
+    const audits = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM audit_log WHERE action = 'auth.email_verified' AND actor_id = ?"
+    ).bind(r.json.user.id).first();
+    expect(audits.n).toBe(1);
+    const tokens = await env.DB.prepare(
+      'SELECT used_at FROM email_verifications WHERE user_id = ?'
+    ).bind(r.json.user.id).all();
+    expect(tokens.results).toHaveLength(1);
+    expect(tokens.results[0].used_at).toBeTruthy();
+  });
+
+  it('rejects expired email verification tokens without marking the account verified', async () => {
+    const r = await call('POST', '/auth/signup', {
+      body: { email: 'expired-verify@example.com', password: 'verify me 123', handle: 'expired_verify', display_name: 'Expired', gender: 'female' },
+      ip: freshIp(),
+    });
+    expect(r.status).toBe(201);
+    await env.DB.prepare('UPDATE email_verifications SET expires_at = ? WHERE user_id = ?')
+      .bind('2000-01-01T00:00:00.000Z', r.json.user.id).run();
+    const response = await call('POST', '/auth/verify', { body: { token: r.json.verification.token }, ip: freshIp() });
+    expect(response.status).toBe(400);
+    expect(response.json.error.code).toBe('invalid_token');
+    const cred = await env.DB.prepare('SELECT email_verified_at FROM credentials WHERE user_id = ?').bind(r.json.user.id).first();
+    expect(cred.email_verified_at).toBeNull();
+  });
+
+  it('does not overwrite the original verification timestamp when a valid later token is used', async () => {
+    const r = await call('POST', '/auth/signup', {
+      body: { email: 'already-verified@example.com', password: 'verify me 123', handle: 'already_verified', display_name: 'Verified', gender: 'female' },
+      ip: freshIp(),
+    });
+    expect(r.status).toBe(201);
+    const original = '2025-01-01T00:00:00.000Z';
+    await env.DB.prepare('UPDATE credentials SET email_verified_at = ? WHERE user_id = ?').bind(original, r.json.user.id).run();
+    const response = await call('POST', '/auth/verify', { body: { token: r.json.verification.token }, ip: freshIp() });
+    expect(response.status).toBe(200);
+    const cred = await env.DB.prepare('SELECT email_verified_at FROM credentials WHERE user_id = ?').bind(r.json.user.id).first();
+    expect(cred.email_verified_at).toBe(original);
   });
 
   it('per-IP auth rate limit returns 429', async () => {
