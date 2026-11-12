@@ -91,6 +91,24 @@ describe('auth', () => {
     expect(login.json.error.code).toBe('invalid_credentials');
   });
 
+  it('an expired session cannot log out or revoke another active session', async () => {
+    const u = await newUser();
+    const second = await call('POST', '/auth/login', {
+      body: { email: u.email, password: u.password }, ip: freshIp(),
+    });
+    expect(second.status).toBe(200);
+    const expiredHash = await env.DB.prepare('SELECT id_hash FROM sessions WHERE user_id = ? ORDER BY created_at LIMIT 1')
+      .bind(u.id).first();
+    await env.DB.prepare('UPDATE sessions SET expires_at = ? WHERE id_hash = ?')
+      .bind('2000-01-01T00:00:00.000Z', expiredHash.id_hash).run();
+    const logout = await call('POST', '/auth/logout', { cookie: u.cookie, ip: freshIp() });
+    expect(logout.status).toBe(200);
+    expect(logout.res.headers.get('Set-Cookie')).toMatch(/Max-Age=0/);
+    const other = await call('GET', '/auth/me', { cookie: second.cookie });
+    expect(other.status).toBe(200);
+    expect(other.json.user.id).toBe(u.id);
+  });
+
   it('verification tokens are single-use', async () => {
     const r = await call('POST', '/auth/signup', { body: { email: 'v@example.com', password: 'verify me 123', handle: 'verify_me', display_name: 'V', gender: 'female' }, ip: freshIp() });
     const t = r.json.verification.token;
