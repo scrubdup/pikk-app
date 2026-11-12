@@ -41,3 +41,12 @@ for (const url of [
     assert.match(result.stderr, /HTTPS origin/);
   });
 }
+
+test('live API smoke refuses to report success when the target is unreachable', () => {
+  // Reserved local TLS port: a connection failure must fail closed rather than
+  // counting a missing deployment as a successful smoke test.
+  const result = run('https://127.0.0.1:1/');
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /FAIL live API smoke/);
+  assert.doesNotMatch(result.stdout, /PASS read-only live smoke checks/);
+});
