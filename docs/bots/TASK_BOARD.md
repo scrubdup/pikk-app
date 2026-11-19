@@ -2,25 +2,39 @@
 
 **Last updated:** 2026-11-19
 
-## Just shipped
+## Rooms (new this session)
 
-### Rooms system (new)
-- Men's Room (gender-gated)
-- Ladies Room (gender-gated)
+### Gender + Dating Rooms (`#/rooms`)
+- Men's Room
+- Ladies Room
 - Dating Lounge
 - Speed Dating (preview)
 - Dating Live Room (preview)
-- Self-select gender + dating opt-in
-- Local presence + chat (TEST MODE)
-- Route: `#/rooms` and `#/rooms/:id`
+
+### Community Lounge Rooms (`#/community-rooms`)
+- Lounge
+- Conversation
+- Listening Room
+- Backstage
+- Live Lounge
+- Spotlight Room
+
+All currently local/demo presence + chat. Realtime + verification later.
 
 ## Backend Auth — Complete
-All core auth, sessions, roles, password reset, account deletion, rate limiting, Vault stubs done.
+## Frontend Auth — Complete (pending main.js wire)
 
-## Frontend Auth — Complete (pending 2-line main.js wire)
+## Still needs main.js registration
+```js
+import { roomsRoutes } from './rooms/routes.js'
+import { communityRoomsRoutes } from './community/routes.js'
+import { authRoutes } from './auth/routes.js'
+import { restoreServerSession } from './auth/boot.js'
 
-## Next
-1. Wire rooms route into main.js ROUTES
-2. Wire auth routes + boot session restore into main.js
-3. Owner creates D1 database
-4. Continue other unverified / placeholder features
+const ROUTES = {
+  ...authRoutes,
+  ...roomsRoutes,
+  ...communityRoomsRoutes,
+  // existing routes...
+}
+```
