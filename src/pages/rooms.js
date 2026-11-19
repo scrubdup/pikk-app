@@ -4,7 +4,7 @@
  * Currently local/demo presence. Real realtime + gender verification come later.
  */
 
-import { getState, saveState } from '../store.js'
+import { getState, setState } from '../store.js'
 import { esc, toast, shellPage } from '../ui.js'
 import { navigate } from '../router.js'
 
@@ -54,21 +54,22 @@ const ROOMS = [
 function ensureRoomsState() {
   const s = getState()
   if (!s.rooms) {
-    s.rooms = {
-      presence: {},      // roomId -> [{ userId, username, gender?, at }]
-      messages: {},      // roomId -> [{ id, userId, username, text, at }]
-      myGender: null,    // 'men' | 'women' | null (self-select for demo)
-      datingOptIn: false,
-    }
-    saveState(s)
+    setState({
+      rooms: {
+        presence: {},
+        messages: {},
+        myGender: null,
+        datingOptIn: false,
+      },
+    })
   }
-  return s.rooms
+  return getState().rooms
 }
 
 function canEnter(room, roomsState, user) {
   if (!user) return { ok: false, reason: 'Sign in required' }
   if (room.gate === 'men') {
-    if (roomsState.myGender !== 'men') return { ok: false, reason: 'Men\'s Room requires male self-select' }
+    if (roomsState.myGender !== 'men') return { ok: false, reason: "Men's Room requires male self-select" }
   }
   if (room.gate === 'women') {
     if (roomsState.myGender !== 'women') return { ok: false, reason: 'Ladies Room requires female self-select' }
@@ -84,7 +85,6 @@ export function renderRooms(route) {
   const roomsState = ensureRoomsState()
   const { user } = getState()
 
-  // Single room view
   if (roomId) {
     const room = ROOMS.find((r) => r.id === roomId)
     if (!room) {
@@ -146,7 +146,6 @@ export function renderRooms(route) {
     `)
   }
 
-  // Rooms lobby
   return shellPage('PIKK Rooms', `
     <section class="pikk-profile-guest-hero" aria-label="PIKK Rooms">
       <p class="kicker">PIKK · ROOMS</p>
@@ -196,24 +195,28 @@ export function bindRooms(route) {
   const roomsState = ensureRoomsState()
   const { user } = getState()
 
-  // Lobby controls
   document.querySelectorAll('[data-gender]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const s = getState()
-      s.rooms = s.rooms || ensureRoomsState()
-      s.rooms.myGender = btn.dataset.gender
-      saveState(s)
+      setState({
+        rooms: {
+          ...getState().rooms,
+          myGender: btn.dataset.gender,
+        },
+      })
       toast(`Gender set to ${btn.dataset.gender}`)
       navigate('#/rooms')
     })
   })
 
   document.getElementById('datingOptInBtn')?.addEventListener('click', () => {
-    const s = getState()
-    s.rooms = s.rooms || ensureRoomsState()
-    s.rooms.datingOptIn = !s.rooms.datingOptIn
-    saveState(s)
-    toast(s.rooms.datingOptIn ? 'Dating opt-in enabled' : 'Dating opt-in turned off')
+    const current = getState().rooms || ensureRoomsState()
+    setState({
+      rooms: {
+        ...current,
+        datingOptIn: !current.datingOptIn,
+      },
+    })
+    toast(!current.datingOptIn ? 'Dating opt-in enabled' : 'Dating opt-in turned off')
     navigate('#/rooms')
   })
 
@@ -225,36 +228,53 @@ export function bindRooms(route) {
   if (!access.ok) return
 
   // Join presence
-  const s = getState()
-  s.rooms = s.rooms || ensureRoomsState()
-  if (!s.rooms.presence[roomId]) s.rooms.presence[roomId] = []
-  const already = s.rooms.presence[roomId].some((p) => p.userId === user.id)
-  if (!already) {
-    s.rooms.presence[roomId].push({
-      userId: user.id,
-      username: user.username || user.displayName || 'User',
-      at: Date.now(),
+  const current = getState().rooms || ensureRoomsState()
+  const presence = current.presence[roomId] || []
+  if (!presence.some((p) => p.userId === user.id)) {
+    setState({
+      rooms: {
+        ...current,
+        presence: {
+          ...current.presence,
+          [roomId]: [
+            ...presence,
+            {
+              userId: user.id,
+              username: user.username || user.displayName || 'User',
+              at: Date.now(),
+            },
+          ],
+        },
+      },
     })
-    saveState(s)
   }
 
   document.getElementById('roomSendBtn')?.addEventListener('click', () => {
     const input = document.getElementById('roomMsgInput')
     const text = input?.value?.trim()
     if (!text) return
-    const st = getState()
-    st.rooms = st.rooms || ensureRoomsState()
-    if (!st.rooms.messages[roomId]) st.rooms.messages[roomId] = []
-    st.rooms.messages[roomId].push({
-      id: 'm_' + Date.now(),
-      userId: user.id,
-      username: user.username || user.displayName || 'User',
-      text,
-      at: Date.now(),
+    const st = getState().rooms || ensureRoomsState()
+    const msgs = st.messages[roomId] || []
+    setState({
+      rooms: {
+        ...st,
+        messages: {
+          ...st.messages,
+          [roomId]: [
+            ...msgs,
+            {
+              id: 'm_' + Date.now(),
+              userId: user.id,
+              username: user.username || user.displayName || 'User',
+              text,
+              at: Date.now(),
+            },
+          ],
+        },
+      },
     })
-    saveState(st)
     input.value = ''
-    navigate(`#/rooms/${roomId}`) // refresh
+    navigate(`#/rooms/${roomId}`)
   })
 
   document.getElementById('roomMsgInput')?.addEventListener('keydown', (e) => {
@@ -262,11 +282,16 @@ export function bindRooms(route) {
   })
 
   document.getElementById('roomLeaveBtn')?.addEventListener('click', () => {
-    const st = getState()
-    if (st.rooms?.presence?.[roomId]) {
-      st.rooms.presence[roomId] = st.rooms.presence[roomId].filter((p) => p.userId !== user.id)
-      saveState(st)
-    }
+    const st = getState().rooms || ensureRoomsState()
+    setState({
+      rooms: {
+        ...st,
+        presence: {
+          ...st.presence,
+          [roomId]: (st.presence[roomId] || []).filter((p) => p.userId !== user.id),
+        },
+      },
+    })
     navigate('#/rooms')
   })
 }
