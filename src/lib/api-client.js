@@ -1,6 +1,5 @@
 /**
  * PIKK API client
- * Talks to the real backend when available.
  */
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8787'
@@ -16,11 +15,7 @@ async function request(path, options = {}) {
   })
 
   let data = {}
-  try {
-    data = await res.json()
-  } catch {
-    // ignore non-json
-  }
+  try { data = await res.json() } catch {}
 
   if (!res.ok) {
     const err = new Error(data.error || res.statusText || 'Request failed')
@@ -28,12 +23,10 @@ async function request(path, options = {}) {
     err.data = data
     throw err
   }
-
   return data
 }
 
 export const api = {
-  // Auth
   signup: (body) => request('/auth/signup', { method: 'POST', body: JSON.stringify(body) }),
   login: (body) => request('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
   logout: () => request('/auth/logout', { method: 'POST' }),
@@ -42,15 +35,15 @@ export const api = {
   updateProfile: (body) => request('/auth/update-profile', { method: 'POST', body: JSON.stringify(body) }),
   changePassword: (body) => request('/auth/change-password', { method: 'POST', body: JSON.stringify(body) }),
   verifyEmail: (token) => request('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
-
-  // Admin
+  requestPasswordReset: (email) => request('/auth/request-password-reset', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (body) => request('/auth/reset-password', { method: 'POST', body: JSON.stringify(body) }),
+  deleteAccount: (password) => request('/auth/delete-account', { method: 'POST', body: JSON.stringify({ password }) }),
   adminUsers: (params = {}) => {
     const q = new URLSearchParams(params).toString()
     return request(`/admin/users${q ? '?' + q : ''}`)
   },
-
-  // Health
   health: () => request('/health'),
+  vaultUploadUrl: (body) => request('/vault/upload-url', { method: 'POST', body: JSON.stringify(body) }),
 }
 
 export default api

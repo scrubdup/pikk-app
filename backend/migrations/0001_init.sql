@@ -1,20 +1,22 @@
 -- PIKK initial schema
--- users + sessions
 
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   display_name TEXT,
-  role TEXT NOT NULL DEFAULT 'user', -- user | creator | admin
+  role TEXT NOT NULL DEFAULT 'user',
   email_verified INTEGER NOT NULL DEFAULT 0,
   verification_token TEXT,
+  reset_token TEXT,
+  reset_token_expires TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_verification ON users(verification_token);
+CREATE INDEX IF NOT EXISTS idx_users_reset ON users(reset_token);
 
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,

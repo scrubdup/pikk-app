@@ -3,51 +3,38 @@
 **Owner:** PIKK Supervisor  
 **Last updated:** 2026-11-19  
 
-## Current Focus
+## Status
 
-Engine auth layer is complete.  
-Frontend auth service layer is now in place.  
-Vault foundations (stubs) started.
-
----
-
-## Status Overview
-
-### Engine (Backend)
-| Task | Status |
+### Backend (Engine)
+| Area | Status |
 |------|--------|
-| Stack + structure | **DONE** |
-| Core auth + sessions | **DONE** |
-| Email verification endpoint | **DONE** |
-| Roles + admin tools | **DONE** |
-| Rate limiting | **DONE** |
+| Auth (signup/login/logout/me) | **DONE** |
+| Secure sessions + roles | **DONE** |
 | Change password | **DONE** |
-| Security headers | **DONE** |
+| Email verification endpoint | **DONE** |
+| Password reset request + confirm | **DONE** |
+| Account deletion | **DONE** |
+| Rate limiting | **DONE** |
+| Admin users list | **DONE** |
 | Vault route stubs | **DONE** |
-| Real D1 database | Waiting on owner |
-| Real R2 bucket | Waiting on owner |
+| Real D1 + R2 | Waiting on owner |
 | Real email delivery | Waiting on provider |
 
 ### Frontend
-| Task | Status |
+| Area | Status |
 |------|--------|
 | API client | **DONE** |
-| Auth service (dual-mode) | **DONE** |
-| Readiness contract updated | **DONE** |
-| Wire signup/login screens to service | Next |
-| Session survival on reload | Next |
+| Auth service | **DONE** |
+| Real auth page (`#/auth`) | **DONE** |
+| Profile still has local demo fallback | Kept for TEST MODE |
+| Boot session check | Next (main.js) |
+| Wire more screens to real user | Ongoing |
 
 ---
 
-## Next Actions
+## Next
 
-1. Owner: create D1 (`wrangler d1 create pikk-db`) and R2 bucket
-2. Wire the actual login/signup UI pages to `src/auth/service.js`
-3. Make app boot call `getAuthState()` so session survives reload
-4. Continue Vault signed URL implementation once R2 is bound
-
----
-
-## Handoff
-
-2026-11-19 — Auth service layer + Vault stubs committed. Backend is ready; frontend can now prefer real sessions.
+1. Owner creates D1 + runs migrations
+2. Finish boot-time session restore in main.js
+3. Add password-reset UI page
+4. Expand Vault once R2 exists
