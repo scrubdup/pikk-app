@@ -3,38 +3,51 @@
 **Owner:** PIKK Supervisor  
 **Last updated:** 2026-11-19  
 
-## Status
+## Backend (Engine) — essentially complete
 
-### Backend (Engine)
 | Area | Status |
 |------|--------|
-| Auth (signup/login/logout/me) | **DONE** |
-| Secure sessions + roles | **DONE** |
+| Signup / Login / Logout / Me | **DONE** |
+| Secure cookie sessions | **DONE** |
+| Roles + admin tools | **DONE** |
 | Change password | **DONE** |
 | Email verification endpoint | **DONE** |
-| Password reset request + confirm | **DONE** |
+| Password reset (request + confirm) | **DONE** |
 | Account deletion | **DONE** |
 | Rate limiting | **DONE** |
-| Admin users list | **DONE** |
-| Vault route stubs | **DONE** |
-| Real D1 + R2 | Waiting on owner |
+| Vault stubs | **DONE** |
+| Real D1 database | Waiting on owner |
+| Real R2 bucket | Waiting on owner |
 | Real email delivery | Waiting on provider |
 
-### Frontend
+## Frontend Auth
+
 | Area | Status |
 |------|--------|
 | API client | **DONE** |
 | Auth service | **DONE** |
 | Real auth page (`#/auth`) | **DONE** |
-| Profile still has local demo fallback | Kept for TEST MODE |
-| Boot session check | Next (main.js) |
-| Wire more screens to real user | Ongoing |
+| Password reset page (`#/auth/reset`) | **DONE** |
+| Boot session restore helper | **DONE** |
+| Route registration helper | **DONE** |
+| Wire routes into main.js ROUTES | **Next (one-line import)** |
+| Call restoreServerSession() in boot() | **Next** |
 
----
+## Immediate next steps for full live flow
 
-## Next
+1. In `main.js`:
+   ```js
+   import { authRoutes } from './auth/routes.js'
+   import { restoreServerSession } from './auth/boot.js'
 
-1. Owner creates D1 + runs migrations
-2. Finish boot-time session restore in main.js
-3. Add password-reset UI page
-4. Expand Vault once R2 exists
+   const ROUTES = { ...authRoutes, /* existing routes */ }
+
+   async function boot() {
+     await restoreServerSession()
+     // ... rest of boot
+   }
+   ```
+2. Owner creates D1 database and runs migrations
+3. Set `VITE_API_URL` to the live API
+
+After those three things, signup → login → reload → logout works end-to-end in the browser.
