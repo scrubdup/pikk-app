@@ -1,14 +1,13 @@
 /**
- * PIKK API client (frontend)
- * Points at the real backend once D1 is live.
- * Falls back gracefully while backend is still local-only.
+ * PIKK API client
+ * Talks to the real backend when available.
  */
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8787'
 
 async function request(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
-    credentials: 'include', // send cookies
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers || {})
@@ -16,10 +15,15 @@ async function request(path, options = {}) {
     ...options
   })
 
-  const data = await res.json().catch(() => ({}))
+  let data = {}
+  try {
+    data = await res.json()
+  } catch {
+    // ignore non-json
+  }
 
   if (!res.ok) {
-    const err = new Error(data.error || res.statusText)
+    const err = new Error(data.error || res.statusText || 'Request failed')
     err.status = res.status
     err.data = data
     throw err
@@ -36,7 +40,14 @@ export const api = {
   logoutAll: () => request('/auth/logout-all', { method: 'POST' }),
   me: () => request('/auth/me'),
   updateProfile: (body) => request('/auth/update-profile', { method: 'POST', body: JSON.stringify(body) }),
+  changePassword: (body) => request('/auth/change-password', { method: 'POST', body: JSON.stringify(body) }),
   verifyEmail: (token) => request('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
+
+  // Admin
+  adminUsers: (params = {}) => {
+    const q = new URLSearchParams(params).toString()
+    return request(`/admin/users${q ? '?' + q : ''}`)
+  },
 
   // Health
   health: () => request('/health'),

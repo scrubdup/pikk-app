@@ -10,6 +10,7 @@ const auth = new Hono()
 // Stricter rate limits on auth endpoints
 auth.use('/signup', rateLimit({ windowMs: 60_000, max: 8 }))
 auth.use('/login', rateLimit({ windowMs: 60_000, max: 15 }))
+auth.use('/change-password', rateLimit({ windowMs: 60_000, max: 10 }))
 
 /**
  * POST /auth/signup
@@ -215,6 +216,55 @@ auth.post('/update-profile', requireAuth, async (c) => {
 })
 
 /**
+ * POST /auth/change-password
+ * Body: { currentPassword, newPassword }
+ */
+auth.post('/change-password', requireAuth, async (c) => {
+  try {
+    const user = c.get('user')
+    const body = await c.req.json()
+    const { currentPassword, newPassword } = body
+
+    if (!currentPassword || !newPassword) {
+      return c.json({ error: 'currentPassword and newPassword required' }, 400)
+    }
+
+    if (newPassword.length < 8) {
+      return c.json({ error: 'new password must be at least 8 characters' }, 400)
+    }
+
+    const db = c.env.DB
+    if (!db) return c.json({ error: 'database not configured' }, 500)
+
+    const row = await db.prepare(
+      'SELECT password_hash FROM users WHERE id = ?'
+    ).bind(user.id).first()
+
+    if (!row) return c.json({ error: 'user not found' }, 404)
+
+    const valid = await verifyPassword(currentPassword, row.password_hash as string)
+    if (!valid) {
+      return c.json({ error: 'current password is incorrect' }, 401)
+    }
+
+    const newHash = await hashPassword(newPassword)
+    const now = new Date().toISOString()
+
+    await db.prepare(
+      `UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?`
+    ).bind(newHash, now, user.id).run()
+
+    // Optional: kill other sessions for security
+    // await deleteAllUserSessions(db, user.id)
+
+    return c.json({ ok: true, message: 'password updated' })
+  } catch (err) {
+    console.error('change-password error', err)
+    return c.json({ error: 'internal error' }, 500)
+  }
+})
+
+/**
  * POST /auth/verify-email
  */
 auth.post('/verify-email', async (c) => {
@@ -249,7 +299,6 @@ auth.post('/verify-email', async (c) => {
 
 /**
  * POST /auth/cleanup-sessions  (admin only)
- * Removes expired sessions
  */
 auth.post('/cleanup-sessions', requireAuth, requireAdmin, async (c) => {
   const db = c.env.DB
