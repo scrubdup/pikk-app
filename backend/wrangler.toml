@@ -6,8 +6,13 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "pikk-db"
-database_id = "local-pikk-db"  # Replace with real D1 ID after creation
+database_id = "local-pikk-db"  # Replace with real D1 ID after: npx wrangler d1 create pikk-db
 migrations_dir = "migrations"
+
+# Uncomment after creating the R2 bucket:
+# [[r2_buckets]]
+# binding = "VAULT_BUCKET"
+# bucket_name = "pikk-vault"
 
 [vars]
 ENVIRONMENT = "development"

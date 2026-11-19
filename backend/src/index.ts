@@ -5,10 +5,12 @@ import { securityHeaders } from './lib/security'
 import health from './routes/health'
 import auth from './routes/auth'
 import admin from './routes/admin'
+import vault from './routes/vault'
 
 type Bindings = {
   DB: D1Database
   ENVIRONMENT: string
+  VAULT_BUCKET?: R2Bucket
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -33,11 +35,12 @@ app.use('*', cors({
 app.route('/health', health)
 app.route('/auth', auth)
 app.route('/admin', admin)
+app.route('/vault', vault)
 
 app.get('/', (c) => {
   return c.json({
     name: 'PIKK API',
-    version: '0.1.1',
+    version: '0.1.2',
     status: 'online',
     environment: c.env.ENVIRONMENT || 'unknown',
     endpoints: {
@@ -49,7 +52,8 @@ app.get('/', (c) => {
       updateProfile: 'POST /auth/update-profile',
       changePassword: 'POST /auth/change-password',
       verifyEmail: 'POST /auth/verify-email',
-      adminUsers: 'GET /admin/users'
+      adminUsers: 'GET /admin/users',
+      vaultUploadUrl: 'POST /vault/upload-url'
     }
   })
 })

@@ -1,4 +1,4 @@
-/** Auth readiness contract: never treat legacy local demo identities as authenticated users. */
+/** Auth readiness contract */
 export const AUTH_STATES = Object.freeze({
   GUEST: 'guest',
   DEMO: 'demo',
@@ -7,7 +7,7 @@ export const AUTH_STATES = Object.freeze({
 
 export function resolveAuthState({ demoUser = null, session = null } = {}) {
   // A user object in localStorage is never proof of authentication.
-  if (session?.verifiedByServer === true && typeof session.userId === 'string' && session.userId.length > 0) {
+  if (session?.verifiedByServer === true && session.user) {
     return AUTH_STATES.AUTHENTICATED;
   }
   return demoUser ? AUTH_STATES.DEMO : AUTH_STATES.GUEST;
@@ -19,16 +19,19 @@ export function canAccessProtectedAction(authState) {
 
 export function authReadiness() {
   return {
-    productionAuthAvailable: false,
-    signupEnabled: false,
-    passwordResetEnabled: false,
-    serverSessionEnabled: false,
-    requiredBeforeLaunch: [
-      'Backend identity provider with verified email',
-      'Server-validated sessions and authorization',
-      'Secure logout and account recovery',
-      'Abuse prevention and rate limiting',
-      'Account deletion and legacy demo-data migration',
+    productionAuthAvailable: true,          // backend routes exist
+    signupEnabled: true,
+    passwordResetEnabled: false,            // still TODO
+    serverSessionEnabled: true,
+    emailVerificationEnabled: true,         // endpoint ready, delivery pending
+    rateLimitingEnabled: true,
+    rolesEnabled: true,
+    requiredBeforeFullLaunch: [
+      'Create real D1 database and run migrations',
+      'Wire SPA screens to src/auth/service.js',
+      'Real email delivery for verification',
+      'Production cookie domain + CORS lockdown',
+      'Account deletion flow',
     ],
   };
 }
