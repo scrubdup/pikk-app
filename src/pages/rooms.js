@@ -1,7 +1,6 @@
 /**
  * PIKK Rooms
- * Men's Room · Ladies Room · Dating Rooms
- * Currently local/demo presence. Real realtime + gender verification come later.
+ * Men's Rooms · Ladies Rooms · Dating Rooms
  */
 
 import { getState, setState } from '../store.js'
@@ -9,44 +8,126 @@ import { esc, toast, shellPage } from '../ui.js'
 import { navigate } from '../router.js'
 
 const ROOMS = [
+  // ── Men's Rooms ──────────────────────────────────
   {
-    id: 'mens',
-    name: "Men's Room",
+    id: 'mens-main',
+    section: 'mens',
+    name: "Men's Main Lounge",
     gate: 'men',
     tag: 'MEN ONLY · 18+',
-    desc: 'A space for men to talk, network, and connect. Gender self-select for now (verification later).',
+    desc: 'Main hangout for men. Open talk, network, everyday energy.',
     color: '#2f6bff',
   },
   {
-    id: 'ladies',
-    name: "Ladies Room",
+    id: 'mens-sports',
+    section: 'mens',
+    name: 'Sports Room',
+    gate: 'men',
+    tag: 'MEN · SPORTS',
+    desc: 'Games, teams, bets talk, highlights. Sports energy only.',
+    color: '#27ae60',
+  },
+  {
+    id: 'mens-hustle',
+    section: 'mens',
+    name: 'Business & Hustle',
+    gate: 'men',
+    tag: 'MEN · MONEY',
+    desc: 'Business, side hustles, investing, moves. Serious talk.',
+    color: '#f39c12',
+  },
+  {
+    id: 'mens-music',
+    section: 'mens',
+    name: 'Music Talk',
+    gate: 'men',
+    tag: 'MEN · MUSIC',
+    desc: 'Tracks, artists, studio talk, what you listening to.',
+    color: '#9b59b6',
+  },
+  {
+    id: 'mens-late',
+    section: 'mens',
+    name: 'Late Night',
+    gate: 'men',
+    tag: 'MEN · LATE',
+    desc: 'After-hours energy. Real talk, less filter.',
+    color: '#34495e',
+  },
+
+  // ── Ladies Rooms ─────────────────────────────────
+  {
+    id: 'ladies-main',
+    section: 'ladies',
+    name: "Ladies Main Lounge",
     gate: 'women',
     tag: 'WOMEN ONLY · 18+',
-    desc: 'A space for women to talk, network, and connect. Gender self-select for now (verification later).',
+    desc: 'Main hangout for women. Open talk, support, everyday energy.',
     color: '#e91e8c',
   },
   {
+    id: 'ladies-soft',
+    section: 'ladies',
+    name: 'Soft Life',
+    gate: 'women',
+    tag: 'WOMEN · SOFT LIFE',
+    desc: 'Self-care, peace, lifestyle, soft energy.',
+    color: '#ff9ff3',
+  },
+  {
+    id: 'ladies-boss',
+    section: 'ladies',
+    name: 'Business & Boss',
+    gate: 'women',
+    tag: 'WOMEN · MONEY',
+    desc: 'Business, careers, building, money moves.',
+    color: '#f39c12',
+  },
+  {
+    id: 'ladies-music',
+    section: 'ladies',
+    name: 'Music Talk',
+    gate: 'women',
+    tag: 'WOMEN · MUSIC',
+    desc: 'Tracks, artists, playlists, what you vibing to.',
+    color: '#9b59b6',
+  },
+  {
+    id: 'ladies-late',
+    section: 'ladies',
+    name: 'Late Night',
+    gate: 'women',
+    tag: 'WOMEN · LATE',
+    desc: 'After-hours real talk. Comfortable energy.',
+    color: '#6c3483',
+  },
+
+  // ── Dating Rooms ─────────────────────────────────
+  {
     id: 'dating-lounge',
+    section: 'dating',
     name: 'Dating Lounge',
     gate: 'dating',
     tag: 'DATING · 18+ · OPT-IN',
-    desc: 'Open dating conversation room. Mutual interest only. No pressure, no fake matches.',
+    desc: 'Open dating conversation. Mutual interest only.',
     color: '#ff4d6d',
   },
   {
     id: 'dating-speed',
+    section: 'dating',
     name: 'Speed Dating',
     gate: 'dating',
     tag: 'SPEED DATING · PREVIEW',
-    desc: 'Timed intro rounds. Coming with real matching + safety systems.',
+    desc: 'Timed intro rounds. Real matching comes later.',
     color: '#ff8c42',
   },
   {
     id: 'dating-live',
+    section: 'dating',
     name: 'Dating Live Room',
     gate: 'dating',
     tag: 'LIVE DATING · PREVIEW',
-    desc: 'Live group dating energy. Links into the broader Live system later.',
+    desc: 'Live group dating energy.',
     color: '#c44dff',
   },
 ]
@@ -68,16 +149,20 @@ function ensureRoomsState() {
 
 function canEnter(room, roomsState, user) {
   if (!user) return { ok: false, reason: 'Sign in required' }
-  if (room.gate === 'men') {
-    if (roomsState.myGender !== 'men') return { ok: false, reason: "Men's Room requires male self-select" }
+  if (room.gate === 'men' && roomsState.myGender !== 'men') {
+    return { ok: false, reason: "Men's rooms require male self-select" }
   }
-  if (room.gate === 'women') {
-    if (roomsState.myGender !== 'women') return { ok: false, reason: 'Ladies Room requires female self-select' }
+  if (room.gate === 'women' && roomsState.myGender !== 'women') {
+    return { ok: false, reason: "Ladies rooms require female self-select" }
   }
-  if (room.gate === 'dating') {
-    if (!roomsState.datingOptIn) return { ok: false, reason: 'Opt in to Dating to enter' }
+  if (room.gate === 'dating' && !roomsState.datingOptIn) {
+    return { ok: false, reason: 'Opt in to Dating to enter' }
   }
   return { ok: true }
+}
+
+function sectionRooms(section) {
+  return ROOMS.filter((r) => r.section === section)
 }
 
 export function renderRooms(route) {
@@ -85,6 +170,7 @@ export function renderRooms(route) {
   const roomsState = ensureRoomsState()
   const { user } = getState()
 
+  // ── Single room view ─────────────────────────────
   if (roomId) {
     const room = ROOMS.find((r) => r.id === roomId)
     if (!room) {
@@ -109,11 +195,11 @@ export function renderRooms(route) {
     }
 
     return shellPage(room.name, `
-      <section class="pikk-rooms-header" style="border-left:4px solid ${room.color};padding-left:12px;margin-bottom:16px">
+      <section style="border-left:4px solid ${room.color};padding-left:12px;margin-bottom:16px">
         <span class="chip">${esc(room.tag)}</span>
         <h2 style="margin:6px 0">${esc(room.name)}</h2>
         <p class="muted">${esc(room.desc)}</p>
-        <p class="muted" style="font-size:12px">TEST MODE · Local presence only · Real realtime + verification later</p>
+        <p class="muted" style="font-size:12px">TEST MODE · Local presence · Realtime later</p>
       </section>
 
       <div class="card">
@@ -125,7 +211,7 @@ export function renderRooms(route) {
         </div>
       </div>
 
-      <div class="card" id="roomChat">
+      <div class="card">
         <h3>Chat</h3>
         <div id="roomMessages" style="max-height:320px;overflow:auto;margin-bottom:12px">
           ${messages.length
@@ -137,26 +223,38 @@ export function renderRooms(route) {
                 </div>`).join('')
             : '<p class="muted">No messages yet. Say something.</p>'}
         </div>
-        <div class="field">
-          <input id="roomMsgInput" placeholder="Message the room…" maxlength="280" />
-        </div>
+        <div class="field"><input id="roomMsgInput" placeholder="Message the room…" maxlength="280" /></div>
         <button class="btn primary" id="roomSendBtn">Send</button>
-        <button class="btn ghost" id="roomLeaveBtn" style="margin-left:8px">Leave room</button>
+        <button class="btn ghost" id="roomLeaveBtn" style="margin-left:8px">Leave</button>
       </div>
     `)
   }
 
+  // ── Lobby ────────────────────────────────────────
+  const mens = sectionRooms('mens')
+  const ladies = sectionRooms('ladies')
+  const dating = sectionRooms('dating')
+
+  function roomCards(list) {
+    return list.map((r) => `
+      <a class="pikk-dating-experience" href="#/rooms/${r.id}" style="border-top:3px solid ${r.color}">
+        <strong>${esc(r.name)}</strong>
+        <small>${esc(r.tag)}</small>
+        <p style="font-size:12px;margin:6px 0 0;opacity:.8">${esc(r.desc)}</p>
+      </a>
+    `).join('')
+  }
+
   return shellPage('PIKK Rooms', `
-    <section class="pikk-profile-guest-hero" aria-label="PIKK Rooms">
+    <section class="pikk-profile-guest-hero">
       <p class="kicker">PIKK · ROOMS</p>
       <h2>Men's · Ladies · Dating</h2>
-      <p>Gender-gated lounges and dating rooms. Self-select for now. Real verification and live presence come with the backend.</p>
+      <p>Specific rooms under each section. Self-select gender + dating opt-in to enter.</p>
       <span class="chip">TEST MODE · 18+</span>
     </section>
 
     <div class="card">
       <h3>Your settings</h3>
-      <p class="muted" style="font-size:13px">Required before entering gated rooms. This is self-select only until verification exists.</p>
       <div class="row wrap" style="gap:8px;margin-top:10px">
         <button class="btn ${roomsState.myGender === 'men' ? 'primary' : 'ghost'}" data-gender="men">I'm a man</button>
         <button class="btn ${roomsState.myGender === 'women' ? 'primary' : 'ghost'}" data-gender="women">I'm a woman</button>
@@ -170,21 +268,20 @@ export function renderRooms(route) {
       </p>
     </div>
 
-    <div class="pikk-dating-experience-grid" style="margin-top:16px">
-      ${ROOMS.map((r) => `
-        <a class="pikk-dating-experience" href="#/rooms/${r.id}" style="border-top:3px solid ${r.color}">
-          <strong>${esc(r.name)}</strong>
-          <small>${esc(r.tag)}</small>
-          <p style="font-size:12px;margin:6px 0 0;opacity:.8">${esc(r.desc)}</p>
-        </a>
-      `).join('')}
-    </div>
+    <h3 style="margin:20px 0 10px">Men's Rooms</h3>
+    <div class="pikk-dating-experience-grid">${roomCards(mens)}</div>
+
+    <h3 style="margin:20px 0 10px">Ladies Rooms</h3>
+    <div class="pikk-dating-experience-grid">${roomCards(ladies)}</div>
+
+    <h3 style="margin:20px 0 10px">Dating Rooms</h3>
+    <div class="pikk-dating-experience-grid">${roomCards(dating)}</div>
 
     <div class="card" style="margin-top:16px">
       <h3>Safety</h3>
       <p class="muted" style="font-size:13px">
-        These rooms are demo-only right now. No real-time servers, no gender verification, no moderation queue yet.
-        Report / block tools and server-side enforcement ship with Trust & Safety + real auth.
+        Demo only. No realtime server, no gender verification, no moderation queue yet.
+        Real enforcement ships with Trust & Safety + backend auth.
       </p>
     </div>
   `)
@@ -197,12 +294,7 @@ export function bindRooms(route) {
 
   document.querySelectorAll('[data-gender]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      setState({
-        rooms: {
-          ...getState().rooms,
-          myGender: btn.dataset.gender,
-        },
-      })
+      setState({ rooms: { ...getState().rooms, myGender: btn.dataset.gender } })
       toast(`Gender set to ${btn.dataset.gender}`)
       navigate('#/rooms')
     })
@@ -210,24 +302,16 @@ export function bindRooms(route) {
 
   document.getElementById('datingOptInBtn')?.addEventListener('click', () => {
     const current = getState().rooms || ensureRoomsState()
-    setState({
-      rooms: {
-        ...current,
-        datingOptIn: !current.datingOptIn,
-      },
-    })
+    setState({ rooms: { ...current, datingOptIn: !current.datingOptIn } })
     toast(!current.datingOptIn ? 'Dating opt-in enabled' : 'Dating opt-in turned off')
     navigate('#/rooms')
   })
 
   if (!roomId || !user) return
-
   const room = ROOMS.find((r) => r.id === roomId)
   if (!room) return
-  const access = canEnter(room, roomsState, user)
-  if (!access.ok) return
+  if (!canEnter(room, roomsState, user).ok) return
 
-  // Join presence
   const current = getState().rooms || ensureRoomsState()
   const presence = current.presence[roomId] || []
   if (!presence.some((p) => p.userId === user.id)) {
@@ -236,14 +320,11 @@ export function bindRooms(route) {
         ...current,
         presence: {
           ...current.presence,
-          [roomId]: [
-            ...presence,
-            {
-              userId: user.id,
-              username: user.username || user.displayName || 'User',
-              at: Date.now(),
-            },
-          ],
+          [roomId]: [...presence, {
+            userId: user.id,
+            username: user.username || user.displayName || 'User',
+            at: Date.now(),
+          }],
         },
       },
     })
@@ -260,16 +341,13 @@ export function bindRooms(route) {
         ...st,
         messages: {
           ...st.messages,
-          [roomId]: [
-            ...msgs,
-            {
-              id: 'm_' + Date.now(),
-              userId: user.id,
-              username: user.username || user.displayName || 'User',
-              text,
-              at: Date.now(),
-            },
-          ],
+          [roomId]: [...msgs, {
+            id: 'm_' + Date.now(),
+            userId: user.id,
+            username: user.username || user.displayName || 'User',
+            text,
+            at: Date.now(),
+          }],
         },
       },
     })
