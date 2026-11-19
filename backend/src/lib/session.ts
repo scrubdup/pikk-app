@@ -24,3 +24,13 @@ export async function getSession(db: D1Database, sessionId: string) {
 export async function deleteSession(db: D1Database, sessionId: string) {
   await db.prepare('DELETE FROM sessions WHERE id = ?').bind(sessionId).run()
 }
+
+/** Delete all expired sessions (can be called periodically) */
+export async function cleanupExpiredSessions(db: D1Database) {
+  await db.prepare(`DELETE FROM sessions WHERE expires_at <= datetime('now')`).run()
+}
+
+/** Delete all sessions for a user (logout everywhere) */
+export async function deleteAllUserSessions(db: D1Database, userId: number) {
+  await db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(userId).run()
+}

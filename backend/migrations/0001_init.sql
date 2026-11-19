@@ -8,11 +8,13 @@ CREATE TABLE IF NOT EXISTS users (
   display_name TEXT,
   role TEXT NOT NULL DEFAULT 'user', -- user | creator | admin
   email_verified INTEGER NOT NULL DEFAULT 0,
+  verification_token TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_verification ON users(verification_token);
 
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,

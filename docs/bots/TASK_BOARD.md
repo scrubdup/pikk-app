@@ -30,10 +30,10 @@
 | BOT-001 | Establish permanent 12-bot instruction set | Supervisor | DONE | Completed 2026-11-16 |
 | BOT-003 | Rebuild official 10-bot roster + instruction files | Supervisor | **DONE** | Completed 2026-11-19. New roster locked. |
 | ENG-001 | Choose backend stack + project structure | Engine + Supervisor | **DONE** | Stack locked: Cloudflare Workers + Hono + D1. Skeleton committed 2026-11-19. |
-| ENG-002 | Core auth: signup, login, logout, /auth/me, secure cookie sessions | Engine | **IN PROGRESS** | Routes + session helpers implemented. Needs D1 creation + local testing. |
-| ENG-003 | Email verification flow | Engine | TODO | |
-| ENG-004 | Basic permissions / roles model | Engine | TODO | role column already in schema |
-| ENG-005 | Database migrations + first schema (users + sessions) | Engine | **DONE** | 0001_init.sql committed |
+| ENG-002 | Core auth: signup, login, logout, /auth/me, secure cookie sessions | Engine | **DONE** | Full auth flow + requireAuth middleware + logout-all. Ready for D1. |
+| ENG-003 | Email verification flow | Engine | **IN PROGRESS** | Token generation + /auth/verify-email endpoint done. Real email sending still TODO. |
+| ENG-004 | Basic permissions / roles model | Engine | **DONE** | role column + requireRole middleware (user/creator/admin). |
+| ENG-005 | Database migrations + first schema (users + sessions) | Engine | **DONE** | 0001_init.sql with verification_token. |
 
 ---
 
@@ -55,8 +55,9 @@
 ## Backlog (High Level)
 
 **Engine (current focus)**
-- Production auth + sessions ← in progress
-- Core APIs
+- Production auth + sessions ← largely complete
+- Email sending for verification
+- Core APIs (profile, etc.)
 - Background jobs foundation
 - Recovery patterns
 
@@ -76,8 +77,9 @@
 |------|------|----|---------|
 | 2026-11-16 | Human + Supervisor | All bots | Official 12-bot team instructions committed. |
 | 2026-11-16 | Supervisor | Engine | Declared Engine/Backend as highest priority. |
-| 2026-11-19 | Owner + Supervisor | All bots | Official 10-bot roster defined and committed. Old specialized bots (Shop, Stories, Design, QA) folded or retired from main roster. |
-| 2026-11-19 | Supervisor / Engine | — | ENG-001 completed. Backend skeleton (Workers + Hono + D1) pushed. Auth routes + schema live in repo. ENG-002 now active. |
+| 2026-11-19 | Owner + Supervisor | All bots | Official 10-bot roster defined and committed. |
+| 2026-11-19 | Supervisor / Engine | — | ENG-001 completed. Backend skeleton pushed. |
+| 2026-11-19 | Engine | — | ENG-002 + ENG-004 completed. Auth + roles middleware live. Email verification endpoint ready (sending still open). |
 
 ---
 

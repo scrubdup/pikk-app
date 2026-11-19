@@ -14,7 +14,14 @@ const app = new Hono<{ Bindings: Bindings }>()
 // Middleware
 app.use('*', logger())
 app.use('*', cors({
-  origin: (origin) => origin || '*', // tighten in production
+  origin: (origin) => {
+    // Allow local frontend + production domains later
+    if (!origin) return '*'
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) return origin
+    if (origin.includes('github.io')) return origin
+    if (origin.includes('workers.dev')) return origin
+    return origin // tighten later
+  },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -29,7 +36,15 @@ app.get('/', (c) => {
     name: 'PIKK API',
     version: '0.1.0',
     status: 'online',
-    environment: c.env.ENVIRONMENT || 'unknown'
+    environment: c.env.ENVIRONMENT || 'unknown',
+    endpoints: {
+      health: 'GET /health',
+      signup: 'POST /auth/signup',
+      login: 'POST /auth/login',
+      logout: 'POST /auth/logout',
+      me: 'GET /auth/me',
+      verifyEmail: 'POST /auth/verify-email'
+    }
   })
 })
 
