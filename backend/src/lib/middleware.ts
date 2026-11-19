@@ -66,3 +66,12 @@ export const requireRole = (...roles: string[]) => {
     await next()
   })
 }
+
+/** Shortcut for admin-only routes */
+export const requireAdmin = createMiddleware(async (c, next) => {
+  const user = c.get('user')
+  if (!user || user.role !== 'admin') {
+    return c.json({ error: 'forbidden' }, 403)
+  }
+  await next()
+})

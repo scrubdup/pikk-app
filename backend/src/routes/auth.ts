@@ -1,14 +1,18 @@
 import { Hono } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { hashPassword, verifyPassword } from '../lib/auth'
-import { createSession, deleteSession, deleteAllUserSessions } from '../lib/session'
-import { requireAuth } from '../lib/middleware'
+import { createSession, deleteSession, deleteAllUserSessions, cleanupExpiredSessions } from '../lib/session'
+import { requireAuth, requireAdmin } from '../lib/middleware'
+import { rateLimit } from '../lib/rate-limit'
 
 const auth = new Hono()
 
+// Stricter rate limits on auth endpoints
+auth.use('/signup', rateLimit({ windowMs: 60_000, max: 8 }))
+auth.use('/login', rateLimit({ windowMs: 60_000, max: 15 }))
+
 /**
  * POST /auth/signup
- * Body: { email, password, displayName? }
  */
 auth.post('/signup', async (c) => {
   try {
@@ -157,7 +161,7 @@ auth.post('/logout', async (c) => {
 })
 
 /**
- * POST /auth/logout-all  (requires auth)
+ * POST /auth/logout-all
  */
 auth.post('/logout-all', requireAuth, async (c) => {
   const user = c.get('user')
@@ -179,7 +183,6 @@ auth.get('/me', requireAuth, async (c) => {
 
 /**
  * POST /auth/update-profile
- * Body: { displayName }
  */
 auth.post('/update-profile', requireAuth, async (c) => {
   try {
@@ -213,7 +216,6 @@ auth.post('/update-profile', requireAuth, async (c) => {
 
 /**
  * POST /auth/verify-email
- * Body: { token }
  */
 auth.post('/verify-email', async (c) => {
   try {
@@ -243,6 +245,18 @@ auth.post('/verify-email', async (c) => {
     console.error('verify-email error', err)
     return c.json({ error: 'internal error' }, 500)
   }
+})
+
+/**
+ * POST /auth/cleanup-sessions  (admin only)
+ * Removes expired sessions
+ */
+auth.post('/cleanup-sessions', requireAuth, requireAdmin, async (c) => {
+  const db = c.env.DB
+  if (!db) return c.json({ error: 'database not configured' }, 500)
+
+  await cleanupExpiredSessions(db)
+  return c.json({ ok: true, message: 'expired sessions cleaned' })
 })
 
 export default auth
