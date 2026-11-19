@@ -1,0 +1,13 @@
+name = "pikk-api"
+main = "src/index.ts"
+compatibility_date = "2026-11-19"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pikk-db"
+database_id = "local-pikk-db"  # Replace with real D1 ID after creation
+migrations_dir = "migrations"
+
+[vars]
+ENVIRONMENT = "development"
