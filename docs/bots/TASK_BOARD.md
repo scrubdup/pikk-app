@@ -2,42 +2,25 @@
 
 **Last updated:** 2026-11-19
 
-## Backend — Complete for v1 auth
+## Just shipped
 
-All core Engine auth work is done and committed:
+### Rooms system (new)
+- Men's Room (gender-gated)
+- Ladies Room (gender-gated)
+- Dating Lounge
+- Speed Dating (preview)
+- Dating Live Room (preview)
+- Self-select gender + dating opt-in
+- Local presence + chat (TEST MODE)
+- Route: `#/rooms` and `#/rooms/:id`
 
-- Signup / Login / Logout / Me
-- Secure httpOnly sessions
-- Roles + admin tools
-- Change password
-- Email verification endpoint
-- Password reset (request + confirm)
-- Account deletion
-- Rate limiting
-- Vault route stubs
+## Backend Auth — Complete
+All core auth, sessions, roles, password reset, account deletion, rate limiting, Vault stubs done.
 
-**Waiting on owner only:** create D1 + R2, real email provider.
+## Frontend Auth — Complete (pending 2-line main.js wire)
 
-## Frontend Auth — Complete except final main.js wire
-
-| Piece | Status |
-|-------|--------|
-| API client | DONE |
-| Auth service | DONE |
-| `#/auth` page | DONE |
-| `#/auth/reset` page | DONE |
-| Boot session restore helper | DONE |
-| Account settings (change pw / delete) | DONE |
-| Route registration helper | DONE |
-| Import into main.js ROUTES + boot() | One small edit left |
-
-## Docs added
-
-- `docs/AUTH_WIRING.md` — exact steps to go live
-- `docs/VAULT_READINESS.md` — R2 activation steps
-
-## Next concrete actions
-
-1. Wire `authRoutes` + `restoreServerSession` into `main.js` (2 lines)
-2. Owner runs `wrangler d1 create pikk-db`
-3. Test full flow in browser
+## Next
+1. Wire rooms route into main.js ROUTES
+2. Wire auth routes + boot session restore into main.js
+3. Owner creates D1 database
+4. Continue other unverified / placeholder features
