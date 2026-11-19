@@ -1,53 +1,43 @@
 # PIKK Master Task Board
 
-**Owner:** PIKK Supervisor  
-**Last updated:** 2026-11-19  
+**Last updated:** 2026-11-19
 
-## Backend (Engine) — essentially complete
+## Backend — Complete for v1 auth
 
-| Area | Status |
-|------|--------|
-| Signup / Login / Logout / Me | **DONE** |
-| Secure cookie sessions | **DONE** |
-| Roles + admin tools | **DONE** |
-| Change password | **DONE** |
-| Email verification endpoint | **DONE** |
-| Password reset (request + confirm) | **DONE** |
-| Account deletion | **DONE** |
-| Rate limiting | **DONE** |
-| Vault stubs | **DONE** |
-| Real D1 database | Waiting on owner |
-| Real R2 bucket | Waiting on owner |
-| Real email delivery | Waiting on provider |
+All core Engine auth work is done and committed:
 
-## Frontend Auth
+- Signup / Login / Logout / Me
+- Secure httpOnly sessions
+- Roles + admin tools
+- Change password
+- Email verification endpoint
+- Password reset (request + confirm)
+- Account deletion
+- Rate limiting
+- Vault route stubs
 
-| Area | Status |
-|------|--------|
-| API client | **DONE** |
-| Auth service | **DONE** |
-| Real auth page (`#/auth`) | **DONE** |
-| Password reset page (`#/auth/reset`) | **DONE** |
-| Boot session restore helper | **DONE** |
-| Route registration helper | **DONE** |
-| Wire routes into main.js ROUTES | **Next (one-line import)** |
-| Call restoreServerSession() in boot() | **Next** |
+**Waiting on owner only:** create D1 + R2, real email provider.
 
-## Immediate next steps for full live flow
+## Frontend Auth — Complete except final main.js wire
 
-1. In `main.js`:
-   ```js
-   import { authRoutes } from './auth/routes.js'
-   import { restoreServerSession } from './auth/boot.js'
+| Piece | Status |
+|-------|--------|
+| API client | DONE |
+| Auth service | DONE |
+| `#/auth` page | DONE |
+| `#/auth/reset` page | DONE |
+| Boot session restore helper | DONE |
+| Account settings (change pw / delete) | DONE |
+| Route registration helper | DONE |
+| Import into main.js ROUTES + boot() | One small edit left |
 
-   const ROUTES = { ...authRoutes, /* existing routes */ }
+## Docs added
 
-   async function boot() {
-     await restoreServerSession()
-     // ... rest of boot
-   }
-   ```
-2. Owner creates D1 database and runs migrations
-3. Set `VITE_API_URL` to the live API
+- `docs/AUTH_WIRING.md` — exact steps to go live
+- `docs/VAULT_READINESS.md` — R2 activation steps
 
-After those three things, signup → login → reload → logout works end-to-end in the browser.
+## Next concrete actions
+
+1. Wire `authRoutes` + `restoreServerSession` into `main.js` (2 lines)
+2. Owner runs `wrangler d1 create pikk-db`
+3. Test full flow in browser
