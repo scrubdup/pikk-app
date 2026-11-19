@@ -2,39 +2,27 @@
 
 **Last updated:** 2026-11-19
 
-## Rooms (new this session)
+## Broadcast (started from Master Plan)
 
-### Gender + Dating Rooms (`#/rooms`)
-- Men's Room
-- Ladies Room
-- Dating Lounge
-- Speed Dating (preview)
-- Dating Live Room (preview)
+| Piece | Status |
+|-------|--------|
+| Broadcast Studio UI (`#/broadcast`) | **DONE** (shell) |
+| Destination list + status model | **DONE** |
+| Session create / start / stop stubs | **DONE** |
+| Health endpoint stub | **DONE** |
+| Real RTMP/WHIP ingest | Not started |
+| Real OAuth (YouTube/Twitch/Kick) | Not started |
+| Multistream workers | Not started |
+| Recording pipeline | Not started |
 
-### Community Lounge Rooms (`#/community-rooms`)
-- Lounge
-- Conversation
-- Listening Room
-- Backstage
-- Live Lounge
-- Spotlight Room
+## Rooms
+- Men's (5 rooms) + Ladies (5 rooms) + Dating (3) — done
+- Community Lounge (6 rooms) — done
 
-All currently local/demo presence + chat. Realtime + verification later.
+## Auth
+- Backend complete · Frontend complete · main.js wire still needed
 
-## Backend Auth — Complete
-## Frontend Auth — Complete (pending main.js wire)
-
-## Still needs main.js registration
-```js
-import { roomsRoutes } from './rooms/routes.js'
-import { communityRoomsRoutes } from './community/routes.js'
-import { authRoutes } from './auth/routes.js'
-import { restoreServerSession } from './auth/boot.js'
-
-const ROUTES = {
-  ...authRoutes,
-  ...roomsRoutes,
-  ...communityRoomsRoutes,
-  // existing routes...
-}
-```
+## Next
+1. Wire all new routes into main.js
+2. Owner creates D1
+3. Continue Broadcast toward M1 (real PIKK Live ingest)

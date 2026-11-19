@@ -6,6 +6,7 @@ import health from './routes/health'
 import auth from './routes/auth'
 import admin from './routes/admin'
 import vault from './routes/vault'
+import broadcast from './routes/broadcast'
 
 type Bindings = {
   DB: D1Database
@@ -15,7 +16,6 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-// Global middleware
 app.use('*', logger())
 app.use('*', securityHeaders)
 app.use('*', cors({
@@ -31,29 +31,24 @@ app.use('*', cors({
   credentials: true,
 }))
 
-// Routes
 app.route('/health', health)
 app.route('/auth', auth)
 app.route('/admin', admin)
 app.route('/vault', vault)
+app.route('/broadcast', broadcast)
 
 app.get('/', (c) => {
   return c.json({
     name: 'PIKK API',
-    version: '0.1.2',
+    version: '0.2.0',
     status: 'online',
     environment: c.env.ENVIRONMENT || 'unknown',
     endpoints: {
       health: 'GET /health',
-      signup: 'POST /auth/signup',
-      login: 'POST /auth/login',
-      logout: 'POST /auth/logout',
-      me: 'GET /auth/me',
-      updateProfile: 'POST /auth/update-profile',
-      changePassword: 'POST /auth/change-password',
-      verifyEmail: 'POST /auth/verify-email',
-      adminUsers: 'GET /admin/users',
-      vaultUploadUrl: 'POST /vault/upload-url'
+      auth: '/auth/*',
+      admin: '/admin/*',
+      vault: '/vault/*',
+      broadcast: '/broadcast/*',
     }
   })
 })
