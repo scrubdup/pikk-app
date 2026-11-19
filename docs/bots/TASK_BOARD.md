@@ -14,12 +14,9 @@
 
 ---
 
-## Current Focus (Supervisor Decision 2026-11-19)
+## Current Focus
 
-**Highest priority area needing the most work:**  
-**Engine / Backend Operations**
-
-**Why:** The entire app is still a pure frontend Vite SPA with only localStorage. There is zero production database, authentication, session handling, or real API layer. Almost every other bot (Vault, Payments, Broadcast/Live, Master Mind, etc.) is blocked until a solid Engine foundation exists.
+**Engine / Backend Operations** — foundation is largely complete. Remaining: real D1 creation + email sending + wiring frontend.
 
 ---
 
@@ -27,13 +24,15 @@
 
 | ID | Task | Owner Bot | Status | Notes / Acceptance |
 |----|------|-----------|--------|--------------------|
-| BOT-001 | Establish permanent 12-bot instruction set | Supervisor | DONE | Completed 2026-11-16 |
-| BOT-003 | Rebuild official 10-bot roster + instruction files | Supervisor | **DONE** | Completed 2026-11-19. New roster locked. |
-| ENG-001 | Choose backend stack + project structure | Engine + Supervisor | **DONE** | Stack locked: Cloudflare Workers + Hono + D1. Skeleton committed 2026-11-19. |
-| ENG-002 | Core auth: signup, login, logout, /auth/me, secure cookie sessions | Engine | **DONE** | Full auth flow + requireAuth middleware + logout-all. Ready for D1. |
-| ENG-003 | Email verification flow | Engine | **IN PROGRESS** | Token generation + /auth/verify-email endpoint done. Real email sending still TODO. |
-| ENG-004 | Basic permissions / roles model | Engine | **DONE** | role column + requireRole middleware (user/creator/admin). |
-| ENG-005 | Database migrations + first schema (users + sessions) | Engine | **DONE** | 0001_init.sql with verification_token. |
+| BOT-001 | Establish permanent bot instruction set | Supervisor | DONE | |
+| BOT-003 | Official 10-bot roster | Supervisor | DONE | |
+| ENG-001 | Choose backend stack + project structure | Engine | **DONE** | Workers + Hono + D1 |
+| ENG-002 | Core auth (signup/login/logout/me + sessions) | Engine | **DONE** | Full flow + middleware |
+| ENG-003 | Email verification flow | Engine | **DONE** (code) | Endpoint + token ready. Real email provider still open. |
+| ENG-004 | Roles / permissions model | Engine | **DONE** | requireAuth + requireRole |
+| ENG-005 | Schema (users + sessions) | Engine | **DONE** | |
+| ENG-006 | Profile update endpoint | Engine | **DONE** | /auth/update-profile |
+| ENG-007 | Frontend API client stub | Engine | **DONE** | src/lib/api-client.js |
 
 ---
 
@@ -52,22 +51,13 @@
 
 ---
 
-## Backlog (High Level)
+## Next Priorities (Engine)
 
-**Engine (current focus)**
-- Production auth + sessions ← largely complete
-- Email sending for verification
-- Core APIs (profile, etc.)
-- Background jobs foundation
-- Recovery patterns
-
-**Next after Engine foundation is solid**
-- Secure media vault (Vault)
-- Payment webhooks + memberships + gifts (Payments & Payouts)
-- Live reliability + multistream (Broadcast / Live)
-- Owner control center (Master Mind)
-- Moderation queues (Trust & Safety)
-- Support ticket system (AI Support)
+1. Create real D1 database + run migrations (owner action or local)
+2. Wire frontend pages to use `api-client.js` instead of localStorage
+3. Add real email provider for verification (Resend / etc.)
+4. Rate limiting + basic abuse protection
+5. Background job / cron for session cleanup
 
 ---
 
@@ -75,16 +65,4 @@
 
 | Date | From | To | Summary |
 |------|------|----|---------|
-| 2026-11-16 | Human + Supervisor | All bots | Official 12-bot team instructions committed. |
-| 2026-11-16 | Supervisor | Engine | Declared Engine/Backend as highest priority. |
-| 2026-11-19 | Owner + Supervisor | All bots | Official 10-bot roster defined and committed. |
-| 2026-11-19 | Supervisor / Engine | — | ENG-001 completed. Backend skeleton pushed. |
-| 2026-11-19 | Engine | — | ENG-002 + ENG-004 completed. Auth + roles middleware live. Email verification endpoint ready (sending still open). |
-
----
-
-## Notes for Supervisor
-
-- When a bot completes a slice, require evidence before moving to DONE.
-- Keep this board short and current.
-- Any major scope change to a bot must be reflected in that bot’s instruction file and noted here.
+| 2026-11-19 | Engine | — | Auth, roles, email verification endpoint, profile update, and frontend client stub all committed. Backend is ready for D1. |

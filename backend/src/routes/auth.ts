@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { hashPassword, verifyPassword } from '../lib/auth'
-import { createSession, getSession, deleteSession, deleteAllUserSessions } from '../lib/session'
+import { createSession, deleteSession, deleteAllUserSessions } from '../lib/session'
 import { requireAuth } from '../lib/middleware'
 
 const auth = new Hono()
@@ -69,8 +69,6 @@ auth.post('/signup', async (c) => {
       maxAge: 60 * 60 * 24 * 30,
     })
 
-    // TODO: send verification email with token (ENG-003)
-    // For now we just return the token in dev so it can be tested
     const isDev = c.env.ENVIRONMENT === 'development'
 
     return c.json({
@@ -180,6 +178,40 @@ auth.get('/me', requireAuth, async (c) => {
 })
 
 /**
+ * POST /auth/update-profile
+ * Body: { displayName }
+ */
+auth.post('/update-profile', requireAuth, async (c) => {
+  try {
+    const user = c.get('user')
+    const body = await c.req.json()
+    const displayName = body.displayName?.trim() || null
+
+    if (displayName && displayName.length > 40) {
+      return c.json({ error: 'displayName too long (max 40)' }, 400)
+    }
+
+    const db = c.env.DB
+    if (!db) return c.json({ error: 'database not configured' }, 500)
+
+    const now = new Date().toISOString()
+    await db.prepare(
+      `UPDATE users SET display_name = ?, updated_at = ? WHERE id = ?`
+    ).bind(displayName, now, user.id).run()
+
+    return c.json({
+      user: {
+        ...user,
+        displayName
+      }
+    })
+  } catch (err) {
+    console.error('update-profile error', err)
+    return c.json({ error: 'internal error' }, 500)
+  }
+})
+
+/**
  * POST /auth/verify-email
  * Body: { token }
  */
@@ -191,11 +223,11 @@ auth.post('/verify-email', async (c) => {
     const db = c.env.DB
     if (!db) return c.json({ error: 'database not configured' }, 500)
 
-    const user = await db.prepare(
+    const row = await db.prepare(
       'SELECT id FROM users WHERE verification_token = ? AND email_verified = 0'
     ).bind(token).first()
 
-    if (!user) {
+    if (!row) {
       return c.json({ error: 'invalid or already used token' }, 400)
     }
 
@@ -204,7 +236,7 @@ auth.post('/verify-email', async (c) => {
       `UPDATE users
        SET email_verified = 1, verification_token = NULL, updated_at = ?
        WHERE id = ?`
-    ).bind(now, user.id).run()
+    ).bind(now, row.id).run()
 
     return c.json({ ok: true, message: 'email verified' })
   } catch (err) {
