@@ -8,64 +8,54 @@ Cloudflare Workers + Hono + D1 foundation.
 - **Database**: D1 (SQLite)
 - **Auth**: email/password + httpOnly secure cookie sessions + roles
 
-## Current Endpoints
+## Systems Coverage
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/` | — | API info |
-| GET | `/health` | — | Health + DB check |
-| POST | `/auth/signup` | — | Create account |
-| POST | `/auth/login` | — | Login |
-| POST | `/auth/logout` | — | Logout current session |
-| POST | `/auth/logout-all` | Yes | Logout all sessions |
-| GET | `/auth/me` | Yes | Current user |
-| POST | `/auth/update-profile` | Yes | Update displayName |
-| POST | `/auth/verify-email` | — | Verify email with token |
-| GET | `/broadcast/destinations` | Yes | Available destinations |
-| GET | `/broadcast/sessions` | Yes | List sessions (own or all for admin) |
-| POST | `/broadcast/sessions` | Yes | Create draft session (persisted in D1) |
-| GET | `/broadcast/sessions/:id` | Yes | Get session |
-| POST | `/broadcast/sessions/:id/start` | Yes | Mark live (TEST MODE) |
-| POST | `/broadcast/sessions/:id/stop` | Yes | End session |
-| GET | `/broadcast/sessions/:id/health` | Yes | Health stub |
-| * | `/vault/*` | Yes | Media vault stubs (R2 not bound) |
-| * | `/admin/*` | Admin | User list + broadcast sessions |
+| System | Status |
+|--------|--------|
+| PIKK Engine (auth, sessions, health) | Strong |
+| PIKK Broadcast (sessions) | D1-persisted, TEST MODE |
+| Broadcast Platform Connectors | D1-backed status tracking (no real OAuth yet) |
+| Broadcast / AI Supervisor | Seed only (health stub + incidents) |
+| PIKK Vault | Structured stubs (R2 not bound) |
+| PIKK Shield | Foundation (flag + incident creation) |
+| PIKK Master Mind | Admin overview + incidents seed |
+| Payments, AI Support, Trust & Safety full flow | Not started |
 
-## Maturity
+## Key Endpoints
 
-| Area | State |
-|------|-------|
-| Auth + Sessions | Complete |
-| Health / Admin | Working |
-| Broadcast sessions | Persisted in D1, TEST MODE (no real ingest) |
-| Vault / media | Structured stubs only (R2 not bound) |
-| Config | Placeholder D1 ID, R2 commented out |
+### Auth
+- `POST /auth/signup` · `POST /auth/login` · `POST /auth/logout`
+- `GET /auth/me` · `POST /auth/update-profile` · password reset flows
 
-## Setup (one-time)
+### Broadcast
+- `GET /broadcast/destinations` – available providers
+- `GET/POST /broadcast/connectors` – user connector status (D1)
+- `GET/POST /broadcast/sessions` – create & list
+- `POST /broadcast/sessions/:id/start|stop` – TEST MODE live control
+
+### Shield
+- `POST /shield/flags` – report content / user
+- `GET /shield/flags` – list (own or all for admin)
+- `PATCH /shield/flags/:id` – admin status update
+
+### Admin (Master Mind seed)
+- `GET /admin/overview` – high-level counts
+- `GET /admin/users`
+- `GET /admin/broadcast-sessions`
+- `GET /admin/incidents` · `PATCH /admin/incidents/:id`
+
+### Vault
+- All `/vault/*` return structured `vault_not_configured` until R2 is bound
+
+## Setup
 
 ```bash
 cd backend
 npm install
-
-# Create D1 database
-npx wrangler d1 create pikk-db
-# → copy the database_id into wrangler.toml
-
-# Apply migrations (local)
-npm run db:migrate
-
-# Start local API (default http://127.0.0.1:8787)
-npm run dev
+npx wrangler d1 create pikk-db   # paste ID into wrangler.toml
+npm run db:migrate              # applies 0001 → 0003
+npm run dev                     # http://127.0.0.1:8787
 ```
 
-## Frontend connection
-
-The SPA has a thin client at `src/lib/api-client.js`.
-Set `VITE_API_URL=http://127.0.0.1:8787` (or your workers.dev URL) when ready.
-
 ## Roles
-- `user` (default)
-- `creator`
-- `admin`
-
-Use `requireRole('admin')` etc. on protected routes.
+`user` (default) · `creator` · `admin`

@@ -7,6 +7,7 @@ import auth from './routes/auth'
 import admin from './routes/admin'
 import vault from './routes/vault'
 import broadcast from './routes/broadcast'
+import shield from './routes/shield'
 
 type Bindings = {
   DB: D1Database
@@ -26,7 +27,7 @@ app.use('*', cors({
     if (origin.includes('workers.dev')) return origin
     return origin
   },
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }))
@@ -36,11 +37,12 @@ app.route('/auth', auth)
 app.route('/admin', admin)
 app.route('/vault', vault)
 app.route('/broadcast', broadcast)
+app.route('/shield', shield)
 
 app.get('/', (c) => {
   return c.json({
     name: 'PIKK API',
-    version: '0.2.0',
+    version: '0.3.0',
     status: 'online',
     environment: c.env.ENVIRONMENT || 'unknown',
     endpoints: {
@@ -49,6 +51,7 @@ app.get('/', (c) => {
       admin: '/admin/*',
       vault: '/vault/*',
       broadcast: '/broadcast/*',
+      shield: '/shield/*',
     }
   })
 })

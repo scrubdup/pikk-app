@@ -1,13 +1,47 @@
 import { Hono } from 'hono'
 import { requireAuth, requireAdmin } from '../lib/middleware'
 
+/**
+ * Admin routes – seed for PIKK Master Mind
+ */
+
 const admin = new Hono()
 
 admin.use('*', requireAuth, requireAdmin)
 
-/**
- * GET /admin/users
- */
+/** Overview for Master Mind dashboard */
+admin.get('/overview', async (c) => {
+  const db = c.env.DB
+  if (!db) return c.json({ error: 'database not configured' }, 500)
+
+  try {
+    const users = await db.prepare(`SELECT COUNT(*) as c FROM users`).first()
+    const sessions = await db.prepare(`SELECT COUNT(*) as c FROM sessions`).first()
+    const liveBroadcasts = await db.prepare(
+      `SELECT COUNT(*) as c FROM broadcast_sessions WHERE status = 'live'`
+    ).first().catch(() => ({ c: 0 }))
+    const openFlags = await db.prepare(
+      `SELECT COUNT(*) as c FROM shield_flags WHERE status = 'open'`
+    ).first().catch(() => ({ c: 0 }))
+    const openIncidents = await db.prepare(
+      `SELECT COUNT(*) as c FROM incidents WHERE status = 'open'`
+    ).first().catch(() => ({ c: 0 }))
+
+    return c.json({
+      timestamp: new Date().toISOString(),
+      stats: {
+        users: users?.c ?? 0,
+        activeSessions: sessions?.c ?? 0,
+        liveBroadcasts: liveBroadcasts?.c ?? 0,
+        openShieldFlags: openFlags?.c ?? 0,
+        openIncidents: openIncidents?.c ?? 0,
+      },
+    })
+  } catch (err) {
+    return c.json({ error: 'overview failed', detail: String(err) }, 500)
+  }
+})
+
 admin.get('/users', async (c) => {
   const db = c.env.DB
   if (!db) return c.json({ error: 'database not configured' }, 500)
@@ -30,10 +64,6 @@ admin.get('/users', async (c) => {
   })
 })
 
-/**
- * GET /admin/broadcast-sessions
- * Lists recent broadcast sessions (once D1 migration is applied)
- */
 admin.get('/broadcast-sessions', async (c) => {
   const db = c.env.DB
   if (!db) return c.json({ error: 'database not configured' }, 500)
@@ -48,12 +78,65 @@ admin.get('/broadcast-sessions', async (c) => {
 
     return c.json({ sessions: rows.results || [] })
   } catch (err) {
-    // Table may not exist until migration runs
     return c.json({
       sessions: [],
       note: 'broadcast_sessions table not ready — run migration 0002_broadcast.sql',
       error: String(err),
     })
+  }
+})
+
+/** Incidents feed for Master Mind */
+admin.get('/incidents', async (c) => {
+  const db = c.env.DB
+  if (!db) return c.json({ error: 'database not configured' }, 500)
+
+  try {
+    const status = c.req.query('status')
+    const limit = Math.min(Number(c.req.query('limit') || 40), 100)
+
+    let query = `SELECT * FROM incidents`
+    const params: any[] = []
+    if (status) {
+      query += ` WHERE status = ?`
+      params.push(status)
+    }
+    query += ` ORDER BY created_at DESC LIMIT ?`
+    params.push(limit)
+
+    const rows = await db.prepare(query).bind(...params).all()
+    return c.json({ incidents: rows.results || [] })
+  } catch (err) {
+    return c.json({
+      incidents: [],
+      note: 'incidents table not ready — run migration 0003_shield_incidents.sql',
+      error: String(err),
+    })
+  }
+})
+
+admin.patch('/incidents/:id', async (c) => {
+  const db = c.env.DB
+  if (!db) return c.json({ error: 'database not configured' }, 500)
+
+  try {
+    const id = c.req.param('id')
+    const body = await c.req.json().catch(() => ({}))
+    const status = body.status
+    const allowed = ['open', 'acknowledged', 'resolved']
+    if (!allowed.includes(status)) return c.json({ error: 'invalid status' }, 400)
+
+    const now = new Date().toISOString()
+    await db.prepare(
+      `UPDATE incidents
+       SET status = ?, updated_at = ?,
+           resolved_at = CASE WHEN ? = 'resolved' THEN ? ELSE resolved_at END
+       WHERE id = ?`
+    ).bind(status, now, status, now, id).run()
+
+    return c.json({ ok: true, id, status })
+  } catch (err) {
+    return c.json({ error: 'internal error' }, 500)
   }
 })
 
