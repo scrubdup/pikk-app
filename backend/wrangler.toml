@@ -4,31 +4,29 @@ compatibility_date = "2026-11-19"
 compatibility_flags = ["nodejs_compat"]
 
 # ---------------------------------------------------------------------------
-# D1 Database
-#   npx wrangler d1 create pikk-db
-#   paste database_id below → npm run db:migrate
+# D1 — pikk-engine-db on PIKK Cloudflare account
+# uuid: 7019f730-4eeb-4f00-b8f1-bd5a034fed6e
+# (Separate from legacy pikk-db production schema)
 # ---------------------------------------------------------------------------
 [[d1_databases]]
 binding = "DB"
-database_name = "pikk-db"
-database_id = "local-pikk-db"  # <-- replace with real ID
+database_name = "pikk-engine-db"
+database_id = "7019f730-4eeb-4f00-b8f1-bd5a034fed6e"
 migrations_dir = "migrations"
 
 # ---------------------------------------------------------------------------
-# R2 Bucket (Vault) — uncomment after: npx wrangler r2 bucket create pikk-vault
+# R2 Bucket (Vault)
+# Enable R2 in Cloudflare Dashboard for the PIKK account first, then:
+#   create bucket pikk-vault and uncomment below
 # ---------------------------------------------------------------------------
 # [[r2_buckets]]
 # binding = "VAULT_BUCKET"
 # bucket_name = "pikk-vault"
 
-# ---------------------------------------------------------------------------
-# Secrets (set with wrangler secret put — do NOT put real keys in this file)
-#   npx wrangler secret put AI_API_KEY
-#   npx wrangler secret put AI_BASE_URL    # optional, e.g. https://api.x.ai/v1
-#   npx wrangler secret put AI_MODEL       # optional, e.g. grok-2
-# ---------------------------------------------------------------------------
+# Secrets (set via dashboard or: npx wrangler secret put NAME)
+#   AI_API_KEY
+#   AI_BASE_URL (optional)
+#   AI_MODEL (optional)
 
 [vars]
 ENVIRONMENT = "development"
-# AI_BASE_URL = "https://api.openai.com/v1"
-# AI_MODEL = "gpt-4o-mini"
