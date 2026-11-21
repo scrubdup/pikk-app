@@ -5,9 +5,8 @@ compatibility_flags = ["nodejs_compat"]
 
 # ---------------------------------------------------------------------------
 # D1 Database
-# 1. npx wrangler d1 create pikk-db
-# 2. Paste the real database_id below
-# 3. npm run db:migrate
+#   npx wrangler d1 create pikk-db
+#   paste database_id below → npm run db:migrate
 # ---------------------------------------------------------------------------
 [[d1_databases]]
 binding = "DB"
@@ -16,15 +15,20 @@ database_id = "local-pikk-db"  # <-- replace with real ID
 migrations_dir = "migrations"
 
 # ---------------------------------------------------------------------------
-# R2 Bucket (Vault)
-# REQUIRED for real uploads/downloads:
-#   1. npx wrangler r2 bucket create pikk-vault
-#   2. Uncomment the three lines below
-#   3. Redeploy
+# R2 Bucket (Vault) — uncomment after: npx wrangler r2 bucket create pikk-vault
 # ---------------------------------------------------------------------------
 # [[r2_buckets]]
 # binding = "VAULT_BUCKET"
 # bucket_name = "pikk-vault"
 
+# ---------------------------------------------------------------------------
+# Secrets (set with wrangler secret put — do NOT put real keys in this file)
+#   npx wrangler secret put AI_API_KEY
+#   npx wrangler secret put AI_BASE_URL    # optional, e.g. https://api.x.ai/v1
+#   npx wrangler secret put AI_MODEL       # optional, e.g. grok-2
+# ---------------------------------------------------------------------------
+
 [vars]
 ENVIRONMENT = "development"
+# AI_BASE_URL = "https://api.openai.com/v1"
+# AI_MODEL = "gpt-4o-mini"

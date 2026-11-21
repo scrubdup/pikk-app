@@ -17,6 +17,9 @@ type Bindings = {
   DB: D1Database
   ENVIRONMENT: string
   VAULT_BUCKET?: R2Bucket
+  AI_API_KEY?: string
+  AI_BASE_URL?: string
+  AI_MODEL?: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -50,9 +53,14 @@ app.route('/supervisor', supervisor)
 app.get('/', (c) => {
   return c.json({
     name: 'PIKK API',
-    version: '0.4.0',
+    version: '0.5.0',
     status: 'online',
     environment: c.env.ENVIRONMENT || 'unknown',
+    platform: 'PIKK is a native creator platform (Live, Vault, Wallet, Support). External multistream is optional.',
+    capabilities: {
+      aiSupport: !!c.env.AI_API_KEY,
+      vaultR2: !!c.env.VAULT_BUCKET,
+    },
     endpoints: {
       health: 'GET /health',
       auth: '/auth/*',
