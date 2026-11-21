@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { requireAuth, requireAdmin } from '../lib/middleware'
 
 /**
- * Admin routes – seed for PIKK Master Mind
+ * Admin routes – PIKK Master Mind seed
  */
 
 const admin = new Hono()
@@ -18,7 +18,7 @@ async function safeCount(db: D1Database, sql: string): Promise<number> {
   }
 }
 
-/** Overview for Master Mind dashboard */
+/** Full overview for Master Mind */
 admin.get('/overview', async (c) => {
   const db = c.env.DB
   if (!db) return c.json({ error: 'database not configured' }, 500)
@@ -34,6 +34,7 @@ admin.get('/overview', async (c) => {
       pendingPayouts,
       queuedJobs,
       pendingAppeals,
+      vaultObjects,
     ] = await Promise.all([
       safeCount(db, 'SELECT COUNT(*) as c FROM users'),
       safeCount(db, 'SELECT COUNT(*) as c FROM sessions'),
@@ -44,6 +45,7 @@ admin.get('/overview', async (c) => {
       safeCount(db, `SELECT COUNT(*) as c FROM payouts WHERE status IN ('requested','processing')`),
       safeCount(db, `SELECT COUNT(*) as c FROM supervisor_jobs WHERE status = 'queued'`),
       safeCount(db, `SELECT COUNT(*) as c FROM appeals WHERE status = 'pending'`),
+      safeCount(db, `SELECT COUNT(*) as c FROM vault_objects WHERE status != 'deleted'`),
     ])
 
     return c.json({
@@ -58,10 +60,37 @@ admin.get('/overview', async (c) => {
         pendingPayouts,
         queuedSupervisorJobs: queuedJobs,
         pendingAppeals,
+        vaultObjects,
       },
     })
   } catch (err) {
     return c.json({ error: 'overview failed', detail: String(err) }, 500)
+  }
+})
+
+/** Recent activity feed (mixed) */
+admin.get('/activity', async (c) => {
+  const db = c.env.DB
+  if (!db) return c.json({ error: 'database not configured' }, 500)
+
+  try {
+    const limit = Math.min(Number(c.req.query('limit') || 20), 50)
+
+    const [incidents, flags, tickets, jobs] = await Promise.all([
+      db.prepare(`SELECT id, source, severity, title, status, created_at FROM incidents ORDER BY created_at DESC LIMIT 5`).all().catch(() => ({ results: [] })),
+      db.prepare(`SELECT id, reason, severity, status, created_at FROM shield_flags ORDER BY created_at DESC LIMIT 5`).all().catch(() => ({ results: [] })),
+      db.prepare(`SELECT id, subject, status, priority, created_at FROM support_tickets ORDER BY created_at DESC LIMIT 5`).all().catch(() => ({ results: [] })),
+      db.prepare(`SELECT id, type, status, created_at FROM supervisor_jobs ORDER BY created_at DESC LIMIT 5`).all().catch(() => ({ results: [] })),
+    ])
+
+    return c.json({
+      incidents: incidents.results || [],
+      flags: flags.results || [],
+      tickets: tickets.results || [],
+      jobs: jobs.results || [],
+    })
+  } catch (err) {
+    return c.json({ error: 'activity failed', detail: String(err) }, 500)
   }
 })
 
@@ -101,15 +130,10 @@ admin.get('/broadcast-sessions', async (c) => {
 
     return c.json({ sessions: rows.results || [] })
   } catch (err) {
-    return c.json({
-      sessions: [],
-      note: 'broadcast_sessions table not ready — run migration 0002_broadcast.sql',
-      error: String(err),
-    })
+    return c.json({ sessions: [], error: String(err) })
   }
 })
 
-/** Incidents feed for Master Mind */
 admin.get('/incidents', async (c) => {
   const db = c.env.DB
   if (!db) return c.json({ error: 'database not configured' }, 500)
@@ -130,11 +154,7 @@ admin.get('/incidents', async (c) => {
     const rows = await db.prepare(query).bind(...params).all()
     return c.json({ incidents: rows.results || [] })
   } catch (err) {
-    return c.json({
-      incidents: [],
-      note: 'incidents table not ready — run migration 0003_shield_incidents.sql',
-      error: String(err),
-    })
+    return c.json({ incidents: [], error: String(err) })
   }
 })
 

@@ -2,9 +2,7 @@ import { Hono } from 'hono'
 import { requireAuth, requireAdmin } from '../lib/middleware'
 
 /**
- * PIKK Supervisor – job queue foundation
- * Jobs can be enqueued and later processed by a worker / cron.
- * Real automated bot logic is not fully implemented.
+ * PIKK Supervisor – job queue + simple runners
  */
 
 const supervisor = new Hono()
@@ -80,7 +78,7 @@ supervisor.get('/jobs', async (c) => {
   }
 })
 
-/** Claim next job (simple worker pattern) */
+/** Claim next job */
 supervisor.post('/jobs/claim', async (c) => {
   try {
     const db = c.env.DB
@@ -140,6 +138,72 @@ supervisor.post('/jobs/:id/complete', async (c) => {
     return c.json({ ok: true, id, status: success ? 'succeeded' : 'failed' })
   } catch (err) {
     return c.json({ error: 'internal error' }, 500)
+  }
+})
+
+/**
+ * Run a simple job type immediately (synchronous helper)
+ * Useful for cleanup_sessions and health_check without a separate worker.
+ */
+supervisor.post('/run', async (c) => {
+  try {
+    const db = c.env.DB
+    if (!db) return c.json({ error: 'database not configured' }, 500)
+    const body = await c.req.json().catch(() => ({}))
+    const type = (body.type || '').toString()
+
+    const now = new Date().toISOString()
+    const jobId = crypto.randomUUID()
+
+    // Record the job as running
+    await db.prepare(
+      `INSERT INTO supervisor_jobs
+       (id, type, status, priority, payload, attempts, max_attempts, created_at, updated_at, started_at)
+       VALUES (?, ?, 'running', 10, ?, 1, 1, ?, ?, ?)`
+    ).bind(jobId, type, body.payload ? JSON.stringify(body.payload) : null, now, now, now).run()
+
+    let result: any = {}
+    let success = true
+
+    if (type === 'cleanup_sessions') {
+      const before = await db.prepare(`SELECT COUNT(*) as c FROM sessions`).first()
+      await db.prepare(`DELETE FROM sessions WHERE expires_at <= datetime('now')`).run()
+      const after = await db.prepare(`SELECT COUNT(*) as c FROM sessions`).first()
+      result = {
+        sessionsBefore: before?.c ?? 0,
+        sessionsAfter: after?.c ?? 0,
+        cleaned: Number(before?.c || 0) - Number(after?.c || 0),
+      }
+    } else if (type === 'health_check') {
+      const users = await db.prepare(`SELECT COUNT(*) as c FROM users`).first()
+      const live = await db.prepare(`SELECT COUNT(*) as c FROM broadcast_sessions WHERE status = 'live'`).first().catch(() => ({ c: 0 }))
+      const openFlags = await db.prepare(`SELECT COUNT(*) as c FROM shield_flags WHERE status = 'open'`).first().catch(() => ({ c: 0 }))
+      result = {
+        users: users?.c ?? 0,
+        liveBroadcasts: live?.c ?? 0,
+        openFlags: openFlags?.c ?? 0,
+        checkedAt: now,
+      }
+    } else if (type === 'review_flag') {
+      const open = await db.prepare(
+        `SELECT id, reason, severity, created_at FROM shield_flags WHERE status = 'open' ORDER BY created_at ASC LIMIT 10`
+      ).all().catch(() => ({ results: [] }))
+      result = { openFlags: open.results || [], note: 'Review list only — no auto-action taken' }
+    } else {
+      success = false
+      result = { error: 'unsupported immediate run type', supported: ['cleanup_sessions', 'health_check', 'review_flag'] }
+    }
+
+    await db.prepare(
+      `UPDATE supervisor_jobs
+       SET status = ?, result = ?, finished_at = ?, updated_at = ?
+       WHERE id = ?`
+    ).bind(success ? 'succeeded' : 'failed', JSON.stringify(result), now, now, jobId).run()
+
+    return c.json({ jobId, type, success, result })
+  } catch (err) {
+    console.error('supervisor run error', err)
+    return c.json({ error: 'internal error', detail: String(err) }, 500)
   }
 })
 
