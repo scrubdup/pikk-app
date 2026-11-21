@@ -9,32 +9,55 @@ const admin = new Hono()
 
 admin.use('*', requireAuth, requireAdmin)
 
+async function safeCount(db: D1Database, sql: string): Promise<number> {
+  try {
+    const row = await db.prepare(sql).first()
+    return (row?.c as number) ?? 0
+  } catch {
+    return 0
+  }
+}
+
 /** Overview for Master Mind dashboard */
 admin.get('/overview', async (c) => {
   const db = c.env.DB
   if (!db) return c.json({ error: 'database not configured' }, 500)
 
   try {
-    const users = await db.prepare(`SELECT COUNT(*) as c FROM users`).first()
-    const sessions = await db.prepare(`SELECT COUNT(*) as c FROM sessions`).first()
-    const liveBroadcasts = await db.prepare(
-      `SELECT COUNT(*) as c FROM broadcast_sessions WHERE status = 'live'`
-    ).first().catch(() => ({ c: 0 }))
-    const openFlags = await db.prepare(
-      `SELECT COUNT(*) as c FROM shield_flags WHERE status = 'open'`
-    ).first().catch(() => ({ c: 0 }))
-    const openIncidents = await db.prepare(
-      `SELECT COUNT(*) as c FROM incidents WHERE status = 'open'`
-    ).first().catch(() => ({ c: 0 }))
+    const [
+      users,
+      sessions,
+      liveBroadcasts,
+      openFlags,
+      openIncidents,
+      openTickets,
+      pendingPayouts,
+      queuedJobs,
+      pendingAppeals,
+    ] = await Promise.all([
+      safeCount(db, 'SELECT COUNT(*) as c FROM users'),
+      safeCount(db, 'SELECT COUNT(*) as c FROM sessions'),
+      safeCount(db, `SELECT COUNT(*) as c FROM broadcast_sessions WHERE status = 'live'`),
+      safeCount(db, `SELECT COUNT(*) as c FROM shield_flags WHERE status = 'open'`),
+      safeCount(db, `SELECT COUNT(*) as c FROM incidents WHERE status = 'open'`),
+      safeCount(db, `SELECT COUNT(*) as c FROM support_tickets WHERE status IN ('open','pending')`),
+      safeCount(db, `SELECT COUNT(*) as c FROM payouts WHERE status IN ('requested','processing')`),
+      safeCount(db, `SELECT COUNT(*) as c FROM supervisor_jobs WHERE status = 'queued'`),
+      safeCount(db, `SELECT COUNT(*) as c FROM appeals WHERE status = 'pending'`),
+    ])
 
     return c.json({
       timestamp: new Date().toISOString(),
       stats: {
-        users: users?.c ?? 0,
-        activeSessions: sessions?.c ?? 0,
-        liveBroadcasts: liveBroadcasts?.c ?? 0,
-        openShieldFlags: openFlags?.c ?? 0,
-        openIncidents: openIncidents?.c ?? 0,
+        users,
+        activeSessions: sessions,
+        liveBroadcasts,
+        openShieldFlags: openFlags,
+        openIncidents,
+        openSupportTickets: openTickets,
+        pendingPayouts,
+        queuedSupervisorJobs: queuedJobs,
+        pendingAppeals,
       },
     })
   } catch (err) {

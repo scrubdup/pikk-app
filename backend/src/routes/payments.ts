@@ -93,6 +93,78 @@ payments.post('/deposit', async (c) => {
   }
 })
 
+/**
+ * Send a gift (TEST MODE)
+ * Debits sender, credits recipient. Used by Live gifts / donations.
+ */
+payments.post('/gifts', async (c) => {
+  try {
+    const db = c.env.DB
+    if (!db) return c.json({ error: 'database not configured' }, 500)
+    const sender = c.get('user')
+    const body = await c.req.json().catch(() => ({}))
+
+    const recipientId = Number(body.recipientId)
+    const amountCents = Number(body.amountCents)
+    const note = (body.note || '').toString().slice(0, 200)
+
+    if (!recipientId || recipientId === sender.id) {
+      return c.json({ error: 'valid recipientId required' }, 400)
+    }
+    if (!amountCents || amountCents < 10) {
+      return c.json({ error: 'minimum gift is 10 cents' }, 400)
+    }
+
+    // Verify recipient exists
+    const recipient = await db.prepare(`SELECT id FROM users WHERE id = ?`).bind(recipientId).first()
+    if (!recipient) return c.json({ error: 'recipient not found' }, 404)
+
+    const senderWallet = await ensureWallet(db, sender.id)
+    if ((senderWallet.balance_cents as number) < amountCents) {
+      return c.json({ error: 'insufficient balance' }, 400)
+    }
+
+    await ensureWallet(db, recipientId)
+    const now = new Date().toISOString()
+    const giftId = crypto.randomUUID()
+    const debitTx = crypto.randomUUID()
+    const creditTx = crypto.randomUUID()
+
+    // Debit sender
+    await db.prepare(
+      `UPDATE wallets SET balance_cents = balance_cents - ?, updated_at = ? WHERE user_id = ?`
+    ).bind(amountCents, now, sender.id).run()
+
+    await db.prepare(
+      `INSERT INTO transactions
+       (id, user_id, type, amount_cents, currency, status, description, related_id, created_at, updated_at)
+       VALUES (?, ?, 'gift_sent', ?, 'USD', 'completed', ?, ?, ?, ?)`
+    ).bind(debitTx, sender.id, -amountCents, note || 'Gift sent', giftId, now, now).run()
+
+    // Credit recipient
+    await db.prepare(
+      `UPDATE wallets SET balance_cents = balance_cents + ?, updated_at = ? WHERE user_id = ?`
+    ).bind(amountCents, now, recipientId).run()
+
+    await db.prepare(
+      `INSERT INTO transactions
+       (id, user_id, type, amount_cents, currency, status, description, related_id, created_at, updated_at)
+       VALUES (?, ?, 'gift_received', ?, 'USD', 'completed', ?, ?, ?, ?)`
+    ).bind(creditTx, recipientId, amountCents, note || 'Gift received', giftId, now, now).run()
+
+    return c.json({
+      giftId,
+      amountCents,
+      recipientId,
+      mode: 'TEST',
+      warning: 'Simulated gift only. No real money moved.',
+    }, 201)
+  } catch (err) {
+    console.error('gift error', err)
+    return c.json({ error: 'internal error' }, 500)
+  }
+})
+
 /** List transactions */
 payments.get('/transactions', async (c) => {
   try {
@@ -133,7 +205,6 @@ payments.post('/payouts', async (c) => {
     const payoutId = crypto.randomUUID()
     const txId = crypto.randomUUID()
 
-    // Move to pending
     await db.prepare(
       `UPDATE wallets
        SET balance_cents = balance_cents - ?,
@@ -204,7 +275,6 @@ payments.patch('/payouts/:id', requireAdmin, async (c) => {
       `UPDATE payouts SET status = ?, updated_at = ?, processed_at = ?, failure_reason = ? WHERE id = ?`
     ).bind(status, now, status === 'paid' || status === 'failed' ? now : null, body.failureReason || null, id).run()
 
-    // Adjust wallet pending/balance on final states
     if (status === 'paid') {
       await db.prepare(
         `UPDATE wallets SET pending_cents = pending_cents - ?, updated_at = ? WHERE user_id = ?`
