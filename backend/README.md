@@ -1,46 +1,60 @@
 # PIKK Backend (Engine)
 
-Cloudflare Workers + Hono + D1 foundation.
+Cloudflare Workers + Hono + D1 + R2
 
-## Version 0.4.0
+## Vault (Complete)
 
-### Systems Status
+Media storage is ready. Only requires the R2 bucket to be created and bound.
+
+### One-time setup
+```bash
+cd backend
+npx wrangler r2 bucket create pikk-vault
+# Then uncomment the [[r2_buckets]] block in wrangler.toml and redeploy
+```
+
+### API
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/vault/objects` | Register object metadata → returns upload instructions |
+| PUT | `/vault/objects/:id/content` | Stream file bytes into R2 |
+| GET | `/vault/objects/:id/content` | Stream file bytes from R2 |
+| GET | `/vault/objects` | List your objects |
+| GET | `/vault/objects/:id` | Get metadata |
+| DELETE | `/vault/objects/:id` | Soft-delete + remove from R2 |
+
+### Example flow
+```bash
+# 1. Register
+curl -X POST $API/vault/objects -H "Content-Type: application/json" -d '{"filename":"clip.mp4","contentType":"video/mp4"}'
+
+# 2. Upload (use the id from step 1)
+curl -X PUT $API/vault/objects/<id>/content -H "Content-Type: video/mp4" --data-binary @clip.mp4
+
+# 3. Download
+curl $API/vault/objects/<id>/content -o downloaded.mp4
+```
+
+## Other Systems
 
 | System | Status |
 |--------|--------|
-| PIKK Engine (auth, sessions, health) | Strong |
-| PIKK Broadcast + Connectors | D1-backed sessions & connector status (no real OAuth/ingest) |
-| Broadcast Supervisor | Job queue foundation |
-| PIKK Vault | Structured stubs (R2 not bound) |
-| PIKK Shield | Flagging + incidents |
-| Trust & Safety | Moderation actions + appeals |
-| Payments & Payouts | Full TEST MODE wallet / transactions / payouts |
-| AI Support | Ticket + message threads (AI replies are stubs) |
-| PIKK Supervisor | Job enqueue / claim / complete |
-| Master Mind | Admin overview + incidents |
+| Auth / Engine | Strong |
+| Vault | **Complete** (needs R2 bind) |
+| Broadcast + Connectors | D1-backed, no real OAuth/ingest |
+| Payments | Full TEST MODE |
+| Support | Tickets + stub AI |
+| Shield + Moderation | Foundation |
+| Supervisor | Job queue + runners |
+| Master Mind | Admin overview + activity |
 
-### Important Honesty Notes
-- **No real payment processor** is connected. All money movement is simulated.
-- **No real platform OAuth** or RTMP/WHIP ingest exists yet.
-- **AI Support** acknowledges tickets and stores threads; LLM replies are stubs.
-- Supervisor provides a job queue; automated bot workers are not running.
-
-### Setup
-
+## Setup
 ```bash
 cd backend
 npm install
-npx wrangler d1 create pikk-db   # paste real database_id into wrangler.toml
-npm run db:migrate               # applies 0001 → 0004
+npx wrangler d1 create pikk-db   # paste ID into wrangler.toml
+npm run db:migrate               # 0001 → 0005
+npx wrangler r2 bucket create pikk-vault
+# uncomment R2 block in wrangler.toml
 npm run dev
 ```
-
-### Main Route Groups
-- `/auth/*` – signup, login, sessions, password flows
-- `/broadcast/*` – sessions + connectors
-- `/payments/*` – wallet, deposit (test), payouts (test)
-- `/support/*` – tickets & messages
-- `/shield/*` + `/moderation/*` – flags, actions, appeals
-- `/supervisor/*` – job queue
-- `/admin/*` – overview, users, incidents
-- `/vault/*` – media stubs
