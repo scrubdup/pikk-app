@@ -2,9 +2,9 @@ import { Hono } from 'hono'
 import { requireAuth } from '../lib/middleware'
 
 /**
- * Broadcast API stubs
- * Real ingest, RTMP, and destination adapters come later.
- * These endpoints define the contract from the Master Plan.
+ * Broadcast API
+ * Session lifecycle is persisted in D1.
+ * Real media ingest (RTMP/WHIP), packaging, and destination relays are still TEST MODE.
  */
 
 const broadcast = new Hono()
@@ -22,80 +22,189 @@ const DESTINATIONS = [
   { id: 'custom-rtmp', name: 'Custom RTMP', status: 'disconnected', note: 'Bring your own key' },
 ]
 
-// In-memory session store for stub (replace with D1 later)
-const sessions = new Map<string, any>()
+function rowToSession(row: any) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    title: row.title,
+    status: row.status,
+    destinations: typeof row.destinations === 'string' ? JSON.parse(row.destinations) : row.destinations,
+    playbackUrl: row.playback_url || null,
+    startedAt: row.started_at || null,
+    endedAt: row.ended_at || null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    health: { bitrate: null, fps: null, dropped: 0 },
+  }
+}
 
 broadcast.get('/destinations', async (c) => {
   return c.json({ destinations: DESTINATIONS })
 })
 
 broadcast.post('/sessions', async (c) => {
-  const user = c.get('user')
-  const body = await c.req.json().catch(() => ({}))
-  const id = crypto.randomUUID()
-  const session = {
-    id,
-    userId: user.id,
-    title: body.title || 'Untitled broadcast',
-    status: 'draft',
-    destinations: body.destinations || ['pikk'],
-    createdAt: new Date().toISOString(),
-    startedAt: null,
-    endedAt: null,
-    health: { bitrate: null, fps: null, dropped: 0 },
+  try {
+    const user = c.get('user')
+    const body = await c.req.json().catch(() => ({}))
+    const db = c.env.DB
+    if (!db) return c.json({ error: 'database not configured' }, 500)
+
+    const id = crypto.randomUUID()
+    const now = new Date().toISOString()
+    const title = (body.title || 'Untitled broadcast').toString().slice(0, 120)
+    const destinations = Array.isArray(body.destinations) && body.destinations.length
+      ? body.destinations
+      : ['pikk']
+
+    await db.prepare(
+      `INSERT INTO broadcast_sessions
+       (id, user_id, title, status, destinations, created_at, updated_at)
+       VALUES (?, ?, ?, 'draft', ?, ?, ?)`
+    ).bind(id, user.id, title, JSON.stringify(destinations), now, now).run()
+
+    const row = await db.prepare(`SELECT * FROM broadcast_sessions WHERE id = ?`).bind(id).first()
+    return c.json({ session: rowToSession(row) }, 201)
+  } catch (err) {
+    console.error('broadcast create session error', err)
+    return c.json({ error: 'failed to create session', detail: String(err) }, 500)
   }
-  sessions.set(id, session)
-  return c.json({ session }, 201)
 })
 
 broadcast.get('/sessions/:id', async (c) => {
-  const session = sessions.get(c.req.param('id'))
-  if (!session) return c.json({ error: 'session not found' }, 404)
-  const user = c.get('user')
-  if (session.userId !== user.id && user.role !== 'admin') {
-    return c.json({ error: 'forbidden' }, 403)
+  try {
+    const db = c.env.DB
+    if (!db) return c.json({ error: 'database not configured' }, 500)
+
+    const row = await db.prepare(`SELECT * FROM broadcast_sessions WHERE id = ?`).bind(c.req.param('id')).first()
+    if (!row) return c.json({ error: 'session not found' }, 404)
+
+    const user = c.get('user')
+    if (row.user_id !== user.id && user.role !== 'admin') {
+      return c.json({ error: 'forbidden' }, 403)
+    }
+
+    return c.json({ session: rowToSession(row) })
+  } catch (err) {
+    console.error('broadcast get session error', err)
+    return c.json({ error: 'internal error' }, 500)
   }
-  return c.json({ session })
 })
 
 broadcast.post('/sessions/:id/start', async (c) => {
-  const session = sessions.get(c.req.param('id'))
-  if (!session) return c.json({ error: 'session not found' }, 404)
-  const user = c.get('user')
-  if (session.userId !== user.id) return c.json({ error: 'forbidden' }, 403)
+  try {
+    const db = c.env.DB
+    if (!db) return c.json({ error: 'database not configured' }, 500)
 
-  // Stub: no real ingest yet
-  session.status = 'live'
-  session.startedAt = new Date().toISOString()
-  session.note = 'TEST MODE — no real media ingest or multistream yet'
-  sessions.set(session.id, session)
+    const id = c.req.param('id')
+    const row = await db.prepare(`SELECT * FROM broadcast_sessions WHERE id = ?`).bind(id).first()
+    if (!row) return c.json({ error: 'session not found' }, 404)
 
-  return c.json({
-    session,
-    warning: 'Broadcast started in stub mode only. Real RTMP/WHIP ingest and destination relays are not connected.',
-  })
+    const user = c.get('user')
+    if (row.user_id !== user.id) return c.json({ error: 'forbidden' }, 403)
+
+    if (row.status === 'live') {
+      return c.json({ session: rowToSession(row), warning: 'Already live (TEST MODE)' })
+    }
+
+    const now = new Date().toISOString()
+    await db.prepare(
+      `UPDATE broadcast_sessions
+       SET status = 'live', started_at = ?, updated_at = ?
+       WHERE id = ?`
+    ).bind(now, now, id).run()
+
+    const updated = await db.prepare(`SELECT * FROM broadcast_sessions WHERE id = ?`).bind(id).first()
+
+    return c.json({
+      session: rowToSession(updated),
+      warning: 'Broadcast marked live in TEST MODE only. Real RTMP/WHIP ingest and destination relays are not connected.',
+    })
+  } catch (err) {
+    console.error('broadcast start error', err)
+    return c.json({ error: 'internal error' }, 500)
+  }
 })
 
 broadcast.post('/sessions/:id/stop', async (c) => {
-  const session = sessions.get(c.req.param('id'))
-  if (!session) return c.json({ error: 'session not found' }, 404)
-  const user = c.get('user')
-  if (session.userId !== user.id) return c.json({ error: 'forbidden' }, 403)
+  try {
+    const db = c.env.DB
+    if (!db) return c.json({ error: 'database not configured' }, 500)
 
-  session.status = 'ended'
-  session.endedAt = new Date().toISOString()
-  sessions.set(session.id, session)
-  return c.json({ session })
+    const id = c.req.param('id')
+    const row = await db.prepare(`SELECT * FROM broadcast_sessions WHERE id = ?`).bind(id).first()
+    if (!row) return c.json({ error: 'session not found' }, 404)
+
+    const user = c.get('user')
+    if (row.user_id !== user.id && user.role !== 'admin') {
+      return c.json({ error: 'forbidden' }, 403)
+    }
+
+    const now = new Date().toISOString()
+    await db.prepare(
+      `UPDATE broadcast_sessions
+       SET status = 'ended', ended_at = ?, updated_at = ?
+       WHERE id = ?`
+    ).bind(now, now, id).run()
+
+    const updated = await db.prepare(`SELECT * FROM broadcast_sessions WHERE id = ?`).bind(id).first()
+    return c.json({ session: rowToSession(updated) })
+  } catch (err) {
+    console.error('broadcast stop error', err)
+    return c.json({ error: 'internal error' }, 500)
+  }
 })
 
 broadcast.get('/sessions/:id/health', async (c) => {
-  const session = sessions.get(c.req.param('id'))
-  if (!session) return c.json({ error: 'session not found' }, 404)
-  return c.json({
-    status: session.status,
-    health: session.health,
-    note: 'Stub health — real metrics require ingest workers',
-  })
+  try {
+    const db = c.env.DB
+    if (!db) return c.json({ error: 'database not configured' }, 500)
+
+    const row = await db.prepare(`SELECT id, status, user_id FROM broadcast_sessions WHERE id = ?`).bind(c.req.param('id')).first()
+    if (!row) return c.json({ error: 'session not found' }, 404)
+
+    const user = c.get('user')
+    if (row.user_id !== user.id && user.role !== 'admin') {
+      return c.json({ error: 'forbidden' }, 403)
+    }
+
+    return c.json({
+      status: row.status,
+      health: { bitrate: null, fps: null, dropped: 0 },
+      note: 'Stub health — real metrics require ingest workers',
+    })
+  } catch (err) {
+    console.error('broadcast health error', err)
+    return c.json({ error: 'internal error' }, 500)
+  }
+})
+
+/** List recent sessions for the current user (or all for admin) */
+broadcast.get('/sessions', async (c) => {
+  try {
+    const db = c.env.DB
+    if (!db) return c.json({ error: 'database not configured' }, 500)
+
+    const user = c.get('user')
+    const limit = Math.min(Number(c.req.query('limit') || 20), 50)
+
+    let rows
+    if (user.role === 'admin') {
+      rows = await db.prepare(
+        `SELECT * FROM broadcast_sessions ORDER BY created_at DESC LIMIT ?`
+      ).bind(limit).all()
+    } else {
+      rows = await db.prepare(
+        `SELECT * FROM broadcast_sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`
+      ).bind(user.id, limit).all()
+    }
+
+    return c.json({
+      sessions: (rows.results || []).map(rowToSession),
+    })
+  } catch (err) {
+    console.error('broadcast list sessions error', err)
+    return c.json({ error: 'internal error', detail: String(err) }, 500)
+  }
 })
 
 export default broadcast

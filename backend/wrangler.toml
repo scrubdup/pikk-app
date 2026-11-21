@@ -3,13 +3,24 @@ main = "src/index.ts"
 compatibility_date = "2026-11-19"
 compatibility_flags = ["nodejs_compat"]
 
+# ---------------------------------------------------------------------------
+# D1 Database
+# 1. Run:  npx wrangler d1 create pikk-db
+# 2. Paste the real database_id below (replace the local placeholder)
+# 3. Apply migrations: npm run db:migrate   (local) or db:migrate:prod
+# ---------------------------------------------------------------------------
 [[d1_databases]]
 binding = "DB"
 database_name = "pikk-db"
-database_id = "local-pikk-db"  # Replace with real D1 ID after: npx wrangler d1 create pikk-db
+database_id = "local-pikk-db"  # <-- replace with real ID from `wrangler d1 create`
 migrations_dir = "migrations"
 
-# Uncomment after creating the R2 bucket:
+# ---------------------------------------------------------------------------
+# R2 Bucket (Vault / media)
+# 1. Run:  npx wrangler r2 bucket create pikk-vault
+# 2. Uncomment the block below
+# 3. Redeploy
+# ---------------------------------------------------------------------------
 # [[r2_buckets]]
 # binding = "VAULT_BUCKET"
 # bucket_name = "pikk-vault"
