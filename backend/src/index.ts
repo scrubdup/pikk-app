@@ -8,6 +8,10 @@ import admin from './routes/admin'
 import vault from './routes/vault'
 import broadcast from './routes/broadcast'
 import shield from './routes/shield'
+import payments from './routes/payments'
+import support from './routes/support'
+import moderation from './routes/moderation'
+import supervisor from './routes/supervisor'
 
 type Bindings = {
   DB: D1Database
@@ -38,11 +42,15 @@ app.route('/admin', admin)
 app.route('/vault', vault)
 app.route('/broadcast', broadcast)
 app.route('/shield', shield)
+app.route('/payments', payments)
+app.route('/support', support)
+app.route('/moderation', moderation)
+app.route('/supervisor', supervisor)
 
 app.get('/', (c) => {
   return c.json({
     name: 'PIKK API',
-    version: '0.3.0',
+    version: '0.4.0',
     status: 'online',
     environment: c.env.ENVIRONMENT || 'unknown',
     endpoints: {
@@ -52,7 +60,11 @@ app.get('/', (c) => {
       vault: '/vault/*',
       broadcast: '/broadcast/*',
       shield: '/shield/*',
-    }
+      payments: '/payments/*',
+      support: '/support/*',
+      moderation: '/moderation/*',
+      supervisor: '/supervisor/*',
+    },
   })
 })
 
