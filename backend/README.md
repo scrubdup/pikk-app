@@ -1,60 +1,38 @@
-# PIKK Backend (Engine)
+# PIKK Backend Engine v0.6
 
-Cloudflare Workers + Hono + D1 + R2
+Native creator platform API (Cloudflare Workers + Hono + D1).
 
-## Vault (Complete)
+## Maturity (target ~60%)
 
-Media storage is ready. Only requires the R2 bucket to be created and bound.
+| System | ~% | Notes |
+|--------|-----|-------|
+| Engine / Auth | 85% | Complete auth lifecycle |
+| Native PIKK Live discovery | 55% | Public `/live` + sessions |
+| Broadcast control plane | 55% | Tokens, relays, connectors |
+| Vault | 40% | Code complete; R2 dashboard gate |
+| Payments | 50% | Full TEST MODE + gifts |
+| AI Support | 55% | Live path when AI_API_KEY set |
+| Shield / Moderation | 45% | Flags, actions, appeals |
+| Supervisor | 45% | Queue + runners |
+| Master Mind (admin) | 45% | Overview + activity |
+| Notifications | 50% | Inbox + mark read |
+| Creator onboarding | 55% | Apply + admin review |
+| **Overall** | **~58%** | External: R2 enable, AI key, Stream/OAuth |
 
-### One-time setup
-```bash
-cd backend
-npx wrangler r2 bucket create pikk-vault
-# Then uncomment the [[r2_buckets]] block in wrangler.toml and redeploy
-```
+## Production D1
+- Database: `pikk-engine-db`
+- ID: `7019f730-4eeb-4f00-b8f1-bd5a034fed6e`
+- Account: PIKK (separate from legacy `pikk-db` schema)
 
-### API
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/vault/objects` | Register object metadata → returns upload instructions |
-| PUT | `/vault/objects/:id/content` | Stream file bytes into R2 |
-| GET | `/vault/objects/:id/content` | Stream file bytes from R2 |
-| GET | `/vault/objects` | List your objects |
-| GET | `/vault/objects/:id` | Get metadata |
-| DELETE | `/vault/objects/:id` | Soft-delete + remove from R2 |
-
-### Example flow
-```bash
-# 1. Register
-curl -X POST $API/vault/objects -H "Content-Type: application/json" -d '{"filename":"clip.mp4","contentType":"video/mp4"}'
-
-# 2. Upload (use the id from step 1)
-curl -X PUT $API/vault/objects/<id>/content -H "Content-Type: video/mp4" --data-binary @clip.mp4
-
-# 3. Download
-curl $API/vault/objects/<id>/content -o downloaded.mp4
-```
-
-## Other Systems
-
-| System | Status |
-|--------|--------|
-| Auth / Engine | Strong |
-| Vault | **Complete** (needs R2 bind) |
-| Broadcast + Connectors | D1-backed, no real OAuth/ingest |
-| Payments | Full TEST MODE |
-| Support | Tickets + stub AI |
-| Shield + Moderation | Foundation |
-| Supervisor | Job queue + runners |
-| Master Mind | Admin overview + activity |
-
-## Setup
+## Quick start
 ```bash
 cd backend
 npm install
-npx wrangler d1 create pikk-db   # paste ID into wrangler.toml
-npm run db:migrate               # 0001 → 0005
-npx wrangler r2 bucket create pikk-vault
-# uncomment R2 block in wrangler.toml
-npm run dev
+npm run db:migrate:prod   # if needed
+npm run deploy
 ```
+
+## Connect remaining
+1. Enable R2 in CF Dashboard (PIKK account) → create `pikk-vault`
+2. `npx wrangler secret put AI_API_KEY`
+3. Later: Cloudflare Stream for real media, Stripe for real money

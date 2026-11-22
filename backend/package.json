@@ -1,13 +1,13 @@
 {
   "name": "pikk-backend",
-  "version": "0.1.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:migrate": "wrangler d1 migrations apply pikk-db --local",
-    "db:migrate:prod": "wrangler d1 migrations apply pikk-db"
+    "db:migrate": "wrangler d1 migrations apply pikk-engine-db --local",
+    "db:migrate:prod": "wrangler d1 migrations apply pikk-engine-db --remote"
   },
   "dependencies": {
     "hono": "^4.6.12",
