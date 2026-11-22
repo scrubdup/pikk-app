@@ -15,6 +15,7 @@ import supervisor from './routes/supervisor'
 import notifications from './routes/notifications'
 import creator from './routes/creator'
 import live from './routes/live'
+import social from './routes/social'
 
 type Bindings = {
   DB: D1Database
@@ -55,14 +56,15 @@ app.route('/supervisor', supervisor)
 app.route('/notifications', notifications)
 app.route('/creator', creator)
 app.route('/live', live)
+app.route('/social', social)
 
 app.get('/', (c) => {
   return c.json({
     name: 'PIKK API',
-    version: '0.6.0',
+    version: '0.7.0',
     status: 'online',
     environment: c.env.ENVIRONMENT || 'unknown',
-    platform: 'Native creator platform — Live, Vault, Wallet, Support. Multistream optional.',
+    platform: 'Native creator platform — Live, social, Vault, Wallet, Support.',
     capabilities: {
       aiSupport: !!c.env.AI_API_KEY,
       vaultR2: !!c.env.VAULT_BUCKET,
@@ -71,6 +73,7 @@ app.get('/', (c) => {
       health: 'GET /health',
       auth: '/auth/*',
       live: '/live/*',
+      social: '/social/*',
       broadcast: '/broadcast/*',
       creator: '/creator/*',
       vault: '/vault/*',
