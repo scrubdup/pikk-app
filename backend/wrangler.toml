@@ -3,30 +3,22 @@ main = "src/index.ts"
 compatibility_date = "2026-11-19"
 compatibility_flags = ["nodejs_compat"]
 
-# ---------------------------------------------------------------------------
 # D1 — pikk-engine-db on PIKK Cloudflare account
-# uuid: 7019f730-4eeb-4f00-b8f1-bd5a034fed6e
-# (Separate from legacy pikk-db production schema)
-# ---------------------------------------------------------------------------
 [[d1_databases]]
 binding = "DB"
 database_name = "pikk-engine-db"
 database_id = "7019f730-4eeb-4f00-b8f1-bd5a034fed6e"
 migrations_dir = "migrations"
 
-# ---------------------------------------------------------------------------
-# R2 Bucket (Vault)
-# Enable R2 in Cloudflare Dashboard for the PIKK account first, then:
-#   create bucket pikk-vault and uncomment below
-# ---------------------------------------------------------------------------
-# [[r2_buckets]]
-# binding = "VAULT_BUCKET"
-# bucket_name = "pikk-vault"
+# R2 — Vault
+[[r2_buckets]]
+binding = "VAULT_BUCKET"
+bucket_name = "pikk-vault"
 
-# Secrets (set via dashboard or: npx wrangler secret put NAME)
-#   AI_API_KEY
-#   AI_BASE_URL (optional)
-#   AI_MODEL (optional)
+# Secrets:
+#   npx wrangler secret put AI_API_KEY
+#   npx wrangler secret put AI_BASE_URL  (optional)
+#   npx wrangler secret put AI_MODEL     (optional)
 
 [vars]
-ENVIRONMENT = "development"
+ENVIRONMENT = "production"
