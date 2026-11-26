@@ -1,11 +1,25 @@
 import { Hono } from 'hono'
 import { requireAuth } from '../lib/middleware'
-
-/**
- * Public native PIKK Live discovery + engagement
- */
+import { LIVE_SECTIONS, LIVE_TOPIC_COUNT, LIVE_TOPICS } from '../lib/live-categories'
 
 const live = new Hono()
+
+/** Full 78-topic directory for Go Live + discovery UI */
+live.get('/categories', (c) => {
+  return c.json({
+    sections: LIVE_SECTIONS,
+    totalTopics: LIVE_TOPIC_COUNT,
+    expected: 78,
+    complete: LIVE_TOPIC_COUNT === 78,
+    note: 'General Live (17) for broadcast categories; other sections for group rooms.',
+  })
+})
+
+live.get('/topics', (c) => {
+  const section = c.req.query('section')
+  const topics = section ? LIVE_TOPICS.filter((t) => t.section === section) : LIVE_TOPICS
+  return c.json({ total: topics.length, topics })
+})
 
 live.get('/', async (c) => {
   try {
@@ -46,6 +60,7 @@ live.get('/', async (c) => {
         },
         platform: 'pikk',
       })),
+      categoriesAvailable: LIVE_TOPIC_COUNT,
       note: 'Native PIKK Live. Real video needs a media worker.',
     })
   } catch (err) {
@@ -53,7 +68,6 @@ live.get('/', async (c) => {
   }
 })
 
-/** Lives from people you follow */
 live.get('/following', requireAuth, async (c) => {
   try {
     const db = c.env.DB
@@ -133,7 +147,6 @@ live.get('/:id', async (c) => {
   }
 })
 
-/** Soft viewer presence (increment) */
 live.post('/:id/join', async (c) => {
   try {
     const db = c.env.DB
@@ -156,19 +169,12 @@ live.post('/:id/leave', async (c) => {
     const db = c.env.DB
     if (!db) return c.json({ error: 'database not configured' }, 500)
     const id = c.req.param('id')
-    await db.prepare(
-      `UPDATE broadcast_sessions SET viewer_count = MAX(COALESCE(viewer_count, 0) - 1, 0) WHERE id = ?`
-    ).bind(id).run()
-    return c.json({ ok: true })
+    const row = await db.prepare(`SELECT viewer_count FROM broadcast_sessions WHERE id = ?`).bind(id).first()
+    const next = Math.max(0, Number(row?.viewer_count || 0) - 1)
+    await db.prepare(`UPDATE broadcast_sessions SET viewer_count = ? WHERE id = ?`).bind(next, id).run()
+    return c.json({ ok: true, viewerCount: next })
   } catch (err) {
-    // SQLite may not have MAX in SET — fallback
-    try {
-      const db = c.env.DB
-      const row = await db.prepare(`SELECT viewer_count FROM broadcast_sessions WHERE id = ?`).bind(c.req.param('id')).first()
-      const next = Math.max(0, Number(row?.viewer_count || 0) - 1)
-      await db.prepare(`UPDATE broadcast_sessions SET viewer_count = ? WHERE id = ?`).bind(next, c.req.param('id')).run()
-    } catch { /* ignore */ }
-    return c.json({ ok: true })
+    return c.json({ error: 'internal error' }, 500)
   }
 })
 
