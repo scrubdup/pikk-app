@@ -1,4 +1,4 @@
-/** PIKK Live — 78 topics (source: live-discovery directory) */
+/** PIKK Live — complete 78-topic directory */
 
 export type LiveSection =
   | 'general'
@@ -17,7 +17,11 @@ export type LiveTopic = {
 }
 
 function slug(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  return s
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
 }
 
 const SECTIONS: { section: LiveSection; label: string; names: string[] }[] = [
@@ -25,10 +29,22 @@ const SECTIONS: { section: LiveSection; label: string; names: string[] }[] = [
     section: 'general',
     label: 'General Live',
     names: [
-      'Just Chatting', 'Gaming', 'Music', 'IRL', 'Sports', 'Creative',
-      'Podcasts & Talk Shows', 'Food & Cooking', 'Fitness', 'Beauty & Fashion',
-      'Business & Money Talk', 'Dating & Connections', 'Education',
-      'News & Commentary', 'Comedy & Entertainment', 'Comedy & Roast Battles',
+      'Just Chatting',
+      'Gaming',
+      'Music',
+      'IRL',
+      'Sports',
+      'Creative',
+      'Podcasts & Talk Shows',
+      'Food & Cooking',
+      'Fitness',
+      'Beauty & Fashion',
+      'Business & Money Talk',
+      'Dating & Connections',
+      'Education',
+      'News & Commentary',
+      'Comedy & Entertainment',
+      'Comedy & Roast Battles',
       'Creator Spotlight',
     ],
   },
@@ -36,37 +52,70 @@ const SECTIONS: { section: LiveSection; label: string; names: string[] }[] = [
     section: 'womens',
     label: "Women's Rooms",
     names: [
-      'Ladies Lounge', 'Girl Talk', 'Tea Time', "What's the Word?", 'Who Did What?',
-      'Beauty Bar', "Girls' Night In", 'Love & Standards', 'Boss Ladies',
-      'Fashion & Fits', 'Ladies Only Live', 'Women in Business',
-      "Women's Mental Wellness", 'Dating From Her Side', 'The Hustle Room: Women',
+      'Ladies Lounge',
+      'Girl Talk',
+      'Tea Time',
+      "What's the Word?",
+      'Who Did What?',
+      'Beauty Bar',
+      "Girls' Night In",
+      'Love & Standards',
+      'Boss Ladies',
+      'Fashion & Fits',
+      'Ladies Only Live',
+      'Women in Business',
+      "Women's Mental Wellness",
+      'Dating From Her Side',
+      'The Hustle Room: Women',
     ],
   },
   {
     section: 'mens',
     label: "Men's Rooms",
     names: [
-      'The Man Cave', 'The Barbershop', "Fellas' Night", "Men's Corner",
-      'Men in Business', 'Cars & Motors', 'Fitness & Brotherhood', 'Fatherhood',
-      "Men's Mental Wellness", 'Dating From His Side', 'Sports Debate',
-      'Gaming Brotherhood', "Men's Style", 'The Hustle Room', 'Brotherhood & Mentorship',
+      'The Man Cave',
+      'The Barbershop',
+      "Fellas' Night",
+      "Men's Corner",
+      'Men in Business',
+      'Cars & Motors',
+      'Fitness & Brotherhood',
+      'Fatherhood',
+      "Men's Mental Wellness",
+      'Dating From His Side',
+      'Sports Debate',
+      'Gaming Brotherhood',
+      "Men's Style",
+      'The Hustle Room',
+      'Brotherhood & Mentorship',
     ],
   },
   {
     section: 'coed',
     label: 'Coed Communities',
     names: [
-      "Let's Talk", 'The Hangout', 'Business Connect & Wealth Academy',
-      'Couples Corner', 'Conspiracy Room', 'Game Room', 'Why Are You Single?',
-      'What Are You Looking For?', 'Single & Ready to Mingle', 'City Connect',
+      "Let's Talk",
+      'The Hangout',
+      'Business Connect & Wealth Academy',
+      'Couples Corner',
+      'Conspiracy Room',
+      'Game Room',
+      'Why Are You Single?',
+      'What Are You Looking For?',
+      'Single & Ready to Mingle',
+      'City Connect',
     ],
   },
   {
     section: 'dating',
     label: 'Singles & Dating',
     names: [
-      'Looking for My Match', 'The Flirt Zone', 'Speed Connections',
-      'Poly Connections', 'Date Night Live', 'Love & Advice',
+      'Looking for My Match',
+      'The Flirt Zone',
+      'Speed Connections',
+      'Poly Connections',
+      'Date Night Live',
+      'Love & Advice',
     ],
   },
   {
@@ -107,3 +156,6 @@ export const LIVE_SECTIONS = SECTIONS.map((s) => ({
 export function findTopic(id: string): LiveTopic | undefined {
   return LIVE_TOPICS.find((t) => t.id === id)
 }
+
+/** Expected total — must stay 78 */
+export const LIVE_TOPIC_COUNT = LIVE_TOPICS.length
