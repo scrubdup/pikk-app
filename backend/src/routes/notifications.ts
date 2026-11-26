@@ -31,6 +31,61 @@ notifications.get('/', async (c) => {
   }
 })
 
+notifications.get('/prefs', async (c) => {
+  try {
+    const db = c.env.DB
+    if (!db) return c.json({ error: 'database not configured' }, 500)
+    const user = c.get('user')
+    let row = await db.prepare(`SELECT * FROM notification_prefs WHERE user_id = ?`).bind(user.id).first()
+    if (!row) {
+      const now = new Date().toISOString()
+      await db.prepare(
+        `INSERT INTO notification_prefs (user_id, gifts, follows, payouts, moderation, system, updated_at)
+         VALUES (?, 1, 1, 1, 1, 1, ?)`
+      ).bind(user.id, now).run()
+      row = await db.prepare(`SELECT * FROM notification_prefs WHERE user_id = ?`).bind(user.id).first()
+    }
+    return c.json({
+      prefs: {
+        gifts: !!row?.gifts,
+        follows: !!row?.follows,
+        payouts: !!row?.payouts,
+        moderation: !!row?.moderation,
+        system: !!row?.system,
+      },
+    })
+  } catch (err) {
+    return c.json({ error: 'internal error', detail: String(err) }, 500)
+  }
+})
+
+notifications.put('/prefs', async (c) => {
+  try {
+    const db = c.env.DB
+    if (!db) return c.json({ error: 'database not configured' }, 500)
+    const user = c.get('user')
+    const body = await c.req.json().catch(() => ({}))
+    const now = new Date().toISOString()
+    const gifts = body.gifts === false ? 0 : 1
+    const follows = body.follows === false ? 0 : 1
+    const payouts = body.payouts === false ? 0 : 1
+    const moderation = body.moderation === false ? 0 : 1
+    const system = body.system === false ? 0 : 1
+
+    await db.prepare(
+      `INSERT INTO notification_prefs (user_id, gifts, follows, payouts, moderation, system, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET
+         gifts = excluded.gifts, follows = excluded.follows, payouts = excluded.payouts,
+         moderation = excluded.moderation, system = excluded.system, updated_at = excluded.updated_at`
+    ).bind(user.id, gifts, follows, payouts, moderation, system, now).run()
+
+    return c.json({ ok: true, prefs: { gifts: !!gifts, follows: !!follows, payouts: !!payouts, moderation: !!moderation, system: !!system } })
+  } catch (err) {
+    return c.json({ error: 'internal error', detail: String(err) }, 500)
+  }
+})
+
 notifications.post('/read', async (c) => {
   try {
     const db = c.env.DB
@@ -65,6 +120,23 @@ notifications.delete('/:id', async (c) => {
     const user = c.get('user')
     await db.prepare(`DELETE FROM notifications WHERE id = ? AND user_id = ?`)
       .bind(c.req.param('id'), user.id).run()
+    return c.json({ ok: true })
+  } catch (err) {
+    return c.json({ error: 'internal error' }, 500)
+  }
+})
+
+notifications.post('/clear', async (c) => {
+  try {
+    const db = c.env.DB
+    if (!db) return c.json({ error: 'database not configured' }, 500)
+    const user = c.get('user')
+    const body = await c.req.json().catch(() => ({}))
+    if (body.readOnly) {
+      await db.prepare(`DELETE FROM notifications WHERE user_id = ? AND read_at IS NOT NULL`).bind(user.id).run()
+    } else {
+      await db.prepare(`DELETE FROM notifications WHERE user_id = ?`).bind(user.id).run()
+    }
     return c.json({ ok: true })
   } catch (err) {
     return c.json({ error: 'internal error' }, 500)

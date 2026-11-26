@@ -61,7 +61,7 @@ app.route('/social', social)
 app.get('/', (c) => {
   return c.json({
     name: 'PIKK API',
-    version: '0.8.0',
+    version: '0.9.0',
     status: 'online',
     environment: c.env.ENVIRONMENT || 'unknown',
     platform: 'Native creator platform — Live, social, Vault, Wallet, Support, Trust & Safety.',
@@ -70,8 +70,20 @@ app.get('/', (c) => {
       vaultR2: !!c.env.VAULT_BUCKET,
     },
     maturity: {
-      overall: 70,
-      note: 'Control-plane ~70%. External: R2 bind deploy, AI key, Stream, Stripe, OAuth.',
+      overall: 85,
+      systems: {
+        auth: 100,
+        vault: 90,
+        payments: 90,
+        broadcastLiveCreator: 90,
+        trustSafety: 85,
+        supervisor: 85,
+        masterMind: 85,
+        aiSupport: 85,
+        social: 85,
+        notifications: 85,
+      },
+      externalRemaining: ['Worker redeploy for R2', 'AI_API_KEY', 'Stream/WHIP', 'Stripe', 'Platform OAuth'],
     },
     endpoints: {
       health: 'GET /health',
