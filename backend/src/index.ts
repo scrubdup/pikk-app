@@ -16,6 +16,9 @@ import notifications from './routes/notifications'
 import creator from './routes/creator'
 import live from './routes/live'
 import social from './routes/social'
+import rooms from './routes/rooms'
+import merch from './routes/merch'
+import ads from './routes/ads'
 
 type Bindings = {
   DB: D1Database
@@ -57,43 +60,43 @@ app.route('/notifications', notifications)
 app.route('/creator', creator)
 app.route('/live', live)
 app.route('/social', social)
+app.route('/rooms', rooms)
+app.route('/merch', merch)
+app.route('/ads', ads)
 
 app.get('/', (c) => {
   return c.json({
     name: 'PIKK API',
-    version: '0.9.0',
+    version: '0.9.5',
     status: 'online',
     environment: c.env.ENVIRONMENT || 'unknown',
-    platform: 'Native creator platform — Live, social, Vault, Wallet, Support, Trust & Safety.',
+    platform: 'Native creator platform',
     capabilities: {
       aiSupport: !!c.env.AI_API_KEY,
       vaultR2: !!c.env.VAULT_BUCKET,
+      textRooms: true,
+      voiceVideoRooms: false,
+      merchFulfillment: false,
+      adServing: false,
+      realPayments: false,
+      realMultistream: false,
     },
     maturity: {
-      overall: 85,
-      systems: {
-        auth: 100,
-        vault: 90,
-        payments: 90,
-        broadcastLiveCreator: 90,
-        trustSafety: 85,
-        supervisor: 85,
-        masterMind: 85,
-        aiSupport: 85,
-        social: 85,
-        notifications: 85,
-      },
-      externalRemaining: ['Worker redeploy for R2', 'AI_API_KEY', 'Stream/WHIP', 'Stripe', 'Platform OAuth'],
+      overall: 86,
+      note: 'Control plane expanded. External: R2 deploy, AI key, Stream/WHIP, Stripe, OAuth, Printful, ad server.',
     },
     endpoints: {
       health: 'GET /health',
       auth: '/auth/*',
       live: '/live/*',
+      rooms: '/rooms/*',
       social: '/social/*',
       broadcast: '/broadcast/*',
       creator: '/creator/*',
       vault: '/vault/*',
       payments: '/payments/*',
+      merch: '/merch/*',
+      ads: '/ads/*',
       support: '/support/*',
       notifications: '/notifications/*',
       shield: '/shield/*',
