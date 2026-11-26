@@ -3,22 +3,25 @@ main = "src/index.ts"
 compatibility_date = "2026-11-19"
 compatibility_flags = ["nodejs_compat"]
 
-# D1 — pikk-engine-db on PIKK Cloudflare account
 [[d1_databases]]
 binding = "DB"
 database_name = "pikk-engine-db"
 database_id = "7019f730-4eeb-4f00-b8f1-bd5a034fed6e"
 migrations_dir = "migrations"
 
-# R2 — Vault
 [[r2_buckets]]
 binding = "VAULT_BUCKET"
 bucket_name = "pikk-vault"
 
+# Optional: cron to drain supervisor queue every 5 minutes
+# Uncomment after deploy if you want automatic job processing:
+# [triggers]
+# crons = ["*/5 * * * *"]
+
 # Secrets:
 #   npx wrangler secret put AI_API_KEY
-#   npx wrangler secret put AI_BASE_URL  (optional)
-#   npx wrangler secret put AI_MODEL     (optional)
+#   npx wrangler secret put AI_BASE_URL
+#   npx wrangler secret put AI_MODEL
 
 [vars]
 ENVIRONMENT = "production"

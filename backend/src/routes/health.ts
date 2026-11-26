@@ -30,7 +30,6 @@ health.get('/', async (c) => {
     if (db) {
       await db.prepare('SELECT 1').first()
       dbStatus = 'connected'
-
       stats.users = await safeCount(db, 'SELECT COUNT(*) as c FROM users')
       stats.sessions = await safeCount(db, 'SELECT COUNT(*) as c FROM sessions')
       stats.liveBroadcasts = await safeCount(db, `SELECT COUNT(*) as c FROM broadcast_sessions WHERE status = 'live'`)
@@ -45,11 +44,15 @@ health.get('/', async (c) => {
 
   return c.json({
     status: dbStatus === 'connected' ? 'ok' : 'degraded',
-    version: '0.4.1',
+    version: '0.8.0',
     timestamp: new Date().toISOString(),
     latencyMs: Date.now() - started,
     environment: c.env.ENVIRONMENT || 'unknown',
     db: dbStatus,
+    capabilities: {
+      aiSupport: !!c.env.AI_API_KEY,
+      vaultR2: !!c.env.VAULT_BUCKET,
+    },
     stats,
   })
 })
