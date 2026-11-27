@@ -1,5 +1,5 @@
-/* Brand lock: black / red / blue — match approved home screenshot.
-   Overrides pink/magenta home visual accents only. Layout structure unchanged. */
+/* Brand lock: black / red / blue — approved home look.
+   Kill pink/magenta polish accents. Layout structure unchanged. */
 
 .pikk-home-visual {
   background: linear-gradient(150deg, #12141c, #0a0a0a 60%, #0e1018) !important;
@@ -7,15 +7,11 @@
   box-shadow: 0 14px 40px #0008, inset 0 1px 0 rgba(47, 107, 255, 0.12) !important;
 }
 
-.pikk-home-visual-top .kicker {
-  color: var(--blue) !important;
-}
-
+.pikk-home-visual-top .kicker,
 .pikk-home-visual-more {
   color: var(--blue) !important;
 }
 
-/* Story / House Pick rings — red → blue (not pink) */
 .pikk-home-circle-ring {
   background: linear-gradient(135deg, var(--acc) 0%, var(--blue) 100%) !important;
   border-color: color-mix(in srgb, var(--blue) 55%, #fff) !important;
@@ -26,7 +22,6 @@
   color: var(--tx) !important;
 }
 
-/* Filter chips — active All = red→blue gradient */
 .pikk-home-filterbar a {
   border-color: color-mix(in srgb, var(--blue) 40%, var(--line)) !important;
   background: #14141c !important;
@@ -40,20 +35,16 @@
   box-shadow: 0 0 15px rgba(47, 107, 255, 0.28) !important;
 }
 
-/* Official Video badges — solid brand red */
 .pikk-home-media-badge {
   background: var(--acc) !important;
   color: #fff !important;
 }
 
-/* Video cards — blue edge like approved shot */
 .pikk-home-media-card {
   border-color: color-mix(in srgb, var(--blue) 45%, var(--line)) !important;
   background: var(--card) !important;
-  box-shadow: 0 5px 16px #0007, 0 0 0 1px rgba(47, 107, 255, 0.08) !important;
 }
 
-/* Create tab primary stays red/blue brand (not magenta) */
 .tabbar a.tab-primary svg {
   background: linear-gradient(145deg, var(--acc), #c01030 55%, color-mix(in srgb, var(--blue) 45%, var(--acc))) !important;
   box-shadow:
@@ -61,16 +52,27 @@
     0 0 0 3px color-mix(in srgb, var(--blue) 35%, transparent) !important;
 }
 
-/* Sticky player play = brand red */
 .sp-btn.sp-play {
   background: var(--acc) !important;
   color: #fff !important;
-  border: none !important;
 }
 
-/* Story promo rings if used on home */
 .pikk-story-ring {
   border-color: var(--acc) !important;
   background: radial-gradient(circle at 70% 25%, rgba(47, 107, 255, 0.35), rgba(15, 19, 35, 0.95)) !important;
   box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15), 0 0 18px rgba(255, 43, 43, 0.16) !important;
+}
+
+.pikk-home-circle-tag {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--acc) !important;
+  text-align: center;
+}
+
+.pikk-home-circle {
+  gap: 4px !important;
 }
