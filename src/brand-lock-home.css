@@ -1,25 +1,22 @@
-/* Brand lock: black / red / blue — approved home look.
-   Kill pink/magenta polish accents. Layout structure unchanged. */
+/* Brand lock: black / red / blue — match approved home screenshot */
 
-.pikk-home-visual {
-  background: linear-gradient(150deg, #12141c, #0a0a0a 60%, #0e1018) !important;
-  border-color: color-mix(in srgb, var(--blue) 28%, var(--line)) !important;
-  box-shadow: 0 14px 40px #0008, inset 0 1px 0 rgba(47, 107, 255, 0.12) !important;
+/* Hide secondary Explore rail (not in approved shot) */
+.pikk-explore-rail {
+  display: none !important;
 }
 
-.pikk-home-visual-top .kicker,
-.pikk-home-visual-more {
-  color: var(--blue) !important;
+.pikk-home-visual {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 0 12px !important;
 }
 
 .pikk-home-circle-ring {
   background: linear-gradient(135deg, var(--acc) 0%, var(--blue) 100%) !important;
   border-color: color-mix(in srgb, var(--blue) 55%, #fff) !important;
   box-shadow: 0 0 0 2px #0a0a0a, 0 0 16px rgba(47, 107, 255, 0.28) !important;
-}
-
-.pikk-home-circle > span:last-child {
-  color: var(--tx) !important;
 }
 
 .pikk-home-filterbar a {
@@ -57,12 +54,6 @@
   color: #fff !important;
 }
 
-.pikk-story-ring {
-  border-color: var(--acc) !important;
-  background: radial-gradient(circle at 70% 25%, rgba(47, 107, 255, 0.35), rgba(15, 19, 35, 0.95)) !important;
-  box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.15), 0 0 18px rgba(255, 43, 43, 0.16) !important;
-}
-
 .pikk-home-circle-tag {
   display: block;
   margin-top: 2px;
@@ -75,4 +66,14 @@
 
 .pikk-home-circle {
   gap: 4px !important;
+}
+
+/* Goal bar */
+.home-app-goal {
+  border: 1px solid color-mix(in srgb, var(--blue) 30%, var(--line)) !important;
+  border-radius: 14px !important;
+}
+
+.home-goal-fill {
+  background: linear-gradient(90deg, var(--acc), var(--blue)) !important;
 }
