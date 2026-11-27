@@ -1,5 +1,4 @@
 import './styles.css';
-import './brand-lock-home.css';
 import './skip-content.css';
 import './page-announcement.css';
 import './featured-promos.css';
@@ -131,6 +130,7 @@ const ROUTES = {
   '/spotlight': { render: renderSpotlight, bind: bindSpotlight },
   '/restream': {
     render: () => {
+      // t198u · no Restream brand — deep-link folds into Connect multi-platform
       queueMicrotask(() => {
         location.hash = '/connect#connect-multistream';
       });
@@ -149,10 +149,13 @@ const ROUTES = {
 
 function buildTabbar() {
   const el = document.getElementById('tabbar');
+  /* t290u — Messages unread lives in header only; still seed demo when signed in */
   if (getState().user) {
     try {
       ensureDemoUnreadMessages();
-    } catch (_) {}
+    } catch (_) {
+      /* demo seed best-effort */
+    }
   }
   el.innerHTML = TABBAR.map((t) => {
     const raw = t.href.replace(/^#/, '');
@@ -182,6 +185,7 @@ function buildTabbar() {
     if (!panel.hidden) panel.querySelector('[data-create-close]')?.focus();
   });
   el.style.gridTemplateColumns = '';
+  /* Fit all bottom navigation tabs, including Dating and Connect, without horizontal scroll. */
   el.classList.remove('tabbar-scroll');
   el.classList.add('tabbar-reshaped', 'tabbar-fit7');
 }
@@ -218,6 +222,7 @@ function ensureCreateMenu() {
     trigger?.setAttribute('aria-expanded', 'false');
     if (restoreFocus) trigger?.focus();
   };
+  // A route change must never leave the Create dialog covering the destination.
   window.addEventListener('hashchange', () => closeMenu());
   panel.addEventListener('click', (e) => {
     if (e.target === panel || e.target.closest('[data-create-close]')) closeMenu(true);
@@ -230,6 +235,7 @@ function ensureCreateMenu() {
       const focusable = [...panel.querySelectorAll('a[href], button:not([disabled])')];
       const first = focusable[0], last = focusable[focusable.length - 1];
       if (!first) { e.preventDefault(); return; }
+      // Keep keyboard focus inside the modal even when focus starts outside it.
       if (!panel.contains(document.activeElement)) {
         e.preventDefault();
         (e.shiftKey ? last : first).focus();
@@ -251,7 +257,11 @@ function refreshTabBadges() {
   buildTabbar();
   const route = getRoute();
   markActiveTab(el, route.path);
-  try { refreshHeaderMsgBadge(); } catch (_) {}
+  try {
+    refreshHeaderMsgBadge();
+  } catch (_) {
+    /* header may not be mounted */
+  }
 }
 
 function buildDrawer() {
@@ -259,6 +269,7 @@ function buildDrawer() {
   const route = getRoute();
   const activeHash = '#' + (route.raw || route.path);
   const activePath = '#' + route.path;
+
   const groupsHtml = DRAWER_GROUPS.map((g) => {
     if (g.href) {
       const on = g.href === activePath || g.href === activeHash ? ' on' : '';
@@ -284,6 +295,7 @@ function buildDrawer() {
       `</div>`
     );
   }).join('');
+
   el.innerHTML = `<h2>PIKK Network</h2>${groupsHtml}<a class="drawer-direct" href="#/updates">What's New · App Updates</a>`;
 }
 
@@ -303,6 +315,7 @@ function updateChrome(route) {
     const href = a.getAttribute('href') || '';
     a.classList.toggle('on', href === '#' + path || href === '#' + route.raw);
   });
+  // Accordion: keep the category that owns the active route open (one at a time)
   const activeHref = '#' + path;
   const activeRaw = '#' + route.raw;
   document.querySelectorAll('#sideNav .drawer-group').forEach((g) => {
@@ -314,20 +327,31 @@ function updateChrome(route) {
     const btn = g.querySelector('.drawer-cat');
     if (btn) btn.setAttribute('aria-expanded', match ? 'true' : 'false');
   });
+  /* t290u/t291u — Messages always in Sign-in slot (tierPill removed from HTML).
+   * Sign in lives on Profile (#/profile) only. Signed-out Messages → #/messages. */
   const headerMsg = document.getElementById('headerMsg');
   if (headerMsg) headerMsg.hidden = false;
   if (getState().user) {
-    try { ensureDemoUnreadMessages(); } catch (_) {}
+    try {
+      ensureDemoUnreadMessages();
+    } catch (_) {
+      /* demo seed best-effort */
+    }
   }
   refreshHeaderMsgBadge();
 }
 
+/** t290u/t291u · header Messages unread badge (Messages always visible) */
 function refreshHeaderMsgBadge() {
   const badge = document.getElementById('headerMsgBadge');
   const link = document.getElementById('headerMsg');
   if (!badge || !link) return;
   let unread = 0;
-  try { unread = getUnreadMessageCount(); } catch (_) { unread = 0; }
+  try {
+    unread = getUnreadMessageCount();
+  } catch (_) {
+    unread = 0;
+  }
   if (unread > 0) {
     const n = unread > 99 ? '99+' : String(unread);
     badge.textContent = n;
@@ -341,6 +365,7 @@ function refreshHeaderMsgBadge() {
 }
 
 function render(route) {
+  // Route changes always dismiss the drawer without stealing focus from navigation.
   setDrawer(false);
   const app = document.getElementById('app');
   const entry = ROUTES[route.path];
@@ -352,12 +377,15 @@ function render(route) {
   updateRouteIdentity(route, app, document.getElementById('pikkRouteAnnouncer'));
   onRouteForPlayer(route.path);
   window.scrollTo(0, 0);
+  // Vault deep-link
   if ((route.path === '/music' || route.path === '/vault') && (location.hash.includes('vault') || route.path === '/vault')) {
     setTimeout(() => document.getElementById('vault')?.scrollIntoView({ behavior: 'smooth' }), 50);
   }
+  // Creator sell apply deep-link (#/pricing?focus=sell → #creator-sell)
   if (route.path === '/pricing' && (location.hash.includes('focus=sell') || location.hash.includes('creator-sell'))) {
     setTimeout(() => document.getElementById('creator-sell')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   }
+  // Gift coins deep-link (#/wallet#wallet-coins or ?section=coins)
   if (
     route.path === '/wallet' &&
     (route.elementId === 'wallet-coins' ||
@@ -366,12 +394,16 @@ function render(route) {
   ) {
     setTimeout(() => document.getElementById('wallet-coins')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   }
+  // t209u · bottom Go Live → start-stream card
   if (route.path === '/live' && (route.query.go === '1' || route.elementId === 'live-go' || location.hash.includes('go=1'))) {
     setTimeout(() => document.getElementById('live-go')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   }
 }
 
+
+
 function hideSplash() {
+  // Design/QA: ?holdSplash=1 keeps official logo splash visible for screenshots
   if (new URLSearchParams(location.search).has('holdSplash')) return;
   const splash = document.getElementById('splash');
   if (!splash || splash.classList.contains('hide')) return;
@@ -380,6 +412,7 @@ function hideSplash() {
   setTimeout(() => splash.remove(), 500);
 }
 
+/** §19 t178u — play tuning-fork chime once; swallow autoplay blocks. */
 function playSplashChime() {
   const el = document.getElementById('splashChime');
   if (!el) return;
@@ -388,6 +421,7 @@ function playSplashChime() {
     if (p && typeof p.catch === 'function') p.catch(() => {});
   };
   tryPlay();
+  // Unlock on first gesture if browser blocked autoplay
   const unlock = () => {
     tryPlay();
     window.removeEventListener('pointerdown', unlock);
@@ -397,43 +431,94 @@ function playSplashChime() {
   window.addEventListener('keydown', unlock, { once: true });
 }
 
+
+/** §17 Build call-site bridge — Media Links owns player.js. Anyone may:
+ *   dispatchEvent(new CustomEvent('dbs:interrupt-music', { detail: { reason: 'live'|'video'|'route' } }))
+ *   dispatchEvent(new CustomEvent('dbs:resume-music', { detail: { reason: 'live'|'video' } }))
+ * Do NOT fire on track skip/prev or Open Spotify/Apple/YTM (#spOpen).
+ */
+function wireMusicInterruptBridge() {
+  window.addEventListener('dbs:interrupt-music', (e) => {
+    const reason = e?.detail?.reason || 'route';
+    pauseDbsPlayer(reason);
+  });
+  window.addEventListener('dbs:resume-music', (e) => {
+    const reason = e?.detail?.reason;
+    if (reason === 'live') notifyLiveClosed();
+    else if (reason === 'video') notifyVideoIdle();
+    else resumeDbsPlayerIfAllowed(reason);
+  });
+}
+
+/** t212u · Messages unread badge: store markThreadRead → refresh tabbar */
+function wireMessagesUnreadBadge() {
+  window.addEventListener('dbs:messages-unread', () => {
+    try {
+      refreshTabBadges();
+    } catch (_) {
+      /* tabbar may not be mounted yet */
+    }
+  });
+}
+
 function boot() {
+  // Do not use a #app anchor: PIKK uses the URL hash for routing.
+  document.getElementById('pikkSkipContent')?.addEventListener('click', () => {
+    document.getElementById('app')?.focus();
+  });
   ensureDemoPosts();
-  buildDrawer();
+  rewriteAssetUrls(document);
   buildTabbar();
-  document.getElementById('menuBtn')?.addEventListener('click', () => setDrawer(true));
-  document.getElementById('scrim')?.addEventListener('click', () => setDrawer(false, true));
-  document.getElementById('sideNav')?.addEventListener('click', (e) => {
+  buildDrawer();
+  initDbsPlayer();
+  wireMusicInterruptBridge();
+  wireMessagesUnreadBadge();
+
+  document.getElementById('menuBtn').addEventListener('click', () => setDrawer(true));
+  document.getElementById('scrim').addEventListener('click', () => setDrawer(false, true));
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !document.getElementById('sideNav')?.classList.contains('open')) return;
+    event.preventDefault();
+    setDrawer(false, true);
+  });
+  document.getElementById('sideNav').addEventListener('click', (e) => {
     const cat = e.target.closest('.drawer-cat');
     if (cat) {
+      e.preventDefault();
       const group = cat.closest('.drawer-group');
-      if (group) {
-        const open = !group.classList.contains('open');
-        document.querySelectorAll('#sideNav .drawer-group.open').forEach((g) => {
-          if (g !== group) {
-            g.classList.remove('open');
-            g.querySelector('.drawer-cat')?.setAttribute('aria-expanded', 'false');
-          }
-        });
-        group.classList.toggle('open', open);
-        cat.setAttribute('aria-expanded', open ? 'true' : 'false');
-      }
+      const willOpen = !group.classList.contains('open');
+      document.querySelectorAll('#sideNav .drawer-group').forEach((g) => {
+        const open = willOpen && g === group;
+        g.classList.toggle('open', open);
+        const b = g.querySelector('.drawer-cat');
+        if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
       return;
     }
     if (e.target.closest('a')) setDrawer(false);
   });
-  initDbsPlayer();
-  startRouter();
+  document.getElementById('notifBtn').addEventListener('click', () => {
+    location.hash = '/notifications';
+  });
+
   onRoute(render);
-  const route = getRoute();
-  render(route);
-  if (shouldShowSplash()) {
-    playSplashChime();
-    const ready = () => hideSplash();
-    window.addEventListener('load', ready, { once: true });
-    setTimeout(ready, 3000);
+  startRouter();
+
+  // Splash §19 t178u: official logo + tuning fork · hold ~3s when shown.
+  // Subsequent visits skip via shouldShowSplash(); ?holdSplash=1 for evidence.
+  if (!shouldShowSplash() && !new URLSearchParams(location.search).has('holdSplash')) {
+    const splash = document.getElementById('splash');
+    if (splash) splash.remove();
   } else {
-    hideSplash();
+    playSplashChime();
+    let done = false;
+    const ready = () => {
+      if (done) return;
+      done = true;
+      hideSplash();
+    };
+    // Fixed 3s hold from boot (user ask t178u); same as safety max.
+    setTimeout(ready, 3000);
   }
 }
 

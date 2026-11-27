@@ -1,12 +1,16 @@
 /**
- * PIKK Auth Service — real backend sessions for beta
+ * PIKK Auth Service
+ * Prefers the real backend API when available.
+ * Falls back to demo/localStorage only when the API is unreachable.
  */
 
-import { api, setStoredSessionId } from '../lib/api-client.js'
-import { AUTH_STATES } from './readiness.js'
+import { api } from '../lib/api-client.js'
+import { AUTH_STATES, resolveAuthState } from './readiness.js'
+
+const SESSION_KEY = 'pikk_session_meta'
 
 let cachedUser = null
-let apiAvailable = null
+let apiAvailable = null // null = unknown, true/false after first probe
 
 export async function probeApi() {
   if (apiAvailable !== null) return apiAvailable
@@ -21,8 +25,10 @@ export async function probeApi() {
 
 export async function getCurrentUser() {
   if (cachedUser) return cachedUser
+
   const available = await probeApi()
   if (!available) return null
+
   try {
     const { user } = await api.me()
     cachedUser = user
@@ -35,18 +41,22 @@ export async function getCurrentUser() {
 
 export async function signup({ email, password, displayName }) {
   const available = await probeApi()
-  if (!available) throw new Error('Backend not available. Real signup requires the API.')
+  if (!available) {
+    throw new Error('Backend not available. Real signup requires the API.')
+  }
+
   const data = await api.signup({ email, password, displayName })
-  if (data.sessionId) setStoredSessionId(data.sessionId)
   cachedUser = data.user
   return data
 }
 
 export async function login({ email, password }) {
   const available = await probeApi()
-  if (!available) throw new Error('Backend not available. Real login requires the API.')
+  if (!available) {
+    throw new Error('Backend not available. Real login requires the API.')
+  }
+
   const data = await api.login({ email, password })
-  if (data.sessionId) setStoredSessionId(data.sessionId)
   cachedUser = data.user
   return data
 }
@@ -56,7 +66,7 @@ export async function logout() {
   try {
     await api.logout()
   } catch {
-    setStoredSessionId('')
+    // ignore network errors on logout
   }
 }
 
@@ -65,7 +75,7 @@ export async function logoutAll() {
   try {
     await api.logoutAll()
   } catch {
-    setStoredSessionId('')
+    // ignore
   }
 }
 
@@ -83,21 +93,10 @@ export async function verifyEmail(token) {
   return api.verifyEmail(token)
 }
 
-export async function requestPasswordReset(email) {
-  return api.requestPasswordReset(email)
-}
-
-export async function resetPassword(token, newPassword) {
-  return api.resetPassword({ token, newPassword })
-}
-
-export async function deleteAccount(password) {
-  const data = await api.deleteAccount(password)
-  cachedUser = null
-  setStoredSessionId('')
-  return data
-}
-
+/**
+ * High-level auth state for the rest of the app.
+ * Never treats localStorage demo users as real authenticated users.
+ */
 export async function getAuthState() {
   const user = await getCurrentUser()
   if (user) {
